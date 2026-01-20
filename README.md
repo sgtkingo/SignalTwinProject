@@ -85,7 +85,7 @@ Beyond passive viewing, SignalTwin Display supports operational control via the 
 - 🖼️ `ui/` — firmware + UI logic + .INO file (LVGL app)
 - 📚 `libraries` — all headers and libraries (engine) 
 - 🐍 `emulator` — Python-based emulator for testing
-- 📄 `docs/` — diagrams, screenshots, Wiki sources
+- 📄 `docs/` — diagrams, screenshots, Wiki sources, installation instruction
 - 📦 `bin` — exported binary files
 - 🧾 `data` — data files files (configurations, CSV)
 - 📝 `RELEASE_NOTES` — latest release notes
@@ -96,7 +96,7 @@ Beyond passive viewing, SignalTwin Display supports operational control via the 
 ## 🐞 Troubleshooting 
 
 - ❌ If you can connect but see no data: verify the upstream device speaks **VSCP** and is streaming the expected channels.
-- 💽 If SD export fails: check card formatting and required folder structure (see `INSTALL.md`).
+- 💽 If SD export fails: check card formatting and required folder structure (see `INSTALL.md` in `docs/`).
 
 ---
 
