@@ -1,0 +1,33 @@
+{
+    "sensors": {
+        "DHT11_0": {
+            "uid": "DHT11_0",
+            "type": "DHT11",
+            "description": "DHT11 Temperature and Humidity Sensor",
+            "values":
+            {
+                "temperature": {"value": 0.0, "unit": "C", "dtype": "float", "restrictions": {"min": -40.0, "max": 80.0}},
+                "humidity": {"value": 0.0, "unit": "%", "dtype": "float", "restrictions": {"min": 0.0, "max": 100.0}}
+            },
+            "configs":
+            {
+                "resolution": {"value": 0, "unit": "b", "dtype": "int", "restrictions": {"options": "8, 10, 12"} }
+            },
+            "default": 
+            {
+                "values":
+                {
+                    "temperature": 0.0,
+                    "humidity": 0.0
+                },
+                "configs":
+                {
+                    "resolution": 10
+                },
+                "pins": ""
+            }
+        }
+    },
+    "version": "1.0",
+    "application": "board"
+}
