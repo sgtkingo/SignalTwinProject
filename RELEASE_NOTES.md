@@ -41,7 +41,7 @@ Developer artifacts (for debugging/profiling):
 
 ---
 
-## Compatibility matrix (v1.0.0)
+## Compatibility matrix 
 
 Upstream connectivity is based on **VSCP** (Virtual Sensors Communication Protocol):
 
@@ -61,7 +61,7 @@ Protocol reference:
 
 ---
 
-## Known limitations (v1.0.0)
+## Known limitations
 
 * Visualization widgets and rendering policies depend on upstream channel metadata and current UI maturity.
 * Heavy UI effects (e.g., excessive alpha/shadows) may be constrained by embedded rendering budget (frame time).
