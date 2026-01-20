@@ -2,105 +2,125 @@ name: Release (assets + notes + patch bump)
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
   workflow_dispatch: {}
 
 permissions:
-  contents: write
+  contents: write # needed to create tags and releases
 
 jobs:
   release:
+    # prevent infinite release loops
+    if: "${{ !contains(github.event.head_commit.message, 'chore(release): bump version') }}"
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # český komentář: potřebujeme tagy a historii pro release/tagging
+          fetch-depth: 0 # prevent shallow clone to have tags and full history
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Install semver
-        run: npm i semver@7
-
-      - name: Guard - skip bump commits
-        if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, 'chore(release): bump version') }}
-        run: |
-          echo "Skipping release on version bump commit." # český komentář: zabráníme nekonečné smyčce
-          exit 0
-
-      - name: Read version
+      - name: Read and validate version
         id: ver
+        shell: bash
         run: |
-          if [ ! -f VERSION ]; then
-            echo "VERSION file not found. Create a root-level VERSION (e.g., 1.0.0)." >&2
+          set -euo pipefail
+
+          # český komentář: VERSION je jediný zdroj pravdy pro verzi
+          if [[ ! -f VERSION ]]; then
+            echo "Soubor VERSION neexistuje. Vytvoř ho (např. 1.0.0)." >&2
             exit 1
           fi
-          V="$(cat VERSION | tr -d ' \n\r\t')"
+
+          V="$(tr -d ' \r\n\t' < VERSION)"
+
+          # český komentář: jednoduchá validace semver X.Y.Z
+          if [[ ! "$V" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Neplatná verze v souboru VERSION: '$V' (očekávám X.Y.Z)" >&2
+            exit 1
+          fi
+
+          IFS='.' read -r MA MI PA <<< "$V"
+
+          # český komentář: release povolíme až od 1.0.0
+          if (( MA < 1 )); then
+            echo "Release přeskočen: VERSION < 1.0.0 (aktuálně $V)"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "skip=false" >> "$GITHUB_OUTPUT"
           echo "version=$V" >> "$GITHUB_OUTPUT"
           echo "tag=v$V" >> "$GITHUB_OUTPUT"
 
-      - name: Guard - only from 1.0.0+
-        id: guard
+      - name: Stop if release is skipped
+        if: ${{ steps.ver.outputs.skip == 'true' }}
         run: |
-          node -e "const semver=require('semver'); const v='${{ steps.ver.outputs.version }}'; if(!semver.valid(v)) {console.error('Invalid VERSION:', v); process.exit(1);} if(semver.lt(v,'1.0.0')) {console.log('Version < 1.0.0, release disabled.'); process.exit(2);} "
-        continue-on-error: true
-
-      - name: Stop if version < 1.0.0
-        if: ${{ steps.guard.outcome == 'failure' }}
-        run: |
-          echo "Release skipped (VERSION < 1.0.0 or invalid)." # český komentář: před 1.0.0 nic nereleasujeme
-          exit 0
+          echo "Release se neprovádí (VERSION < 1.0.0)." # český komentář: kontrolované ukončení
 
       - name: Validate assets folder
+        if: ${{ steps.ver.outputs.skip == 'false' }}
+        shell: bash
         run: |
-          if [ ! -d "bin/latest" ]; then
-            echo "Missing folder bin/latest" >&2
-            exit 1
-          fi
-          shopt -s nullglob
-          files=(bin/latest/*)
-          if [ ${#files[@]} -eq 0 ]; then
-            echo "No files in bin/latest" >&2
+          set -euo pipefail
+
+          # český komentář: očekáváme binárky v bin/latest
+          if [[ ! -d "bin/latest" ]]; then
+            echo "Chybí složka bin/latest" >&2
             exit 1
           fi
 
-      - name: Create tag (if missing)
+          shopt -s nullglob
+          files=(bin/latest/*)
+          if (( ${#files[@]} == 0 )); then
+            echo "Ve složce bin/latest nejsou žádné soubory" >&2
+            exit 1
+          fi
+
+      - name: Create and push tag (if missing)
+        if: ${{ steps.ver.outputs.skip == 'false' }}
+        shell: bash
         run: |
+          set -euo pipefail
           TAG="${{ steps.ver.outputs.tag }}"
+
+          # český komentář: tag vytvoříme jen pokud ještě neexistuje
           if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG already exists." # český komentář: pokud už tag existuje, jen pokračujeme
+            echo "Tag $TAG již existuje."
           else
             git tag "$TAG"
             git push origin "$TAG"
           fi
 
       - name: Create GitHub Release (assets from bin/latest + notes from RELEASE_NOTES.md)
+        if: ${{ steps.ver.outputs.skip == 'false' }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
           name: ${{ steps.ver.outputs.tag }}
-          body_path: RELEASE_NOTES.md
+          body_path: RELEASE_NOTES.md # release notes
           files: |
             bin/latest/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Bump patch version (+0.0.1) and push
+      - name: Bump patch version (+0.0.1) and push to main
+        if: ${{ steps.ver.outputs.skip == 'false' }}
+        shell: bash
         run: |
-          node - <<'NODE'
-          const fs = require('fs');
-          const semver = require('semver');
-          const v = fs.readFileSync('VERSION','utf8').trim();
-          if (!semver.valid(v)) throw new Error('Invalid VERSION: ' + v);
-          const next = semver.inc(v, 'patch');
-          fs.writeFileSync('VERSION', next + '\n');
-          console.log(`Bumped VERSION: ${v} -> ${next}`);
-          NODE
+          set -euo pipefail
 
+          V="${{ steps.ver.outputs.version }}"
+          IFS='.' read -r MA MI PA <<< "$V"
+          PA=$((PA + 1))
+          NEXT="${MA}.${MI}.${PA}"
+
+          # český komentář: zapíšeme novou verzi
+          printf "%s\n" "$NEXT" > VERSION
+          echo "Bumped VERSION: $V -> $NEXT"
+
+          # český komentář: commit a push zpět do main
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add VERSION
