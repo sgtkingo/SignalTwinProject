@@ -8,6 +8,7 @@
 
 # Ignore build artifacts
 /build/
+/build
 
 # Ignore C++ object files, executables and libraries
 *.o

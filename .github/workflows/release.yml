@@ -1,128 +1,199 @@
-name: Release (assets + notes + patch bump)
+name: Release (VSCP Display) — bump + assets + notes
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "main" ]
   workflow_dispatch: {}
 
 permissions:
-  contents: write # needed to create tags and releases
+  contents: write  # český komentář: tag, release, push bump commitu
 
 jobs:
   release:
-    # prevent infinite release loops
-    if: "${{ !contains(github.event.head_commit.message, 'chore(release): bump version') }}"
     runs-on: ubuntu-latest
 
     steps:
+      - name: Gate — decide bump type from commit message
+        id: gate
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # český komentář: commit marker musí být explicitně v závorce
+          msg="${{ github.event.head_commit.message }}"
+
+          # český komentář: ochrana proti nekonečné smyčce (bump commit nespouští release)
+          if [[ "$msg" == *"chore(release): bump version to "* ]]; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "bump_type=none" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          bump="none"
+          if [[ "$msg" == *"(major)"* ]]; then bump="major"; fi
+          if [[ "$msg" == *"(minor)"* ]]; then
+            [[ "$bump" != "none" ]] && { echo "Multiple bump markers found." >&2; exit 1; }
+            bump="minor"
+          fi
+          if [[ "$msg" == *"(patch)"* ]]; then
+            [[ "$bump" != "none" ]] && { echo "Multiple bump markers found." >&2; exit 1; }
+            bump="patch"
+          fi
+          if [[ "$msg" == *"(build)"* ]]; then
+            [[ "$bump" != "none" ]] && { echo "Multiple bump markers found." >&2; exit 1; }
+            bump="build"
+          fi
+
+          if [[ "$bump" == "none" ]]; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "bump_type=none" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "release=true" >> "$GITHUB_OUTPUT"
+          echo "bump_type=$bump" >> "$GITHUB_OUTPUT"
+
       - name: Checkout
+        if: ${{ steps.gate.outputs.release == 'true' }}
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # prevent shallow clone to have tags and full history
+          fetch-depth: 0
 
-      - name: Read and validate version
+      - name: Read VERSION (x.y.z.b) and compute next
+        if: ${{ steps.gate.outputs.release == 'true' }}
         id: ver
         shell: bash
         run: |
           set -euo pipefail
 
-          # český komentář: VERSION je jediný zdroj pravdy pro verzi
           if [[ ! -f VERSION ]]; then
-            echo "Soubor VERSION neexistuje. Vytvoř ho (např. 1.0.0)." >&2
+            echo "Missing VERSION file (expected x.y.z.b)." >&2
             exit 1
           fi
 
           V="$(tr -d ' \r\n\t' < VERSION)"
 
-          # český komentář: jednoduchá validace semver X.Y.Z
-          if [[ ! "$V" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Neplatná verze v souboru VERSION: '$V' (očekávám X.Y.Z)" >&2
+          # český komentář: validace x.y.z.b
+          if [[ ! "$V" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid VERSION '$V' (expected x.y.z.b)." >&2
             exit 1
           fi
 
-          IFS='.' read -r MA MI PA <<< "$V"
+          IFS='.' read -r MA MI PA BU <<< "$V"
 
-          # český komentář: release povolíme až od 1.0.0
+          # český komentář: release povolen až od 1.0.0.0
           if (( MA < 1 )); then
-            echo "Release přeskočen: VERSION < 1.0.0 (aktuálně $V)"
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            exit 0
+            echo "Version < 1.0.0.0 — release disabled." >&2
+            exit 1
           fi
 
-          echo "skip=false" >> "$GITHUB_OUTPUT"
-          echo "version=$V" >> "$GITHUB_OUTPUT"
-          echo "tag=v$V" >> "$GITHUB_OUTPUT"
+          bump="${{ steps.gate.outputs.bump_type }}"
+          case "$bump" in
+            major) MA=$((MA+1)); MI=0; PA=0; BU=0 ;;
+            minor) MI=$((MI+1)); PA=0; BU=0 ;;
+            patch) PA=$((PA+1)); BU=0 ;;
+            build) BU=$((BU+1)) ;;
+            *) echo "Unknown bump type: $bump" >&2; exit 1 ;;
+          esac
 
-      - name: Stop if release is skipped
-        if: ${{ steps.ver.outputs.skip == 'true' }}
-        run: |
-          echo "Release se neprovádí (VERSION < 1.0.0)." # český komentář: kontrolované ukončení
+          NEXT="${MA}.${MI}.${PA}.${BU}"
+          TAG="v${NEXT}"
 
-      - name: Validate assets folder
-        if: ${{ steps.ver.outputs.skip == 'false' }}
+          echo "current=$V" >> "$GITHUB_OUTPUT"
+          echo "next=$NEXT" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare release assets (copy build outputs -> bin/latest)
+        if: ${{ steps.gate.outputs.release == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
 
-          # český komentář: očekáváme binárky v bin/latest
-          if [[ ! -d "bin/latest" ]]; then
-            echo "Chybí složka bin/latest" >&2
+          # český komentář: zdroj buildů lze přepsat souborem BUILD, jinak použijeme default
+          SRC_DEFAULT="ui/build/esp32.esp32.esp32s3"
+          if [[ -f BUILD ]]; then
+            SRC="$(tr -d ' \r\n\t' < BUILD)"
+          else
+            SRC="$SRC_DEFAULT"
+          fi
+
+          if [[ ! -d "$SRC" ]]; then
+            echo "Build source folder not found: $SRC" >&2
             exit 1
           fi
 
+          mkdir -p bin/latest
+          rm -f bin/latest/*
+
+          # český komentář: kopírujeme primárně .bin; .elf/.map jsou volitelné
+          shopt -s nullglob
+          bins=("$SRC"/*.bin)
+          if (( ${#bins[@]} == 0 )); then
+            echo "No .bin files found in: $SRC" >&2
+            exit 1
+          fi
+          cp -v "$SRC"/*.bin bin/latest/
+
+          # český komentář: volitelně přibalíme i debug artefakty, pokud existují
+          if compgen -G "$SRC"/*.elf > /dev/null; then cp -v "$SRC"/*.elf bin/latest/; fi
+          if compgen -G "$SRC"/*.map > /dev/null; then cp -v "$SRC"/*.map bin/latest/; fi
+
+          echo "Prepared assets in bin/latest from: $SRC"
+
+      - name: Validate assets (bin/latest)
+        if: ${{ steps.gate.outputs.release == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -d "bin/latest" ]]; then
+            echo "Missing folder bin/latest" >&2
+            exit 1
+          fi
           shopt -s nullglob
           files=(bin/latest/*)
           if (( ${#files[@]} == 0 )); then
-            echo "Ve složce bin/latest nejsou žádné soubory" >&2
+            echo "No files found in bin/latest" >&2
             exit 1
           fi
 
-      - name: Create and push tag (if missing)
-        if: ${{ steps.ver.outputs.skip == 'false' }}
+      - name: Bump VERSION, commit and push
+        if: ${{ steps.gate.outputs.release == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          printf "%s\n" "${{ steps.ver.outputs.next }}" > VERSION
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add VERSION
+          git commit -m "chore(release): bump version to ${{ steps.ver.outputs.next }}"
+          git push origin HEAD:main
+
+      - name: Create and push tag (on bump commit)
+        if: ${{ steps.gate.outputs.release == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
           TAG="${{ steps.ver.outputs.tag }}"
 
-          # český komentář: tag vytvoříme jen pokud ještě neexistuje
           if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG již existuje."
-          else
-            git tag "$TAG"
-            git push origin "$TAG"
+            echo "Tag $TAG already exists." >&2
+            exit 1
           fi
 
-      - name: Create GitHub Release (assets from bin/latest + notes from RELEASE_NOTES.md)
-        if: ${{ steps.ver.outputs.skip == 'false' }}
+          git tag "$TAG"
+          git push origin "$TAG"
+
+      - name: Create GitHub Release (notes + assets)
+        if: ${{ steps.gate.outputs.release == 'true' }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
           name: ${{ steps.ver.outputs.tag }}
-          body_path: RELEASE_NOTES.md # release notes
+          body_path: RELEASE_NOTES.md
           files: |
             bin/latest/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Bump patch version (+0.0.1) and push to main
-        if: ${{ steps.ver.outputs.skip == 'false' }}
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          V="${{ steps.ver.outputs.version }}"
-          IFS='.' read -r MA MI PA <<< "$V"
-          PA=$((PA + 1))
-          NEXT="${MA}.${MI}.${PA}"
-
-          # český komentář: zapíšeme novou verzi
-          printf "%s\n" "$NEXT" > VERSION
-          echo "Bumped VERSION: $V -> $NEXT"
-
-          # český komentář: commit a push zpět do main
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add VERSION
-          git commit -m "chore(release): bump version"
-          git push origin HEAD:main
