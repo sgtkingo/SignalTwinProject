@@ -80,6 +80,16 @@ Beyond passive viewing, SignalTwin Display supports operational control via the 
 
 ---
 
+## 🔄 Recommended: Automatic Firmware Updates (Firmupdater)
+
+SignalTwin Display is designed for **frequent deployments** (labs, classrooms, hotfix builds), so **automatic firmware updates are strongly recommended** via **Firmupdater**: https://github.com/sgtkingo/Firmupdater.
+
+Firmupdater automatically checks for newer versions and applies updates **with minimal manual intervention**—perfect for managing multiple devices in parallel. 🚀
+
+📖 Learn more: https://github.com/sgtkingo/Firmupdater
+
+---
+
 ## 🗂️ Repository Structure (Recommended)
 
 - 🖼️ `ui/` — firmware + UI logic + .INO file (LVGL app)
