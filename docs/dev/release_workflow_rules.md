@@ -53,7 +53,7 @@ Notes:
 If a commit matches the rules, GitHub Actions will:
 
 1. Read the current `VERSION` and compute **NEXT** based on the marker.
-2. Verify release assets exist in `bin/latest/`.
+2. Verify release assets exist in directory defined in `BUILD` file, e.g: `bin/latest/*`, `ui/build/esp32.esp32.esp32s3/*`.
 3. Write `NEXT` into `VERSION`, then commit:  
    `chore(release): bump version to x.y.z.b`
 4. Create and push a git tag:  
@@ -90,7 +90,7 @@ Recommended contents (typical):
 
 ## 6) Recommended release procedure
 
-1. Ensure `bin/latest/` contains the current build artifacts.
+1. Ensure directory defined in `BUILD` file, e.g: `bin/latest/*`, `ui/build/esp32.esp32.esp32s3/*`, contains the current build artifacts.
 2. Update `RELEASE_NOTES.md` (manually).
 3. Push a commit to `main` with one marker at the beginning, e.g.:  
    `(build) Hotfix`
@@ -105,7 +105,7 @@ Recommended contents (typical):
 
 - Marker not at the beginning → no release is triggered.
 - Multiple markers in one commit → workflow fails.
-- Empty `bin/latest/` → workflow fails (no release created).
+- Empty `BUILD` → workflow fails (no release created).
 - `VERSION` not in `x.y.z.b` format → workflow fails.
 
 ---
