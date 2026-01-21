@@ -59,7 +59,7 @@ If a commit matches the rules, GitHub Actions will:
 4. Create and push a git tag:  
    `vX.Y.Z.B`
 5. Create a GitHub Release:
-   - **Assets**: all files from `bin/latest/*`
+   - **Assets**: all files from directory defined in `BUILD` file, e.g: `bin/latest/*`, `ui/build/esp32.esp32.esp32s3/*`
    - **Release notes**: contents of `RELEASE_NOTES.md` (manually maintained)
 
 ---
