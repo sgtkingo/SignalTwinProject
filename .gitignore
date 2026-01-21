@@ -6,10 +6,6 @@
 # Ignore virtual environment folders
 /.venv
 
-# Ignore build artifacts
-/build/
-/build
-
 # Ignore C++ object files, executables and libraries
 *.o
 *.obj

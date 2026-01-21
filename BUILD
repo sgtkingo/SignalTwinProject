@@ -1,0 +1,1 @@
+ui/build/esp32.esp32.esp32s3
