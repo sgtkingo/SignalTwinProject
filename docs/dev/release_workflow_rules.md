@@ -53,13 +53,14 @@ Notes:
 If a commit matches the rules, GitHub Actions will:
 
 1. Read the current `VERSION` and compute **NEXT** based on the marker.
-2. Verify release assets exist in directory defined in `BUILD` file, e.g: `bin/latest/*`, `ui/build/esp32.esp32.esp32s3/*`.
-3. Write `NEXT` into `VERSION`, then commit:  
+2. Verify release assets exist in directory defined in `BUILD` file, e.g: `ui/build/esp32.esp32.esp32s3/*`.
+3. Copy release assets to `bin/latest/*`
+4. Write `NEXT` into `VERSION`, then commit:  
    `chore(release): bump version to x.y.z.b`
-4. Create and push a git tag:  
+5. Create and push a git tag:  
    `vX.Y.Z.B`
-5. Create a GitHub Release:
-   - **Assets**: all files from directory defined in `BUILD` file, e.g: `bin/latest/*`, `ui/build/esp32.esp32.esp32s3/*`
+6. Create a GitHub Release:
+   - **Assets**: all files from directory defined in `BUILD` file, e.g: `ui/build/esp32.esp32.esp32s3/*`
    - **Release notes**: contents of `RELEASE_NOTES.md` (manually maintained)
 
 ---
