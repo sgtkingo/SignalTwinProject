@@ -44,6 +44,12 @@ The whole .bin (the merged 4MB one containing all partitions) can be burnt to th
 You can find the built ELF's flashable version in a `ui.ino.bin` file in the folder (like `tmp`) where Arduino-IDE puts the builds.
 This `ui.ino.bin` file can be burnt to the board's app0 partition at offset 0x10000 by the ESP-IDF command: `esptool.py  write_flash  0x10000 ui.ino.bin`. (Offset might differ with other patition scheme, get app0 offset by `esptool.py read_flash 0x8000 0xc00 ptable.img` and `gen_esp32part.py ptable.img`.)
 
+> For Arduino IDE:
+1. Open .INO file (in `ui`)
+2. In `File->Preferences->Sketchbook location` set up the project root directory
+3. Start `Verify/Compile` (`CTRL+R`)
+4. Export binaries by `Export Compiled Binary` (`Alt+Ctrl+S`) in `Sketch` barlist
+
 
 ## Misc. notes
 
