@@ -87,6 +87,7 @@ SignalTwin Display is designed for **frequent deployments** (labs, classrooms, h
 Firmupdater automatically checks for newer versions and applies updates **with minimal manual intervention**—perfect for managing multiple devices in parallel. 🚀
 
 📖 Learn more: https://github.com/sgtkingo/Firmupdater
+🌐 Online live-app: https://sgtkingo.github.io/Firmupdater/
 
 ---
 
