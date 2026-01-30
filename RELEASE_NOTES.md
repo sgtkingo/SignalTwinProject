@@ -51,7 +51,7 @@ Upstream connectivity is based on **VSCP** (Virtual Sensors Communication Protoc
 
 Protocol reference:
 
-* VSCP repository: [https://github.com/sgtkingo/VirtualSensors_protocol](https://github.com/sgtkingo/VirtualSensors_protocol)
+* VSCP repository: [https://github.com/sgtkingo/VSCP](https://github.com/sgtkingo/VSCP)
 
 ---
 
