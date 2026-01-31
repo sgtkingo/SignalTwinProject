@@ -67,6 +67,7 @@ SensorVisualizationGui::SensorVisualizationGui(SensorManager &sensorManager, Dat
     ui_SettingsHeaderLine = nullptr;
     ui_SettingsHeaderLabel = nullptr;
     ui_SettingsDataBundleLabel = nullptr;
+    ui_SettingsDataBundleCountLabel = nullptr;
     ui_SettingsDataBundleShowButton = nullptr;
     ui_SettingsDataBundleShowButtonLabel = nullptr;
     ui_SettingsDataBundleDeleteAllButton = nullptr;
@@ -1288,6 +1289,21 @@ void SensorVisualizationGui::handleSettingsButtonClick(lv_obj_t *recordGroup, lv
     lv_obj_set_align(ui_SettingsDataBundleLabel, LV_ALIGN_LEFT_MID);
     lv_label_set_text(ui_SettingsDataBundleLabel, "Data bundle:");
     lv_obj_set_style_text_color(ui_SettingsDataBundleLabel, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ui_SettingsDataBundleCountLabel = lv_label_create(ui_SettingsGroup);
+    lv_obj_set_width(ui_SettingsDataBundleCountLabel, LV_SIZE_CONTENT);
+    lv_obj_set_height(ui_SettingsDataBundleCountLabel, LV_SIZE_CONTENT);
+    lv_obj_set_x(ui_SettingsDataBundleCountLabel, -20);  
+    lv_obj_set_y(ui_SettingsDataBundleCountLabel, -40);
+    lv_obj_set_align(ui_SettingsDataBundleCountLabel, LV_ALIGN_RIGHT_MID);
+    std::string bundleAmount = "[" + std::to_string(dataBundleManager.getDataBundleAmount()) + "/30]";
+    lv_label_set_text(ui_SettingsDataBundleCountLabel, bundleAmount.c_str());
+    if(dataBundleManager.isDataBundleFull()){
+        lv_obj_set_style_text_color(ui_SettingsDataBundleCountLabel, lv_color_hex(0xE55858), LV_PART_MAIN | LV_STATE_DEFAULT);
+    }
+    else{
+        lv_obj_set_style_text_color(ui_SettingsDataBundleCountLabel, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    }
 
     ui_SettingsDataBundleShowButton = lv_btn_create(ui_SettingsGroup);
     lv_obj_set_width(ui_SettingsDataBundleShowButton, 200);

@@ -153,7 +153,7 @@ void DataBundleSelectionGui::createDataBundle(unsigned char i, const char *dataB
     // 3. Create Main Bundle Container
     ui_DataBundle[i] = lv_obj_create(ui_DataBundlesWidget);
     lv_obj_remove_style_all(ui_DataBundle[i]);
-    lv_obj_set_size(ui_DataBundle[i], 200, 160);
+    lv_obj_set_size(ui_DataBundle[i], 200, 165);
     
     // Apply the calculated position
     lv_obj_set_align(ui_DataBundle[i], LV_ALIGN_CENTER);
@@ -191,11 +191,12 @@ void DataBundleSelectionGui::createDataBundle(unsigned char i, const char *dataB
     lv_obj_set_align(ui_DataBundleHeaderLabel[i], LV_ALIGN_CENTER);
     lv_label_set_text(ui_DataBundleHeaderLabel[i], "Bundle Title"); 
     lv_obj_set_style_text_font(ui_DataBundleHeaderLabel[i], &lv_font_montserrat_12, LV_PART_MAIN);
+    lv_obj_set_style_text_color(ui_DataBundleHeaderLabel[i], lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
 
     // --- Chart ---
     ui_DataBundleChart[i] = lv_chart_create(ui_DataBundle[i]);
     lv_obj_set_size(ui_DataBundleChart[i], 200, 110);
-    lv_obj_set_y(ui_DataBundleChart[i], -4);
+    lv_obj_set_y(ui_DataBundleChart[i], -6);
     lv_obj_set_align(ui_DataBundleChart[i], LV_ALIGN_CENTER);
     lv_chart_set_type(ui_DataBundleChart[i], LV_CHART_TYPE_LINE);
     lv_chart_set_div_line_count(ui_DataBundleChart[i], 5, 10);
@@ -207,21 +208,21 @@ void DataBundleSelectionGui::createDataBundle(unsigned char i, const char *dataB
     // --- Footer Group ---
     ui_DataBundleFooterGroup[i] = lv_obj_create(ui_DataBundle[i]);
     lv_obj_remove_style_all(ui_DataBundleFooterGroup[i]);
-    lv_obj_set_size(ui_DataBundleFooterGroup[i], 200, 30);
+    lv_obj_set_size(ui_DataBundleFooterGroup[i], 200, 35);
     lv_obj_set_align(ui_DataBundleFooterGroup[i], LV_ALIGN_BOTTOM_MID);
 
     ui_DataBundleFooterBridge[i] = lv_obj_create(ui_DataBundleFooterGroup[i]);
     lv_obj_remove_style_all(ui_DataBundleFooterBridge[i]);
     lv_obj_set_size(ui_DataBundleFooterBridge[i], 40, 15);
-    lv_obj_set_pos(ui_DataBundleFooterBridge[i], 25, -7);
+    lv_obj_set_pos(ui_DataBundleFooterBridge[i], 25, -9);
     lv_obj_set_align(ui_DataBundleFooterBridge[i], LV_ALIGN_CENTER);
-    lv_obj_set_style_bg_color(ui_DataBundleFooterBridge[i], lv_color_hex(0x055DA9), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(ui_DataBundleFooterBridge[i], lv_color_hex(0x007CCC), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(ui_DataBundleFooterBridge[i], 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_DataBundleFooterBridgeFill[i] = lv_obj_create(ui_DataBundleFooterGroup[i]);
     lv_obj_remove_style_all(ui_DataBundleFooterBridgeFill[i]);
-    lv_obj_set_size(ui_DataBundleFooterBridgeFill[i], 25, 15);
-    lv_obj_set_pos(ui_DataBundleFooterBridgeFill[i], 17, -1);
+    lv_obj_set_size(ui_DataBundleFooterBridgeFill[i], 22, 15);
+    lv_obj_set_pos(ui_DataBundleFooterBridgeFill[i], 19, -4);
     lv_obj_set_align(ui_DataBundleFooterBridgeFill[i], LV_ALIGN_CENTER);
     lv_obj_set_style_radius(ui_DataBundleFooterBridgeFill[i], 5, LV_PART_MAIN);
     lv_obj_set_style_bg_color(ui_DataBundleFooterBridgeFill[i], lv_color_hex(0xFFFFFF), LV_PART_MAIN);
@@ -230,7 +231,7 @@ void DataBundleSelectionGui::createDataBundle(unsigned char i, const char *dataB
     // --- Footer Timer ---
     ui_DataBundleFooterTimerGroup[i] = lv_obj_create(ui_DataBundleFooterGroup[i]);
     lv_obj_remove_style_all(ui_DataBundleFooterTimerGroup[i]);
-    lv_obj_set_size(ui_DataBundleFooterTimerGroup[i], 105, 20);
+    lv_obj_set_size(ui_DataBundleFooterTimerGroup[i], 108, 25);
     lv_obj_set_pos(ui_DataBundleFooterTimerGroup[i], 0, -9);
     lv_obj_set_align(ui_DataBundleFooterTimerGroup[i], LV_ALIGN_BOTTOM_LEFT);
 
@@ -238,40 +239,42 @@ void DataBundleSelectionGui::createDataBundle(unsigned char i, const char *dataB
     lv_obj_remove_style_all(ui_DataBundleFooterDateCornerTopLeft[i]);
     lv_obj_set_size(ui_DataBundleFooterDateCornerTopLeft[i], 10, 10);
     lv_obj_set_align(ui_DataBundleFooterDateCornerTopLeft[i], LV_ALIGN_TOP_LEFT);
-    lv_obj_set_style_bg_color(ui_DataBundleFooterDateCornerTopLeft[i], lv_color_hex(0x055DA9), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(ui_DataBundleFooterDateCornerTopLeft[i], lv_color_hex(0x007CCC), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(ui_DataBundleFooterDateCornerTopLeft[i], 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_DataBundleFooterDateCornerTopRight[i] = lv_obj_create(ui_DataBundleFooterTimerGroup[i]);
     lv_obj_remove_style_all(ui_DataBundleFooterDateCornerTopRight[i]);
     lv_obj_set_size(ui_DataBundleFooterDateCornerTopRight[i], 10, 10);
     lv_obj_set_align(ui_DataBundleFooterDateCornerTopRight[i], LV_ALIGN_TOP_RIGHT);
-    lv_obj_set_style_bg_color(ui_DataBundleFooterDateCornerTopRight[i], lv_color_hex(0x055DA9), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(ui_DataBundleFooterDateCornerTopRight[i], lv_color_hex(0x007CCC), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(ui_DataBundleFooterDateCornerTopRight[i], 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_DataBundleFooterDate[i] = lv_obj_create(ui_DataBundleFooterTimerGroup[i]);
     lv_obj_remove_style_all(ui_DataBundleFooterDate[i]);
-    lv_obj_set_size(ui_DataBundleFooterDate[i], 105, 20);
+    lv_obj_set_size(ui_DataBundleFooterDate[i], 108, 25);
     lv_obj_set_align(ui_DataBundleFooterDate[i], LV_ALIGN_TOP_MID);
-    lv_obj_set_style_radius(ui_DataBundleFooterDate[i], 10, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(ui_DataBundleFooterDate[i], lv_color_hex(0x055DA9), LV_PART_MAIN);
+    lv_obj_set_style_radius(ui_DataBundleFooterDate[i], 10, LV_PART_MAIN);  
+    lv_obj_set_style_bg_color(ui_DataBundleFooterDate[i], lv_color_hex(0x007CCC), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(ui_DataBundleFooterDate[i], 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_DataBundleFooterLabelDate[i] = lv_label_create(ui_DataBundleFooterDate[i]);
     lv_label_set_text(ui_DataBundleFooterLabelDate[i], "01.01.2024");
-    lv_obj_set_x(ui_DataBundleFooterLabelDate[i], 7);
+    lv_obj_set_x(ui_DataBundleFooterLabelDate[i], 5);
     lv_obj_set_align(ui_DataBundleFooterLabelDate[i], LV_ALIGN_LEFT_MID);
     lv_obj_set_style_text_font(ui_DataBundleFooterLabelDate[i], &lv_font_montserrat_12, LV_PART_MAIN);
+    lv_obj_set_style_text_color(ui_DataBundleFooterLabelDate[i], lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_DataBundleFooterLabelTime[i] = lv_label_create(ui_DataBundleFooterDate[i]);
     lv_label_set_text(ui_DataBundleFooterLabelTime[i], "12:00");
-    lv_obj_set_x(ui_DataBundleFooterLabelTime[i], -5);
+    lv_obj_set_x(ui_DataBundleFooterLabelTime[i], -3);
     lv_obj_set_align(ui_DataBundleFooterLabelTime[i], LV_ALIGN_RIGHT_MID);
     lv_obj_set_style_text_font(ui_DataBundleFooterLabelTime[i], &lv_font_montserrat_12, LV_PART_MAIN);
+    lv_obj_set_style_text_color(ui_DataBundleFooterLabelTime[i], lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
 
     // --- Footer Buttons ---
     ui_DataBundleFooterButtonsGroup[i] = lv_obj_create(ui_DataBundleFooterGroup[i]);
     lv_obj_remove_style_all(ui_DataBundleFooterButtonsGroup[i]);
-    lv_obj_set_size(ui_DataBundleFooterButtonsGroup[i], 70, 30);
+    lv_obj_set_size(ui_DataBundleFooterButtonsGroup[i], 70, 35);
     lv_obj_set_pos(ui_DataBundleFooterButtonsGroup[i], 0, 1);
     lv_obj_set_align(ui_DataBundleFooterButtonsGroup[i], LV_ALIGN_BOTTOM_RIGHT);
 
@@ -279,22 +282,22 @@ void DataBundleSelectionGui::createDataBundle(unsigned char i, const char *dataB
     lv_obj_remove_style_all(ui_DataBundleFooterButtonsCornerTopLeft[i]);
     lv_obj_set_size(ui_DataBundleFooterButtonsCornerTopLeft[i], 10, 10);
     lv_obj_set_align(ui_DataBundleFooterButtonsCornerTopLeft[i], LV_ALIGN_TOP_LEFT);
-    lv_obj_set_style_bg_color(ui_DataBundleFooterButtonsCornerTopLeft[i], lv_color_hex(0x055DA9), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(ui_DataBundleFooterButtonsCornerTopLeft[i], lv_color_hex(0x007CCC), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(ui_DataBundleFooterButtonsCornerTopLeft[i], 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_DataBundleFooterButtonsCornerTopRight[i] = lv_obj_create(ui_DataBundleFooterButtonsGroup[i]);
     lv_obj_remove_style_all(ui_DataBundleFooterButtonsCornerTopRight[i]);
     lv_obj_set_size(ui_DataBundleFooterButtonsCornerTopRight[i], 10, 10);
     lv_obj_set_align(ui_DataBundleFooterButtonsCornerTopRight[i], LV_ALIGN_TOP_RIGHT);
-    lv_obj_set_style_bg_color(ui_DataBundleFooterButtonsCornerTopRight[i], lv_color_hex(0x055DA9), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(ui_DataBundleFooterButtonsCornerTopRight[i], lv_color_hex(0x007CCC), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(ui_DataBundleFooterButtonsCornerTopRight[i], 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_DataBundleFooterButtons[i] = lv_obj_create(ui_DataBundleFooterButtonsGroup[i]);
     lv_obj_remove_style_all(ui_DataBundleFooterButtons[i]);
-    lv_obj_set_size(ui_DataBundleFooterButtons[i], 70, 30);
+    lv_obj_set_size(ui_DataBundleFooterButtons[i], 70, 35);
     lv_obj_set_align(ui_DataBundleFooterButtons[i], LV_ALIGN_TOP_MID);
     lv_obj_set_style_radius(ui_DataBundleFooterButtons[i], 10, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(ui_DataBundleFooterButtons[i], lv_color_hex(0x055DA9), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(ui_DataBundleFooterButtons[i], lv_color_hex(0x007CCC), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(ui_DataBundleFooterButtons[i], 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_DataBundleFooterButtonExport[i] = lv_btn_create(ui_DataBundleFooterButtons[i]);
@@ -302,6 +305,10 @@ void DataBundleSelectionGui::createDataBundle(unsigned char i, const char *dataB
     lv_obj_set_pos(ui_DataBundleFooterButtonExport[i], 5, -1);
     lv_obj_set_align(ui_DataBundleFooterButtonExport[i], LV_ALIGN_LEFT_MID);
     lv_obj_set_style_radius(ui_DataBundleFooterButtonExport[i], 5, LV_PART_MAIN);
+    lv_obj_add_event_cb(ui_DataBundleFooterButtonExport[i], [](lv_event_t *e)
+    {
+        splashMessage("Export Data is not available."); 
+    }, LV_EVENT_CLICKED, this);
     
     ui_DataBundleFooterButtonExportImage[i] = lv_img_create(ui_DataBundleFooterButtonExport[i]);
     lv_img_set_src(ui_DataBundleFooterButtonExportImage[i], &ui_img_export_png);

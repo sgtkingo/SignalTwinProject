@@ -105,6 +105,7 @@ private:
     lv_obj_t *ui_SettingsHeaderLine;                     ///< Header separator line
     lv_obj_t *ui_SettingsHeaderLabel;                    ///< Header text
     lv_obj_t *ui_SettingsDataBundleLabel;                ///< Data bundle label
+    lv_obj_t *ui_SettingsDataBundleCountLabel;           ///< Data bundle count label
     lv_obj_t *ui_SettingsDataBundleShowButton;           ///< Show bundle button
     lv_obj_t *ui_SettingsDataBundleShowButtonLabel;      ///< Show bundle button text
     lv_obj_t *ui_SettingsDataBundleDeleteAllButton;      ///< Delete button
@@ -173,7 +174,7 @@ private:
             std::string s = sensor->getValue<std::string>(key);
             curr = convertStringToType<T>(s);
 
-            if(recording){
+            if(recording&&sensor->getRedrawPending()){
                 dataBundleManager.saveNewDataPoint(key, s);
             }   
         }

@@ -131,7 +131,10 @@ public:
 
     // public GETTERS
 
-    unsigned char getDataBundleAmount() {return DataBundleNames.size();}
+    unsigned char getDataBundleAmount() {
+        loadAllDataBundleNames();
+        return DataBundleNames.size();
+    }
 };
 
 #endif

@@ -238,7 +238,7 @@ void setup ()
 
     // Wait a moment to show the boot screen
     delay(2000);
-    #define VISENSORS_DEBUG
+    //#define VISENSORS_DEBUG
     #ifndef VISENSORS_DEBUG
     switchToAppSelectionScreen(); // Start in app selection screen
     #else
