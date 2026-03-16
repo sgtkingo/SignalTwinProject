@@ -14,6 +14,8 @@
 
 #include "lvgl.h"
 
+#include "gui_callbacks.hpp"
+
 /**
  * @class CreditsGui
  * @brief Handles the creation, display, and destruction of the static credits page.

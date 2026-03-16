@@ -120,21 +120,31 @@ bool SensorManager::resync()
 
 bool SensorManager::connect() 
 {
-    //TODO:disconnect existing connections first
     bool result = true;
-    for (auto virtualPin : PinMap) {
-        if(virtualPin.isAssigned()) {
-            //First disconnect if already connected
-            disconnectSensor(virtualPin.assignedSensor);
-            //Reassign pin
+    std::vector<BaseSensor *> uniqueSensors;
+
+    for (const auto &virtualPin : PinMap) {
+        if (!virtualPin.isAssigned()) {
+            continue;
+        }
+
+        if (!std::count(uniqueSensors.begin(), uniqueSensors.end(), virtualPin.assignedSensor)) {
+            uniqueSensors.push_back(virtualPin.assignedSensor);
+        }
+    }
+
+    for (BaseSensor *sensor : uniqueSensors) {
+        disconnectSensor(sensor);
+    }
+
+    for (const auto &virtualPin : PinMap) {
+        if (virtualPin.isAssigned()) {
             virtualPin.assignedSensor->assignPin(std::to_string(virtualPin.pinNumber));
         }
     }
 
-    for (auto virtualPin : PinMap) {
-        if(virtualPin.isAssigned()) {
-            result &= connectSensor(virtualPin.assignedSensor);
-        }
+    for (BaseSensor *sensor : uniqueSensors) {
+        result &= connectSensor(sensor);
     }
 
     return result;
@@ -207,6 +217,9 @@ BaseSensor* SensorManager::previousSensor() {
 void SensorManager::resetPinMap() {
     resetCurrentIndex();
     for (size_t i = 0; i < NUM_PINS; ++i) {
+        if (PinMap[i].assignedSensor) {
+            PinMap[i].assignedSensor->unassignPin(std::to_string(PinMap[i].pinNumber));
+        }
         PinMap[i].pinNumber = i;
         PinMap[i].locked = false;
 
@@ -223,8 +236,29 @@ bool SensorManager::assignSensorToPin(BaseSensor* sensor, int activePin) {
 bool SensorManager::unassignSensorFromPin(int activePin) {
     if (activePin >= NUM_PINS) return false;
 
+    BaseSensor *sensor = PinMap[activePin].assignedSensor;
+    if (sensor) {
+        sensor->unassignPin(std::to_string(PinMap[activePin].pinNumber));
+    }
     PinMap[activePin].unassignSensor();
     return true;
+}
+
+bool SensorManager::unassignAllPinsForSensor(BaseSensor *sensor)
+{
+    if (!sensor) {
+        return false;
+    }
+
+    bool changed = false;
+    for (size_t i = 0; i < NUM_PINS; ++i) {
+        if (PinMap[i].assignedSensor == sensor) {
+            unassignSensorFromPin(static_cast<int>(i));
+            changed = true;
+        }
+    }
+
+    return changed;
 }
 
 BaseSensor* SensorManager::getAssignedSensor(size_t pinIndex) const {
@@ -245,4 +279,24 @@ bool SensorManager::isPinAvailable(size_t pinIndex) const {
 bool SensorManager::isPinLocked(size_t pinIndex) const {
     if (pinIndex >= NUM_PINS) return false;
     return PinMap[pinIndex].isLocked();
+}
+
+bool SensorManager::hasAssignedSensors() const
+{
+    for (const auto &pin : PinMap) {
+        if (pin.isAssigned()) {
+            return true;
+        }
+    }
+    return false;
+}
+
+BaseSensor* SensorManager::getCurrentLibrarySensor()
+{
+    return currentLibrarySensor;
+}
+
+void SensorManager::setCurrentLibrarySensor(BaseSensor *sensor)
+{
+    currentLibrarySensor = sensor;
 }

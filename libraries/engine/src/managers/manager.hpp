@@ -52,7 +52,8 @@ private:
     std::vector<BaseSensor*> SelectedSensors; ///< List of fixed sensors (from config file)
 
     size_t currentIndex = 0;                      ///< Index of the current sensor
-    BaseSensor* currentWikiSensor = nullptr;    ///< Pointer to the current chosen wiki sensor
+    BaseSensor* currentWikiSensor = nullptr;    ///< Pointer to the current chosen selection sensor
+    BaseSensor* currentLibrarySensor = nullptr; ///< Pointer to the current library sensor
 
     bool initialized = false;                 ///< Initialization state flag
     ManagerStatus Status = ManagerStatus::STOPPED; ///< Current status of the manager
@@ -181,6 +182,13 @@ public:
     bool unassignSensorFromPin(int activePin);
 
     /**
+     * @brief Unassign all pins used by a sensor in the current session
+     * @param sensor Pointer to the sensor to unassign
+     * @return True if at least one pin was unassigned
+     */
+    bool unassignAllPinsForSensor(BaseSensor *sensor);
+
+    /**
      * @brief Get the sensor assigned to a specific pin
      * @param pinIndex Index of the pin (0-based)
      * @return Pointer to the assigned sensor, or nullptr if none
@@ -207,6 +215,12 @@ public:
      * @return True if pin is locked, false if available or invalid
      */
     bool isPinLocked(size_t pinIndex) const;
+
+    /**
+     * @brief Check if any sensor is assigned to any pin
+     * @return True if there is at least one assigned sensor
+     */
+    bool hasAssignedSensors() const;
 
     /**
      * @brief Get read-only access to the list of sensors
@@ -244,6 +258,18 @@ public:
      * @param sensor Pointer to the sensor to set as current chosen
      */
     void setCurrentWikiSensor(BaseSensor* sensor);
+
+    /**
+     * @brief Get the current library sensor
+     * @return Pointer to the current library sensor
+     */
+    BaseSensor* getCurrentLibrarySensor();
+
+    /**
+     * @brief Set current library sensor
+     * @param sensor Pointer to the sensor or nullptr for new entity flow
+     */
+    void setCurrentLibrarySensor(BaseSensor *sensor);
 
     /**
      * @brief Get access to the current sensor index

@@ -154,11 +154,15 @@ GuiManager guiManager(sensorManager, dataBundleManager);  // Create GUI manager 
 
 // Global GUI screen switching functions for use by GUI components
 void switchToMenu() {
-    guiManager.switchContent(GuiState::MENU);
+    guiManager.switchContent(GuiState::CONNECTION);
+}
+
+void switchToMainMenu() {
+    guiManager.switchContent(GuiState::MAIN_MENU);
 }
 
 void switchToWiki() {
-    guiManager.switchContent(GuiState::WIKI);
+    guiManager.switchContent(GuiState::SELECTION);
 }
 
 void switchToVisualization() {
@@ -166,7 +170,11 @@ void switchToVisualization() {
 }
 
 void switchToDataBundleSelection() {
-    guiManager.switchContent(GuiState::DATA_BUNDLE_SELECTION);
+    guiManager.openDatabankFromVisualization();
+}
+
+void switchToDatabank() {
+    guiManager.openDatabankFromMainMenu();
 }
 
 void switchToCrashScreen(const std::string &reason) {
@@ -183,6 +191,46 @@ void switchToAppSelectionScreen() {
 
 void switchToCommunicationSelectionScreen() {
     guiManager.switchContent(GuiState::COMMUNICATION_SELECTION);
+}
+
+void switchToLibrary() {
+    guiManager.switchContent(GuiState::LIBRARY);
+}
+
+void switchToLibraryEditor() {
+    guiManager.switchContent(GuiState::LIBRARY_EDITOR);
+}
+
+void prepareNewLibraryEntity() {
+    sensorManager.setCurrentLibrarySensor(nullptr);
+}
+
+void switchToSettings() {
+    guiManager.switchContent(GuiState::SETTINGS);
+}
+
+void navigateBackFromDatabank() {
+    guiManager.navigateBackFromDatabank();
+}
+
+void openVisualizationFlow() {
+    guiManager.openVisualizationFlow();
+}
+
+void completeCommunicationSelection(DefaultCommunicationMode mode) {
+    guiManager.completeCommunicationSelection(mode);
+}
+
+void setDefaultCommunicationMode(DefaultCommunicationMode mode) {
+    guiManager.setDefaultCommunicationMode(mode);
+}
+
+DefaultCommunicationMode getDefaultCommunicationMode() {
+    return guiManager.getDefaultCommunicationMode();
+}
+
+bool shouldSelectionBackGoToMainMenu() {
+    return guiManager.shouldSelectionBackGoToMainMenu();
 }
 
 void setup ()
@@ -238,12 +286,7 @@ void setup ()
 
     // Wait a moment to show the boot screen
     delay(2000);
-    //#define VISENSORS_DEBUG
-    #ifndef VISENSORS_DEBUG
-    switchToAppSelectionScreen(); // Start in app selection screen
-    #else
-    switchToWiki(); // Start in wiki screen for debugging
-    #endif
+    switchToMainMenu();
     
     //splashMessage("Hello from Elecrow DIS08070H!");
     Serial.println( "Setup done" );

@@ -27,6 +27,7 @@
 #include <map>
 #include <array>
 #include <cstddef>
+#include <vector>
 
 #define HISTORY_CAP 10 ///< History capacity.
 
@@ -452,6 +453,45 @@ public:
             pins += pin;
         }
         return pins;
+    }
+
+    /**
+     * @brief Get allowed pins as a list of integers.
+     *
+     * Empty AllowedPins means all pins are allowed.
+     *
+     * @return Vector of allowed pin numbers
+     */
+    std::vector<int> getAllowedPinsList() const
+    {
+        std::vector<int> pins;
+        if (AllowedPins.empty()) {
+            return pins;
+        }
+
+        for (const auto &item : splitString(AllowedPins, ',')) {
+            if (item.empty()) {
+                continue;
+            }
+            pins.push_back(convertStringToType<int>(item));
+        }
+        return pins;
+    }
+
+    /**
+     * @brief Check whether a pin number is allowed for this sensor.
+     *
+     * @param pinNumber The pin number to check
+     * @return True if the pin is allowed or if the allowed list is empty
+     */
+    bool isPinAllowed(int pinNumber) const
+    {
+        if (AllowedPins.empty()) {
+            return true;
+        }
+
+        const auto allowed = getAllowedPinsList();
+        return std::find(allowed.begin(), allowed.end(), pinNumber) != allowed.end();
     }
 
     /**

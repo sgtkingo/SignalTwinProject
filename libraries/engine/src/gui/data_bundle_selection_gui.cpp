@@ -512,8 +512,7 @@ void DataBundleSelectionGui::addControlButtonsToWidget(lv_obj_t *parentWidget)
     lv_obj_add_event_cb(ui_btnBack, [](lv_event_t *e)
                         {
         auto self = static_cast<DataBundleSelectionGui*>(lv_event_get_user_data(e));
-        // // logMessage("Back button pressed - returning to menu\n");
-        switchToVisualization(); }, LV_EVENT_CLICKED, this);
+        navigateBackFromDatabank(); }, LV_EVENT_CLICKED, this);
 
     lv_obj_t * ui_btnBackLabel = lv_label_create(ui_btnBack);
     lv_label_set_text(ui_btnBackLabel, "Back");

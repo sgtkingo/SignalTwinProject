@@ -17,6 +17,7 @@
 
     HardwareSerial UART1_VIRTUAL(UART1_PORT);
     static bool uart1_initialized = false;
+    static String receive_message_buffer;
 
     String stripMessage(const String &input, bool trim = true) {
         String out = "";
@@ -88,8 +89,9 @@
     }
 
     const char* receiveMessageAsChars(int verbose, int timeout, bool strip) {
-        String msg = receiveMessageAsString(verbose, timeout, strip);
-        return msg.c_str();
+        // Keep the storage alive after the function returns for C-string callers.
+        receive_message_buffer = receiveMessageAsString(verbose, timeout, strip);
+        return receive_message_buffer.c_str();
     }
     
     std::string receiveMessage(int verbose, int timeout, bool strip) {
