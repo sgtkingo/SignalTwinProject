@@ -159,6 +159,12 @@ public:
     bool resync();
 
     /**
+     * @brief Initialize protocol lazily when the user reaches the connection step.
+     * @return True if protocol is initialized or already ready
+     */
+    bool ensureProtocolInitialized();
+
+    /**
      * @brief Connect sensors to pins (bulk operation)
      */
     bool connect();

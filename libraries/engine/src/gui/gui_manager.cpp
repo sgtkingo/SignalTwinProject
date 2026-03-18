@@ -49,7 +49,7 @@ bool GuiManager::init(std::string configFile)
         }
 
         if (!dataBundleManager.init()) {
-            crashGui.showCrash("DataBundleManager initialization failed!");
+            crashGui.showCrash("SD card missing or not readable.\nInsert SD card and restart the device.", "SD ERROR", LV_SYMBOL_SD_CARD);
             return false;
         }
 

@@ -62,6 +62,7 @@ bool DataBundleManager::init()
     listAllBundles();
     #endif
 
+    initialized = true;
     return true;
 }
 

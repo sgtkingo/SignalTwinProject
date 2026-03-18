@@ -23,7 +23,7 @@
 
 CrashGui::CrashGui() 
     : initialized(false),
-      ui_CrashWidget(nullptr), ui_CrashTitle(nullptr), 
+      ui_CrashWidget(nullptr), ui_IconLabel(nullptr), ui_CrashTitle(nullptr), 
       ui_ReasonLabel(nullptr), ui_RestartButton(nullptr),
       ui_RestartButtonLabel(nullptr) {
 }
@@ -66,13 +66,21 @@ void CrashGui::buildCrashGui() {
     lv_obj_set_style_bg_opa(ui_CrashWidget, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(ui_CrashWidget, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     
+    ui_IconLabel = lv_label_create(ui_CrashWidget);
+    lv_label_set_text(ui_IconLabel, LV_SYMBOL_WARNING);
+    lv_obj_set_align(ui_IconLabel, LV_ALIGN_TOP_MID);
+    lv_obj_set_y(ui_IconLabel, 35);
+    lv_obj_set_style_text_color(ui_IconLabel, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui_IconLabel, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_IconLabel, &lv_font_montserrat_48, LV_PART_MAIN | LV_STATE_DEFAULT);
+
     // "CRASH!" title - large white text at top
     ui_CrashTitle = lv_label_create(ui_CrashWidget);
     lv_label_set_text(ui_CrashTitle, "CRASH!");
     lv_obj_set_width(ui_CrashTitle, LV_SIZE_CONTENT);
     lv_obj_set_height(ui_CrashTitle, LV_SIZE_CONTENT);
     lv_obj_set_align(ui_CrashTitle, LV_ALIGN_TOP_MID);
-    lv_obj_set_y(ui_CrashTitle, 50);
+    lv_obj_set_y(ui_CrashTitle, 110);
     
     // White text styling for title
     lv_obj_set_style_text_color(ui_CrashTitle, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -128,12 +136,20 @@ void CrashGui::buildCrashGui() {
     // logMessage("\t>crash gui built successfully!\n");
 }
 
-void CrashGui::showCrash(const std::string& reason) {
+void CrashGui::showCrash(const std::string& reason, const std::string &title, const char *icon) {
     if (!initialized || !ui_CrashWidget) 
     {
         init();
     }
     
+    if (ui_IconLabel) {
+        lv_label_set_text(ui_IconLabel, icon ? icon : LV_SYMBOL_WARNING);
+    }
+
+    if (ui_CrashTitle) {
+        lv_label_set_text(ui_CrashTitle, title.c_str());
+    }
+
     // Update reason text
     if (ui_ReasonLabel) {
         lv_label_set_text(ui_ReasonLabel, reason.c_str());

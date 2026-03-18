@@ -28,6 +28,7 @@ private:
     
     // LVGL UI elements
     lv_obj_t *ui_CrashWidget;        ///< Main crash screen container
+    lv_obj_t *ui_IconLabel;          ///< Crash icon / symbol label
     lv_obj_t *ui_CrashTitle;         ///< "CRASH!" title label
     lv_obj_t *ui_ReasonLabel;        ///< Reason text label
     lv_obj_t *ui_RestartButton;      ///< Restart button
@@ -63,7 +64,7 @@ public:
      * @brief Show crash screen with specific reason
      * @param reason The crash reason text to display
      */
-    void showCrash(const std::string& reason);
+    void showCrash(const std::string& reason, const std::string &title = "CRASH!", const char *icon = LV_SYMBOL_WARNING);
     
     /**
      * @brief Hide crash screen

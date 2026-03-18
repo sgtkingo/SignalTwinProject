@@ -15,6 +15,7 @@
 #include "lvgl.h"
 #include <array>
 #include <map>
+#include <vector>
 
 #include "gui_callbacks.hpp"
 #include "../managers/manager.hpp"
@@ -34,6 +35,15 @@
 class SensorVisualizationGui
 {
 private:
+    struct SignalCard
+    {
+        lv_obj_t *container = nullptr;
+        lv_obj_t *accent = nullptr;
+        lv_obj_t *nameLabel = nullptr;
+        lv_obj_t *valueLabel = nullptr;
+        lv_obj_t *unitLabel = nullptr;
+    };
+
     SensorManager &sensorManager;        ///< Reference to the sensor manager instance
     DataBundleManager &dataBundleManager;///< Reference to the databundle manager instance
     BaseSensor *currentSensor = nullptr; ///< Currently visualized sensor
@@ -63,6 +73,9 @@ private:
     lv_obj_t *ui_LabelValueValue_2;     ///< Value label for second value
     lv_obj_t *ui_LabelDescValue_2;      ///< Description label for second value
     lv_obj_t *ui_LabelTypeValue_2;      ///< Type label for second value
+    lv_obj_t *ui_SignalScrollContainer; ///< Scrollable container for dynamic signal cards
+    lv_obj_t *ui_ChartEmptyLabel;       ///< Label shown when no numeric signal is available
+    std::vector<SignalCard> signalCards;///< Dynamic cards for all sensor signals
 
     // CHART
     lv_obj_t *ui_Chart;                    ///< Chart widget for sensor data
@@ -235,6 +248,12 @@ private:
      * @brief Update chart with current sensor data
      */
     void updateChart();
+
+    void ensureSignalCards(size_t count);
+    void clearUnusedSignalCards(size_t usedCount);
+    bool buildNumericHistoryForKey(const std::string &key, lv_coord_t *history);
+    std::vector<std::string> getChartableValueKeys() const;
+    static uint32_t getSignalAccentColor(size_t index);
 
 public:
     /**

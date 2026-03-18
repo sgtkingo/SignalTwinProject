@@ -215,6 +215,22 @@ void MenuGui::setActivePin(int pinIndex)
 
 void MenuGui::handleConnectButtonClick()
 {
+    BaseSensor *sensor = sensorManager.getCurrentWikiSensor();
+    if (!sensor) {
+        splashMessage("No device selected.");
+        return;
+    }
+
+    if (sensor->getPins().empty()) {
+        splashMessage("Assign at least one pin first.");
+        return;
+    }
+
+    if (!sensorManager.ensureProtocolInitialized()) {
+        splashMessage("Protocol init failed. Check the connected platform.");
+        return;
+    }
+
     switchToWiki();
 }
 

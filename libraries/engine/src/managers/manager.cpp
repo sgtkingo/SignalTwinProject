@@ -46,27 +46,7 @@ bool SensorManager::init(std::string configFile) {
     Status = ManagerStatus::ERROR;
     try
     {
-        initMessenger();
         loadConfigFile(configFile);
-
-        logMessage("\tinitializing of protocol...\n");
-        ResponseStatus response;
-        for (size_t i = 0; i < SensorManager::MAX_INIT_ATTEMPTS; i++)
-        {
-            response = Protocol::init(APP_NAME, DB_VERSION);
-            if (response.status == ResponseStatusEnum::OK)
-            {
-                logMessage("\t\tProtocol initialized successfully!\n");
-                break;
-            }
-            logMessage("\t\tProtocol initialization failed, retrying...\n");
-            delay_ms(500);
-        }
-        if (response.status == ResponseStatusEnum::ERROR)
-        {
-            throw SensorInitializationFailException("SensorManager::init", response.error, ErrorCode::CRITICAL_ERROR_CODE);
-        }
-        logMessage("\tdone!\n");
     }
     catch(...)
     {
@@ -78,6 +58,32 @@ bool SensorManager::init(std::string configFile) {
     resetPinMap();
     logMessage("Initialization done!\n");
     return initialized = true;
+}
+
+bool SensorManager::ensureProtocolInitialized()
+{
+    if (Protocol::isInitialized()) {
+        return true;
+    }
+
+    logMessage("\tinitializing protocol on demand...\n");
+
+    ResponseStatus response {ResponseStatusEnum::ERROR, "Protocol initialization failed", {}};
+    for (size_t i = 0; i < SensorManager::MAX_INIT_ATTEMPTS; i++)
+    {
+        response = Protocol::init(APP_NAME, DB_VERSION);
+        if (response.status == ResponseStatusEnum::OK)
+        {
+            logMessage("\t\tProtocol initialized successfully!\n");
+            return true;
+        }
+
+        logMessage("\t\tProtocol initialization failed, retrying...\n");
+        delay_ms(500);
+    }
+
+    logMessage("\t\tProtocol initialization failed permanently: %s\n", response.error.c_str());
+    return false;
 }
 
 
@@ -120,6 +126,10 @@ bool SensorManager::resync()
 
 bool SensorManager::connect() 
 {
+    if (!ensureProtocolInitialized()) {
+        return false;
+    }
+
     bool result = true;
     std::vector<BaseSensor *> uniqueSensors;
 
