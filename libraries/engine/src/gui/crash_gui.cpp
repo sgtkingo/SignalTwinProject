@@ -72,7 +72,7 @@ void CrashGui::buildCrashGui() {
     lv_obj_set_y(ui_IconLabel, 35);
     lv_obj_set_style_text_color(ui_IconLabel, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_IconLabel, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_IconLabel, &lv_font_montserrat_48, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_IconLabel, &lv_font_montserrat_40, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     // "CRASH!" title - large white text at top
     ui_CrashTitle = lv_label_create(ui_CrashWidget);
