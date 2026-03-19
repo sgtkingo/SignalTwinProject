@@ -43,13 +43,13 @@ bool GuiManager::init(std::string configFile)
     try {
         crashGui.init();
 
-        if (!sensorManager.init(configFile)) {
-            crashGui.showCrash("SensorManager initialization failed!");
+        if (!dataBundleManager.init()) {
+            crashGui.showCrash("SD card missing or not readable.\nInsert SD card and restart the device.", "SD ERROR", LV_SYMBOL_SD_CARD);
             return false;
         }
 
-        if (!dataBundleManager.init()) {
-            crashGui.showCrash("SD card missing or not readable.\nInsert SD card and restart the device.", "SD ERROR", LV_SYMBOL_SD_CARD);
+        if (!sensorManager.init(configFile)) {
+            crashGui.showCrash("SensorManager initialization failed!");
             return false;
         }
 

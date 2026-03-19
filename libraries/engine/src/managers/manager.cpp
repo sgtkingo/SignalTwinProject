@@ -13,9 +13,15 @@
  *********************/
 
 #include <sstream>
+#include <utility>
 #include "manager.hpp"
-#include "../sensors/sensor_factory.hpp"
+#include "../sensors/json_sensor_builder.hpp"
 #include "helpers.hpp"
+
+namespace
+{
+constexpr const char *DEFAULT_SENSOR_DB_PATH = "/data/sensor_db.json";
+}
 
 SensorManager::SensorManager() : Sensors(), currentIndex(0) {
 }
@@ -25,15 +31,18 @@ SensorManager::~SensorManager() {
 }
 
 void SensorManager::loadConfigFile(std::string configFile) {
-    configFilePath = configFile;
-    if (configFile.empty())
-    {
-        logMessage("Initializing manager via fixed sensors list...\n");
-        createSensorList(Sensors);
-        return;
-    }
+    configFilePath = configFile.empty() ? DEFAULT_SENSOR_DB_PATH : configFile;
 
-    throw Exception("SensorManager::init", "Initialization from config file not implemented yet", ErrorCode::NOT_DEFINED_ERROR);
+    logMessage("Initializing manager via JSON sensor DB: %s\n", configFilePath.c_str());
+
+    SensorCatalog catalog = buildSensorCatalogFromSdFile(configFilePath);
+    Sensors = std::move(catalog.sensors);
+    DB_VERSION = catalog.version;
+    APP_NAME = catalog.application;
+
+    if (Sensors.empty()) {
+        throw SensorInitializationFailException("SensorManager::loadConfigFile", "Sensor DB did not produce any sensors.");
+    }
 }
 
 bool SensorManager::init(std::string configFile) {
