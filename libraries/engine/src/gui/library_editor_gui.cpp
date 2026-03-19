@@ -63,6 +63,7 @@ void LibraryEditorGui::refresh()
 
     lv_label_set_text(ui_Title, "Edit Entity");
     std::string text = "Name:\n" + sensor->getName() + "\n\n";
+    text += "Role:\n" + sensor->getRoleLabel() + "\n\n";
     text += "Description:\n" + sensor->getDescription() + "\n\n";
     text += "Values:\n";
     for (const auto &key : sensor->getValuesKeys()) {

@@ -118,7 +118,10 @@ void SensorWikiGui::populateAvailableList()
     const auto &sensors = sensorManager.getSensors();
     for (size_t i = 0; i < sensors.size(); ++i) {
         BaseSensor *sensor = sensors[i];
-        lv_obj_t *button = lv_list_add_btn(ui_AvailableList, nullptr, sensor ? sensor->getName().c_str() : "Unknown");
+        const std::string label = sensor
+            ? sensor->getName() + " [" + sensor->getRoleLabel() + "]"
+            : "Unknown";
+        lv_obj_t *button = lv_list_add_btn(ui_AvailableList, nullptr, label.c_str());
         lv_obj_set_user_data(button, reinterpret_cast<void *>(static_cast<intptr_t>(i)));
         lv_obj_add_event_cb(button, [](lv_event_t *e) {
             if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
@@ -148,7 +151,7 @@ void SensorWikiGui::populateSelectedList()
             continue;
         }
 
-        std::string entry = sensor->getTypeName() + " -> " + sensor->getPins();
+        std::string entry = sensor->getTypeName() + " [" + sensor->getRoleLabel() + "] -> " + sensor->getPins();
         lv_list_add_text(ui_SelectedList, entry.c_str());
     }
 }
@@ -254,6 +257,7 @@ std::string SensorWikiGui::getSensorInfoText(BaseSensor *sensor)
         info = "No description available.";
     }
 
+    info += "\nRole: " + sensor->getRoleLabel();
     info += "\n\nAllowed Pins: ";
     const auto allowedPins = sensor->getAllowedPinsList();
     if (allowedPins.empty()) {
@@ -276,13 +280,22 @@ std::string SensorWikiGui::getSensorSpecsText(BaseSensor *sensor)
         return "";
     }
 
+    const auto valueKeys = sensor->getValuesKeys();
+    const auto configKeys = sensor->getConfigsKeys();
+
     std::string specs = "Values:\n";
-    for (const auto &key : sensor->getValuesKeys()) {
+    if (valueKeys.empty()) {
+        specs += "- none\n";
+    }
+    for (const auto &key : valueKeys) {
         specs += "- " + key + " [" + sensor->getValueUnits(key) + "]\n";
     }
 
     specs += "\nConfigs:\n";
-    for (const auto &key : sensor->getConfigsKeys()) {
+    if (configKeys.empty()) {
+        specs += "- none\n";
+    }
+    for (const auto &key : configKeys) {
         specs += "- " + key + "\n";
     }
 

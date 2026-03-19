@@ -82,6 +82,17 @@ enum class SensorDataType
     STRING
 };
 
+/**
+ * @enum DeviceRole
+ * @brief Declares whether the runtime device behaves as a sensor, actuator, or both.
+ */
+enum class DeviceRole
+{
+    SENSOR,
+    ACTUATOR,
+    HYBRID
+};
+
 
 /**
  * @struct SensorRestrictions
@@ -133,6 +144,7 @@ protected:
     std::unordered_map<std::string, SensorParam> Configs;          ///< Sensor configurations.
     std::vector<std::string> Pins;                                 ///< Sensor pins.
     std::string AllowedPins;                                       ///< Allowed sensor pins, enter as list of values separated by ",".
+    DeviceRole Role = DeviceRole::SENSOR;                          ///< Runtime device role.
 
     /**
      * @brief Set sensor status.
@@ -369,6 +381,73 @@ public:
     bool getRedrawPending() const { return redrawPending; }
 
     /**
+     * @brief Get the runtime role of the device.
+     *
+     * @return DeviceRole The role of the current device.
+     */
+    DeviceRole getRole() const { return Role; }
+
+    /**
+     * @brief Set the runtime role of the device.
+     *
+     * @param role New device role.
+     */
+    void setRole(DeviceRole role) { Role = role; }
+
+    /**
+     * @brief Get a user-friendly role label.
+     *
+     * @return std::string Human readable role.
+     */
+    std::string getRoleLabel() const
+    {
+        switch (Role)
+        {
+        case DeviceRole::ACTUATOR:
+            return "Actuator";
+        case DeviceRole::HYBRID:
+            return "Hybrid";
+        case DeviceRole::SENSOR:
+        default:
+            return "Sensor";
+        }
+    }
+
+    /**
+     * @brief Check whether the device exposes live values.
+     *
+     * @return true when at least one value exists.
+     */
+    bool hasValues() const { return !Values.empty(); }
+
+    /**
+     * @brief Check whether the device exposes configurable parameters.
+     *
+     * @return true when at least one config exists.
+     */
+    bool hasConfigs() const { return !Configs.empty(); }
+
+    /**
+     * @brief Check whether the device should use CONFIG channel for synchronization.
+     *
+     * @return true if CONFIG sync is meaningful for this device.
+     */
+    bool usesConfigChannel() const
+    {
+        return hasConfigs();
+    }
+
+    /**
+     * @brief Check whether the device should use UPDATE channel for synchronization.
+     *
+     * @return true if UPDATE sync is meaningful for this device.
+     */
+    bool usesUpdateChannel() const
+    {
+        return hasValues() && Role != DeviceRole::ACTUATOR;
+    }
+
+    /**
      * @brief Set the redraw pending status.
      *
      * @param pending The new redraw pending status.
@@ -576,6 +655,10 @@ public:
     {
         if (Configs.find(key) != Configs.end())
         {
+            if (!checkRestrictions(value, Configs[key]))
+            {
+                throw InvalidValueException("BaseSensor::setConfig", "Value " + value + " for key " + key + " does not meet restrictions.");
+            }
             Configs[key].Value = value;
         }
         else
@@ -584,6 +667,7 @@ public:
         }
 
         isConfigsSync = false; // Set flag to indicate sensor is not synchronized with real sensor.
+        redrawPending = true;
     }
 
     /**
@@ -746,8 +830,20 @@ public:
      */
     virtual bool synchronize()
     {
-        isValuesSync = false; // Set flag to indicate sensor is not synchronized with real sensor.
-        if (!isConfigsSync)
+        const bool syncConfigsChannel = usesConfigChannel();
+        const bool syncValuesChannel = usesUpdateChannel();
+
+        if (!syncConfigsChannel)
+        {
+            isConfigsSync = true;
+        }
+
+        if (!syncValuesChannel)
+        {
+            isValuesSync = true;
+        }
+
+        if (syncConfigsChannel && !isConfigsSync)
         {
             try
             {
@@ -759,7 +855,7 @@ public:
             }
         }
 
-        if (!isValuesSync)
+        if (syncValuesChannel && !isValuesSync)
         {
             try
             {
@@ -771,7 +867,7 @@ public:
             }
         }
 
-        return isValuesSync && isConfigsSync;
+        return (!syncValuesChannel || isValuesSync) && (!syncConfigsChannel || isConfigsSync);
     }
 
     /**

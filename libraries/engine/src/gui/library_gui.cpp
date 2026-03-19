@@ -83,7 +83,10 @@ void LibraryGui::populateSensorList()
     const auto &sensors = sensorManager.getSensors();
     for (size_t i = 0; i < sensors.size(); ++i) {
         BaseSensor *sensor = sensors[i];
-        lv_obj_t *button = lv_list_add_btn(ui_SensorList, nullptr, sensor ? sensor->getName().c_str() : "Unknown");
+        const std::string label = sensor
+            ? sensor->getName() + " [" + sensor->getRoleLabel() + "]"
+            : "Unknown";
+        lv_obj_t *button = lv_list_add_btn(ui_SensorList, nullptr, label.c_str());
         lv_obj_add_event_cb(button, [](lv_event_t *e) {
             if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
                 return;
@@ -114,6 +117,7 @@ void LibraryGui::updateDetail()
 
     std::string detail = "Entity\n";
     detail += sensor->getName() + "\n\n";
+    detail += "Role:\n" + sensor->getRoleLabel() + "\n\n";
     detail += "Description:\n" + sensor->getDescription() + "\n\n";
     detail += "Values:\n";
     for (const auto &key : sensor->getValuesKeys()) {

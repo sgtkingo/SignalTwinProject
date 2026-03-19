@@ -103,6 +103,22 @@ SensorDataType parseSensorDataType(const std::string &dtype)
     throw InvalidDataTypeException("parseSensorDataType", "Unknown dtype: " + dtype);
 }
 
+DeviceRole parseDeviceRole(const std::string &role)
+{
+    const std::string normalized = toLowerCopy(role);
+    if (normalized.empty() || normalized == "sensor") {
+        return DeviceRole::SENSOR;
+    }
+    if (normalized == "actuator") {
+        return DeviceRole::ACTUATOR;
+    }
+    if (normalized == "hybrid") {
+        return DeviceRole::HYBRID;
+    }
+
+    throw InvalidDataFormatException("parseDeviceRole", "Unknown device role: " + role);
+}
+
 SensorRestrictions parseRestrictions(JsonObjectConst restrictionsJson)
 {
     SensorRestrictions restrictions;
@@ -204,6 +220,9 @@ JsonConfiguredSensor *buildConfiguredSensor(JsonObjectConst sensorJson, const st
         sensor->Description = !sensorJson["description"].isNull()
             ? jsonVariantToString(sensorJson["description"])
             : "";
+        sensor->setRole(!sensorJson["role"].isNull()
+            ? parseDeviceRole(jsonVariantToString(sensorJson["role"]))
+            : DeviceRole::SENSOR);
 
         const JsonObjectConst defaultsJson = sensorJson["default"].is<JsonObjectConst>()
             ? sensorJson["default"].as<JsonObjectConst>()

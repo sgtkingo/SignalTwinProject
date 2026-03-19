@@ -15,6 +15,7 @@
 #include "lvgl.h"
 #include <array>
 #include <map>
+#include <string>
 #include <vector>
 
 #include "gui_callbacks.hpp"
@@ -42,6 +43,19 @@ private:
         lv_obj_t *nameLabel = nullptr;
         lv_obj_t *valueLabel = nullptr;
         lv_obj_t *unitLabel = nullptr;
+    };
+
+    struct ConfigControl
+    {
+        lv_obj_t *container = nullptr;
+        lv_obj_t *accent = nullptr;
+        lv_obj_t *nameLabel = nullptr;
+        lv_obj_t *valueLabel = nullptr;
+        lv_obj_t *unitLabel = nullptr;
+        lv_obj_t *editor = nullptr;
+        bool usesDropdown = false;
+        bool usesSlider = false;
+        std::string key;
     };
 
     SensorManager &sensorManager;        ///< Reference to the sensor manager instance
@@ -76,6 +90,7 @@ private:
     lv_obj_t *ui_SignalScrollContainer; ///< Scrollable container for dynamic signal cards
     lv_obj_t *ui_ChartEmptyLabel;       ///< Label shown when no numeric signal is available
     std::vector<SignalCard> signalCards;///< Dynamic cards for all sensor signals
+    std::vector<ConfigControl> configControls; ///< Dynamic controls for actuator configs
 
     // CHART
     lv_obj_t *ui_Chart;                    ///< Chart widget for sensor data
@@ -251,9 +266,21 @@ private:
 
     void ensureSignalCards(size_t count);
     void clearUnusedSignalCards(size_t usedCount);
+    void ensureConfigControls(size_t count);
+    void clearUnusedConfigControls(size_t usedCount);
     bool buildNumericHistoryForKey(const std::string &key, lv_coord_t *history);
     std::vector<std::string> getChartableValueKeys() const;
+    bool currentDeviceSupportsRecording() const;
+    void updateActionButtonsState();
+    bool applyConfigValue(const std::string &key, const std::string &value);
+    void handleDropdownConfigChanged(size_t controlIndex);
+    void handleSliderConfigChanged(size_t controlIndex);
+    void handleTextConfigSubmitted(size_t controlIndex);
     static uint32_t getSignalAccentColor(size_t index);
+    static bool isNumericType(SensorDataType dtype);
+    static bool hasSelectableOptions(const SensorParam &param);
+    static bool supportsSliderInput(const SensorParam &param);
+    static std::string buildUnitText(const std::string &unit, const char *fallbackText);
 
 public:
     /**
