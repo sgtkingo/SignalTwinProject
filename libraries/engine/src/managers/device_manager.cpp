@@ -30,6 +30,93 @@ DeviceManager::~DeviceManager() {
     for (auto* device : Devices) delete device;
 }
 
+void DeviceManager::clearSelectedDevices()
+{
+    SelectedDevices.clear();
+    resetCurrentIndex();
+}
+
+std::vector<BaseDevice *> DeviceManager::collectAssignedDevicesFromPinMap() const
+{
+    std::vector<BaseDevice *> uniqueDevices;
+
+    for (const auto &virtualPin : PinMap) {
+        if (!virtualPin.isAssigned()) {
+            continue;
+        }
+
+        if (!std::count(uniqueDevices.begin(), uniqueDevices.end(), virtualPin.assignedSensor)) {
+            uniqueDevices.push_back(virtualPin.assignedSensor);
+        }
+    }
+
+    return uniqueDevices;
+}
+
+void DeviceManager::resetPinState(size_t pinIndex)
+{
+    if (pinIndex >= NUM_PINS) {
+        return;
+    }
+
+    if (PinMap[pinIndex].assignedSensor) {
+        PinMap[pinIndex].assignedSensor->unassignPin(std::to_string(PinMap[pinIndex].pinNumber));
+    }
+
+    PinMap[pinIndex].pinNumber = static_cast<int>(pinIndex);
+    PinMap[pinIndex].locked = false;
+    PinMap[pinIndex].unassignSensor();
+}
+
+void DeviceManager::applyAssignedPinsToDevices() const
+{
+    for (const auto &virtualPin : PinMap) {
+        if (virtualPin.isAssigned()) {
+            virtualPin.assignedSensor->assignPin(std::to_string(virtualPin.pinNumber));
+        }
+    }
+}
+
+void DeviceManager::disconnectAssignedDevices(const std::vector<BaseDevice *> &devices) const
+{
+    for (BaseDevice *device : devices) {
+        disconnectDevice(device);
+    }
+}
+
+bool DeviceManager::connectAssignedDevices(const std::vector<BaseDevice *> &devices) const
+{
+    bool result = true;
+    for (BaseDevice *device : devices) {
+        result &= connectDevice(device);
+    }
+    return result;
+}
+
+BaseDevice *DeviceManager::getSelectedDeviceAt(size_t index) const
+{
+    if (SelectedDevices.empty() || index >= SelectedDevices.size()) {
+        return nullptr;
+    }
+
+    return SelectedDevices[index];
+}
+
+BaseDevice *DeviceManager::stepCurrentDevice(int direction)
+{
+    if (SelectedDevices.empty()) {
+        return nullptr;
+    }
+
+    if (direction > 0) {
+        currentIndex = (currentIndex + 1) % SelectedDevices.size();
+    } else if (direction < 0) {
+        currentIndex = (currentIndex == 0) ? SelectedDevices.size() - 1 : currentIndex - 1;
+    }
+
+    return getSelectedDeviceAt(currentIndex);
+}
+
 void DeviceManager::loadConfigFile(std::string configFile) {
     configFilePath = configFile.empty() ? DEFAULT_DEVICE_DB_PATH : configFile;
 
@@ -139,34 +226,10 @@ bool DeviceManager::connect()
         return false;
     }
 
-    bool result = true;
-    std::vector<BaseDevice *> uniqueDevices;
-
-    for (const auto &virtualPin : PinMap) {
-        if (!virtualPin.isAssigned()) {
-            continue;
-        }
-
-        if (!std::count(uniqueDevices.begin(), uniqueDevices.end(), virtualPin.assignedSensor)) {
-            uniqueDevices.push_back(virtualPin.assignedSensor);
-        }
-    }
-
-    for (BaseDevice *device : uniqueDevices) {
-        disconnectDevice(device);
-    }
-
-    for (const auto &virtualPin : PinMap) {
-        if (virtualPin.isAssigned()) {
-            virtualPin.assignedSensor->assignPin(std::to_string(virtualPin.pinNumber));
-        }
-    }
-
-    for (BaseDevice *device : uniqueDevices) {
-        result &= connectDevice(device);
-    }
-
-    return result;
+    const std::vector<BaseDevice *> assignedDevices = collectAssignedDevicesFromPinMap();
+    disconnectAssignedDevices(assignedDevices);
+    applyAssignedPinsToDevices();
+    return connectAssignedDevices(assignedDevices);
 }
 
 void DeviceManager::erase() {
@@ -181,27 +244,13 @@ void DeviceManager::erase() {
 /////////////////////////
 
 void DeviceManager::selectDevicesFromPinMap() {
-    SelectedDevices.clear();
-    for (const auto& pin : PinMap) {
-        if (pin.assignedSensor) {
-            if (!std::count(SelectedDevices.begin(), SelectedDevices.end(), pin.assignedSensor))
-            {
-                SelectedDevices.push_back(pin.assignedSensor);
-            }     
-        }
-    }
+    SelectedDevices = collectAssignedDevicesFromPinMap();
     resetCurrentIndex();
 }
 
 BaseDevice* DeviceManager::getCurrentDevice()
 {
-    if (SelectedDevices.empty()) return nullptr;
-
-    if (currentIndex < SelectedDevices.size())
-    {
-        return SelectedDevices[currentIndex];
-    }
-    return nullptr;
+    return getSelectedDeviceAt(currentIndex);
 }
 
 BaseDevice* DeviceManager::getCurrentSelectionDevice(){
@@ -220,13 +269,11 @@ void DeviceManager::setCurrentSelectionDevice(BaseDevice* device){
 }
 
 BaseDevice* DeviceManager::nextDevice() { 
-    currentIndex = (currentIndex + 1) % SelectedDevices.size();
-    return getCurrentDevice();
+    return stepCurrentDevice(1);
 }
 
 BaseDevice* DeviceManager::previousDevice() {
-    currentIndex = (currentIndex == 0) ? SelectedDevices.size() - 1 : currentIndex - 1;
-    return getCurrentDevice();
+    return stepCurrentDevice(-1);
 }
 
 /////////////////////////
@@ -234,15 +281,9 @@ BaseDevice* DeviceManager::previousDevice() {
 /////////////////////////
 
 void DeviceManager::resetPinMap() {
-    resetCurrentIndex();
+    clearSelectedDevices();
     for (size_t i = 0; i < NUM_PINS; ++i) {
-        if (PinMap[i].assignedSensor) {
-            PinMap[i].assignedSensor->unassignPin(std::to_string(PinMap[i].pinNumber));
-        }
-        PinMap[i].pinNumber = i;
-        PinMap[i].locked = false;
-
-        PinMap[i].unassignSensor();
+        resetPinState(i);
     }
 }
 

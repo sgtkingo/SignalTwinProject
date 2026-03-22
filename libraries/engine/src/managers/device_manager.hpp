@@ -62,6 +62,15 @@ private:
     std::string DB_VERSION = "";    ///< Database version
     std::string APP_NAME = ""; ///< Application name
 
+    void clearSelectedDevices();
+    std::vector<BaseDevice *> collectAssignedDevicesFromPinMap() const;
+    void resetPinState(size_t pinIndex);
+    void applyAssignedPinsToDevices() const;
+    void disconnectAssignedDevices(const std::vector<BaseDevice *> &devices) const;
+    bool connectAssignedDevices(const std::vector<BaseDevice *> &devices) const;
+    BaseDevice *getSelectedDeviceAt(size_t index) const;
+    BaseDevice *stepCurrentDevice(int direction);
+
 public:
     const static uint8_t MAX_INIT_ATTEMPTS = 5; ///< Maximum initialization attempts
     /**
