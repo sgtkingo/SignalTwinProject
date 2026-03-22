@@ -4,12 +4,12 @@
 #include "lvgl.h"
 
 #include "gui_callbacks.hpp"
-#include "../managers/device_manager.hpp"
+#include "../managers/device_browser_state.hpp"
 
 class LibraryEditorGui
 {
 private:
-    DeviceManager &sensorManager;
+    DeviceBrowserState &browserState;
     bool initialized = false;
 
     lv_obj_t *ui_Widget = nullptr;
@@ -20,7 +20,7 @@ private:
     void refresh();
 
 public:
-    explicit LibraryEditorGui(DeviceManager &sensorManager);
+    explicit LibraryEditorGui(DeviceBrowserState &browserState);
     ~LibraryEditorGui() = default;
 
     void init();

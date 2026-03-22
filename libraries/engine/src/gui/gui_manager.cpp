@@ -14,17 +14,18 @@ const int CYCLE_SYNC_MS = 100;
 const int LOOP_SYNC_TH = CYCLE_SYNC_MS / CYCLE_DRAW_MS;
 int LOOP_SYNC_COUNTER = LOOP_SYNC_TH;
 
-GuiManager::GuiManager(DeviceCatalog &catalog, DeviceManager &manager, DataBundleManager &dataBundleManager)
+GuiManager::GuiManager(DeviceCatalog &catalog, DeviceBrowserState &browserState, DeviceManager &manager, DataBundleManager &dataBundleManager)
     : deviceCatalog(catalog),
+      deviceBrowserState(browserState),
       sensorManager(manager),
       dataBundleManager(dataBundleManager),
       mainMenuGui(),
-      menuGui(manager),
+      menuGui(browserState, manager),
       vizGui(manager, dataBundleManager),
       dataBundleSelectionGui(dataBundleManager),
-      selectionGui(catalog, manager),
-      libraryGui(catalog, manager),
-      libraryEditorGui(manager),
+      selectionGui(catalog, browserState, manager),
+      libraryGui(catalog, browserState),
+      libraryEditorGui(browserState),
       settingsGui(),
       crashGui(),
       creditsGui(),
@@ -53,6 +54,8 @@ bool GuiManager::init(std::string configFile)
             crashGui.showCrash("DeviceCatalog initialization failed!");
             return false;
         }
+
+        deviceBrowserState.clear();
 
         if (!sensorManager.init()) {
             crashGui.showCrash("DeviceManager initialization failed!");
@@ -350,6 +353,11 @@ void GuiManager::navigateBackFromDatabank()
     }
 
     switchContent(GuiState::MAIN_MENU);
+}
+
+void GuiManager::prepareNewLibraryEntity()
+{
+    deviceBrowserState.setLibraryDevice(nullptr);
 }
 
 void GuiManager::redraw()

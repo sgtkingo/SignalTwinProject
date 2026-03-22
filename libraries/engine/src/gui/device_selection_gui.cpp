@@ -2,8 +2,8 @@
 
 #include "../helpers.hpp"
 
-DeviceSelectionGui::DeviceSelectionGui(DeviceCatalog &deviceCatalog, DeviceManager &sensorManager)
-    : deviceCatalog(deviceCatalog), sensorManager(sensorManager)
+DeviceSelectionGui::DeviceSelectionGui(DeviceCatalog &deviceCatalog, DeviceBrowserState &browserState, DeviceManager &sensorManager)
+    : deviceCatalog(deviceCatalog), browserState(browserState), sensorManager(sensorManager)
 {
 }
 
@@ -167,7 +167,7 @@ void DeviceSelectionGui::updateDeviceInfo()
         return;
     }
 
-    sensorManager.setCurrentSelectionDevice(sensor);
+    browserState.setSelectionDevice(sensor);
     lv_label_set_text(ui_DeviceTitle, sensor->getName().c_str());
     lv_label_set_text(ui_DeviceDescription, getDeviceInfoText(sensor).c_str());
     lv_label_set_text(ui_DeviceSpecs, getDeviceSpecsText(sensor).c_str());
@@ -201,7 +201,7 @@ void DeviceSelectionGui::handleConfigureButtonClick()
         return;
     }
 
-    sensorManager.setCurrentSelectionDevice(sensor);
+    browserState.setSelectionDevice(sensor);
     switchToMenu();
 }
 
@@ -222,7 +222,7 @@ void DeviceSelectionGui::handleStartButtonClick()
 {
     sensorManager.setRunning(false);
     sensorManager.selectDevicesFromPinMap();
-    sensorManager.setCurrentSelectionDevice(nullptr);
+    browserState.setSelectionDevice(nullptr);
 
     if (!sensorManager.hasAssignedDevices()) {
         splashMessage("No devices configured.");

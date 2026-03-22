@@ -4,14 +4,14 @@
 #include "lvgl.h"
 
 #include "gui_callbacks.hpp"
+#include "../managers/device_browser_state.hpp"
 #include "../managers/device_catalog.hpp"
-#include "../managers/device_manager.hpp"
 
 class LibraryGui
 {
 private:
     DeviceCatalog &deviceCatalog;
-    DeviceManager &sensorManager;
+    DeviceBrowserState &browserState;
     bool initialized = false;
     int selectedDeviceIndex = 0;
 
@@ -25,7 +25,7 @@ private:
     void updateDetail();
 
 public:
-    explicit LibraryGui(DeviceCatalog &deviceCatalog, DeviceManager &sensorManager);
+    explicit LibraryGui(DeviceCatalog &deviceCatalog, DeviceBrowserState &browserState);
     ~LibraryGui() = default;
 
     void init();

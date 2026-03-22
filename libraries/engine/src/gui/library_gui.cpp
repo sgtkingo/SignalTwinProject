@@ -1,7 +1,7 @@
 #include "library_gui.hpp"
 
-LibraryGui::LibraryGui(DeviceCatalog &deviceCatalog, DeviceManager &sensorManager)
-    : deviceCatalog(deviceCatalog), sensorManager(sensorManager)
+LibraryGui::LibraryGui(DeviceCatalog &deviceCatalog, DeviceBrowserState &browserState)
+    : deviceCatalog(deviceCatalog), browserState(browserState)
 {
 }
 
@@ -114,7 +114,7 @@ void LibraryGui::updateDetail()
     }
 
     BaseDevice *sensor = sensors[selectedDeviceIndex];
-    sensorManager.setCurrentLibraryDevice(sensor);
+    browserState.setLibraryDevice(sensor);
 
     std::string detail = "Entity\n";
     detail += sensor->getName() + "\n\n";

@@ -29,22 +29,6 @@ void DeviceManager::clearSelectedDevices()
     resetCurrentIndex();
 }
 
-void DeviceManager::clearUiState()
-{
-    uiState.selectionDevice = nullptr;
-    uiState.libraryDevice = nullptr;
-}
-
-bool DeviceManager::isCatalogDevice(const BaseDevice *device) const
-{
-    if (!device) {
-        return false;
-    }
-
-    const auto &devices = catalog.getDevices();
-    return std::find(devices.begin(), devices.end(), device) != devices.end();
-}
-
 std::vector<BaseDevice *> DeviceManager::collectAssignedDevicesFromPinMap() const
 {
     std::vector<BaseDevice *> uniqueDevices;
@@ -254,7 +238,6 @@ bool DeviceManager::connect()
 
 void DeviceManager::erase() {
     resetPinMap();
-    clearUiState();
     currentIndex = 0;
 }
 
@@ -270,14 +253,6 @@ void DeviceManager::selectDevicesFromPinMap() {
 BaseDevice* DeviceManager::getCurrentDevice()
 {
     return getSelectedDeviceAt(currentIndex);
-}
-
-BaseDevice* DeviceManager::getCurrentSelectionDevice(){
-    return isCatalogDevice(uiState.selectionDevice) ? uiState.selectionDevice : nullptr;
-}
-
-void DeviceManager::setCurrentSelectionDevice(BaseDevice* device){
-    uiState.selectionDevice = isCatalogDevice(device) ? device : nullptr;
 }
 
 BaseDevice* DeviceManager::nextDevice() { 
@@ -355,14 +330,4 @@ bool DeviceManager::hasAssignedDevices() const
         }
     }
     return false;
-}
-
-BaseDevice* DeviceManager::getCurrentLibraryDevice()
-{
-    return isCatalogDevice(uiState.libraryDevice) ? uiState.libraryDevice : nullptr;
-}
-
-void DeviceManager::setCurrentLibraryDevice(BaseDevice *device)
-{
-    uiState.libraryDevice = isCatalogDevice(device) ? device : nullptr;
 }

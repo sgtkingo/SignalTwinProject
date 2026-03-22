@@ -7,6 +7,7 @@
 #define GUI_MANAGER_HPP
 
 #include "../managers/data_bundle_manager.hpp"
+#include "../managers/device_browser_state.hpp"
 #include "../managers/device_catalog.hpp"
 #include "../managers/device_manager.hpp"
 #include "app_selection_gui.hpp"
@@ -45,6 +46,7 @@ class GuiManager
 {
 private:
     DeviceCatalog &deviceCatalog;
+    DeviceBrowserState &deviceBrowserState;
     DeviceManager &sensorManager;
     DataBundleManager &dataBundleManager;
     MainMenuGui mainMenuGui;
@@ -70,7 +72,7 @@ private:
     void hideAllComponents();
 
 public:
-    explicit GuiManager(DeviceCatalog &catalog, DeviceManager &manager, DataBundleManager &dataBundleManager);
+    explicit GuiManager(DeviceCatalog &catalog, DeviceBrowserState &browserState, DeviceManager &manager, DataBundleManager &dataBundleManager);
 
     bool init();
     bool init(std::string configFile);
@@ -99,6 +101,7 @@ public:
     void openDatabankFromMainMenu();
     void openDatabankFromVisualization();
     void navigateBackFromDatabank();
+    void prepareNewLibraryEntity();
     bool shouldSelectionBackGoToMainMenu() const { return selectionBackToMainMenu; }
 
     DefaultCommunicationMode getDefaultCommunicationMode() const { return defaultCommunicationMode; }
@@ -111,6 +114,7 @@ public:
     DeviceSelectionGui &getWikiGui() { return selectionGui; }
     CreditsGui &getCreditsGui() { return creditsGui; }
     DeviceCatalog &getDeviceCatalog() { return deviceCatalog; }
+    DeviceBrowserState &getDeviceBrowserState() { return deviceBrowserState; }
     DeviceManager &getDeviceManager() { return sensorManager; }
     DataBundleManager &getDataBundleManager() { return dataBundleManager; }
     AppSelectionGui &getAppSelectionGui() { return appSelectionGui; }

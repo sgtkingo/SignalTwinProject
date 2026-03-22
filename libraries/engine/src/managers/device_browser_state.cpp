@@ -1,0 +1,48 @@
+/**
+ * @file device_browser_state.cpp
+ * @brief Shared browse/highlight state for catalog-driven GUI screens.
+ */
+
+#include "device_browser_state.hpp"
+
+#include <algorithm>
+
+DeviceBrowserState::DeviceBrowserState(DeviceCatalog &catalog) : catalog(catalog)
+{
+}
+
+bool DeviceBrowserState::isCatalogDevice(const BaseDevice *device) const
+{
+    if (!device) {
+        return false;
+    }
+
+    const auto &devices = catalog.getDevices();
+    return std::find(devices.begin(), devices.end(), device) != devices.end();
+}
+
+void DeviceBrowserState::clear()
+{
+    selectionDevice = nullptr;
+    libraryDevice = nullptr;
+}
+
+BaseDevice *DeviceBrowserState::getSelectionDevice() const
+{
+    return isCatalogDevice(selectionDevice) ? selectionDevice : nullptr;
+}
+
+void DeviceBrowserState::setSelectionDevice(BaseDevice *device)
+{
+    selectionDevice = isCatalogDevice(device) ? device : nullptr;
+}
+
+BaseDevice *DeviceBrowserState::getLibraryDevice() const
+{
+    return isCatalogDevice(libraryDevice) ? libraryDevice : nullptr;
+}
+
+void DeviceBrowserState::setLibraryDevice(BaseDevice *device)
+{
+    libraryDevice = isCatalogDevice(device) ? device : nullptr;
+}

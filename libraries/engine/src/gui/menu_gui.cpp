@@ -2,7 +2,8 @@
 
 #include "../helpers.hpp"
 
-MenuGui::MenuGui(DeviceManager &sensorManager) : sensorManager(sensorManager), activePinIndex(-1)
+MenuGui::MenuGui(DeviceBrowserState &browserState, DeviceManager &sensorManager)
+    : browserState(browserState), sensorManager(sensorManager), activePinIndex(-1)
 {
     pinContainers.fill(nullptr);
     pinLabels.fill(nullptr);
@@ -98,7 +99,7 @@ void MenuGui::buildMenu()
 
 void MenuGui::updateHeader()
 {
-    BaseDevice *device = sensorManager.getCurrentSelectionDevice();
+    BaseDevice *device = browserState.getSelectionDevice();
     if (!device) {
         lv_label_set_text(ui_Subtitle, "Select a device in Selection first.");
         return;
@@ -110,7 +111,7 @@ void MenuGui::updateHeader()
 
 bool MenuGui::isPinAllowedForCurrentDevice(int pinIndex) const
 {
-    BaseDevice *device = sensorManager.getCurrentSelectionDevice();
+    BaseDevice *device = browserState.getSelectionDevice();
     if (!device) {
         return false;
     }
@@ -120,7 +121,7 @@ bool MenuGui::isPinAllowedForCurrentDevice(int pinIndex) const
 
 uint32_t MenuGui::getPinStateColor(int pinIndex) const
 {
-    BaseDevice *selectedDevice = sensorManager.getCurrentSelectionDevice();
+    BaseDevice *selectedDevice = browserState.getSelectionDevice();
     BaseDevice *assignedDevice = sensorManager.getAssignedDevice(pinIndex);
 
     if (sensorManager.isPinLocked(pinIndex) || !isPinAllowedForCurrentDevice(pinIndex)) {
@@ -160,7 +161,7 @@ void MenuGui::hideMenu()
 
 void MenuGui::updatePinLabels()
 {
-    BaseDevice *selectedDevice = sensorManager.getCurrentSelectionDevice();
+    BaseDevice *selectedDevice = browserState.getSelectionDevice();
 
     for (int i = 0; i < NUM_PINS; i++) {
         if (!pinLabels[i]) {
@@ -215,7 +216,7 @@ void MenuGui::setActivePin(int pinIndex)
 
 void MenuGui::handleConnectButtonClick()
 {
-    BaseDevice *device = sensorManager.getCurrentSelectionDevice();
+    BaseDevice *device = browserState.getSelectionDevice();
     if (!device) {
         splashMessage("No device selected.");
         return;
@@ -236,7 +237,7 @@ void MenuGui::handleConnectButtonClick()
 
 void MenuGui::handlePinClick(int pinIndex)
 {
-    BaseDevice *device = sensorManager.getCurrentSelectionDevice();
+    BaseDevice *device = browserState.getSelectionDevice();
     if (!device || pinIndex < 0) {
         splashMessage("No device selected.");
         return;

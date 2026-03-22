@@ -41,32 +41,23 @@ enum class ManagerStatus
 
 /**
  * @class DeviceManager
- * @brief Class for managing devices and their pin assignments.
+ * @brief Runtime/session manager for selected devices and their pin assignments.
  *
- * Provides methods for adding, accessing, synchronizing, and assigning devices to pins.
- * Maintains a catalog of devices and a mapping of devices to hardware pins.
+ * Provides methods for accessing selected devices, synchronizing them, and assigning
+ * them to runtime pins. The persistent catalog is owned separately by DeviceCatalog.
  */
 class DeviceManager {
 private:
-    struct UiState
-    {
-        BaseDevice *selectionDevice = nullptr;
-        BaseDevice *libraryDevice = nullptr;
-    };
-
     DeviceCatalog &catalog;                        ///< Shared device catalog loaded during boot.
     std::array<VirtualPin, NUM_PINS> PinMap;     ///< Mapping of pins to devices.
     std::vector<BaseDevice*> SelectedDevices;    ///< Devices selected for the current visualization session.
 
     size_t currentIndex = 0;                         ///< Index of the current visualized device.
-    UiState uiState;                                 ///< UI-focused device references for Selection and Library flows.
 
     bool initialized = false;                 ///< Initialization state flag
     ManagerStatus Status = ManagerStatus::STOPPED; ///< Current status of the manager
 
     void clearSelectedDevices();
-    void clearUiState();
-    bool isCatalogDevice(const BaseDevice *device) const;
     std::vector<BaseDevice *> collectAssignedDevicesFromPinMap() const;
     void resetPinState(size_t pinIndex);
     void applyAssignedPinsToDevices() const;
@@ -261,30 +252,6 @@ public:
      * @return Pointer to the current device.
      */
     BaseDevice* getCurrentDevice();
-
-    /**
-     * @brief Get the currently highlighted Selection device.
-     * @return Pointer to the current selection device.
-     */
-    BaseDevice* getCurrentSelectionDevice();
-
-    /**
-     * @brief Set the currently highlighted Selection device.
-     * @param device Pointer to the device to set as current selection.
-     */
-    void setCurrentSelectionDevice(BaseDevice* device);
-
-    /**
-     * @brief Get the current Library device.
-     * @return Pointer to the current library device.
-     */
-    BaseDevice* getCurrentLibraryDevice();
-
-    /**
-     * @brief Set the current Library device.
-     * @param device Pointer to the device or `nullptr` for new-entity flow.
-     */
-    void setCurrentLibraryDevice(BaseDevice *device);
 
     /**
      * @brief Get access to the current device index.

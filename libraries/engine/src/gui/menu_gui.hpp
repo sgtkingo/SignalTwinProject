@@ -6,11 +6,13 @@
 #include "lvgl.h"
 
 #include "gui_callbacks.hpp"
+#include "../managers/device_browser_state.hpp"
 #include "../managers/device_manager.hpp"
 
 class MenuGui
 {
 private:
+    DeviceBrowserState &browserState;
     DeviceManager &sensorManager;
     bool initialized = false;
     int activePinIndex = -1;
@@ -32,7 +34,7 @@ private:
     bool isPinAllowedForCurrentDevice(int pinIndex) const;
 
 public:
-    explicit MenuGui(DeviceManager &sensorManager);
+    explicit MenuGui(DeviceBrowserState &browserState, DeviceManager &sensorManager);
     ~MenuGui() = default;
 
     void init();

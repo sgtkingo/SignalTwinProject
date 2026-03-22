@@ -150,9 +150,10 @@ void my_touchpad_read (lv_indev_drv_t * indev_driver, lv_indev_data_t * data)
 
 
 DeviceCatalog deviceCatalog; // Shared device catalog initialized from JSON DB on boot
+DeviceBrowserState deviceBrowserState(deviceCatalog); // Shared browse/highlight state for catalog screens
 DeviceManager deviceManager(deviceCatalog);  // Runtime device manager over the shared catalog
 DataBundleManager dataBundleManager; // Create DataBundleManager instance
-GuiManager guiManager(deviceCatalog, deviceManager, dataBundleManager);  // Create GUI manager instance
+GuiManager guiManager(deviceCatalog, deviceBrowserState, deviceManager, dataBundleManager);  // Create GUI manager instance
 
 // Global GUI screen switching functions for use by GUI components
 void switchToMenu() {
@@ -208,7 +209,7 @@ void switchToLibraryEditor() {
 }
 
 void prepareNewLibraryEntity() {
-    deviceManager.setCurrentLibraryDevice(nullptr);
+    guiManager.prepareNewLibraryEntity();
 }
 
 void switchToSettings() {
