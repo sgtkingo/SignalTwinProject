@@ -803,7 +803,7 @@ void SignalsVisualizationGui::handleClearButtonClick()
 
             if (self->feedbackPanel.isConfirmationAccepted(e, "Yes")) {
                 if (self->recording) {
-                    self->dataBundleManager.scrapRecording();
+            self->dataBundleManager.discardRecording();
                     self->handleRecordButtonClick("Recording discarded as requested");
                 } else {
                     self->handleClearConfirmButtonClick();
@@ -842,7 +842,7 @@ void SignalsVisualizationGui::handleSettingsButtonClick(lv_obj_t *recordGroup, l
         btnSettings,
         this,
         dataBundleManager.getDataBundleAmount(),
-        dataBundleManager.isDataBundleFull(),
+        dataBundleManager.isBundleStorageFull(),
         [](lv_event_t *e) {
             auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
             self->hideSettingsPanel();
@@ -891,7 +891,7 @@ void SignalsVisualizationGui::handleDataBundleDeleteAllButtonClick(){
                 }
 
                 self->hideSettingsPanel();
-                self->dataBundleManager.deleteAllDataBundles();
+            self->dataBundleManager.deleteAllBundles();
                 return;
             }
 
@@ -928,7 +928,7 @@ void SignalsVisualizationGui::handleStillRecording(){
                 self->dataBundleManager.saveRecording();
             } else if (self->feedbackPanel.isConfirmationAccepted(e, "Discard")) {
                 self->handleRecordButtonClick("Recording discarded as requested");
-                self->dataBundleManager.scrapRecording();
+            self->dataBundleManager.discardRecording();
             } else if (code != LV_EVENT_DELETE) {
                 return;
             }

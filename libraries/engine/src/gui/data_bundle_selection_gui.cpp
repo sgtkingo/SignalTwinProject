@@ -588,7 +588,7 @@ void DataBundleSelectionGui::handleClearButtonClick(unsigned char index)
 
 void DataBundleSelectionGui::handleClearConfirmButtonClick(unsigned char index)
 {
-    dataBundleManager.deleteDataBundle(currentPage * 6 + index);
+    dataBundleManager.deleteBundle(currentPage * 6 + index);
     updateBundles();
 }
 
@@ -675,7 +675,7 @@ void DataBundleSelectionGui::showDataBundles()
 
     lv_obj_clear_flag(ui_DataBundlesWidget, LV_OBJ_FLAG_HIDDEN);
 
-    dataBundleManager.loadAllDataBundleNames();
+    dataBundleManager.reloadBundleFileNames();
     dataBundleManager.listAllBundles();
 
     updateBundles();
@@ -762,7 +762,7 @@ void DataBundleSelectionGui::updateBundles()
 {
     try 
     {
-        std::array<DataBundleBuffer, 6> currentDataBundles = dataBundleManager.getDataBundles(currentPage);
+        std::array<DataBundleBuffer, 6> currentDataBundles = dataBundleManager.getBundlePage(currentPage);
 
         for (unsigned char i = 0; i < 6; i++)
         {

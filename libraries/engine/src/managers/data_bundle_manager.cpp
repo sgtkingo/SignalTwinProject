@@ -32,7 +32,7 @@ DataBundleManager::~DataBundleManager() {}
 
 /**
  * @brief Initialize the data bundle manager and SD card
- * Also calls initDirectories and prints SD info
+ * Also calls ensureStorageDirectories() and prints SD info
  * @return True if initialization was successful, false otherwise
  */
 bool DataBundleManager::init()
@@ -50,7 +50,7 @@ bool DataBundleManager::init()
         return false;
     }
 
-    if (!initDirectories())
+    if (!ensureStorageDirectories())
     {
         logMessage("Error: dir DataBundles failed to create");
     }
@@ -70,7 +70,7 @@ bool DataBundleManager::init()
  * @brief Initialize DataBundles directory
  * @return True if init was succesful, false otherwise
  */
-bool DataBundleManager::initDirectories()
+bool DataBundleManager::ensureStorageDirectories()
 {
     if (!SD.exists(root))
     {
@@ -115,7 +115,7 @@ void DataBundleManager::getSDInfo()
 
 bool DataBundleManager::startRecording(std::string deviceName)
 {
-    currentBundleMetaData.deviceName = deviceName;
+    recordingBundleMetadata.deviceName = deviceName;
 
     uint8_t tempOrder = 1;
     std::string temp = root + deviceName + "_0" + std::to_string(tempOrder) + ".csv";
@@ -150,10 +150,10 @@ bool DataBundleManager::startRecording(std::string deviceName)
         }
     }
 
-    currentBundleMetaData.filePath = temp;
+    recordingBundleMetadata.filePath = temp;
 
     // TODO: persist real recording start date/time metadata.
-    //currentBundleMetaData.startDate
+    //recordingBundleMetadata.startDate
     
     return true;
 }
@@ -161,62 +161,62 @@ bool DataBundleManager::startRecording(std::string deviceName)
 bool DataBundleManager::saveNewDataPoint(std::string signalName, std::string value)
 {
     // TODO: persist a real timestamp for each sample.
-    DataPoint temp = {signalName, value, ""};
-    currentBundleData.push_back(temp);
+    DataPoint dataPoint = {signalName, value, ""};
+    recordingDataPoints.push_back(dataPoint);
     return true;
 }
 
 bool DataBundleManager::saveRecording()
 {
-    File saved = SD.open(currentBundleMetaData.filePath.c_str(), FILE_WRITE);
+    File saved = SD.open(recordingBundleMetadata.filePath.c_str(), FILE_WRITE);
 
     if (saved)
     {
         saved.println("SignalName;Value;Time");
-        for (unsigned int i = 0; i < currentBundleData.size(); i++)
+        for (unsigned int i = 0; i < recordingDataPoints.size(); i++)
         {
-            saved.printf("%s;%s;%s\n", currentBundleData[i].signalName.c_str(), currentBundleData[i].value.c_str(), currentBundleData[i].time.c_str());
+            saved.printf("%s;%s;%s\n", recordingDataPoints[i].signalName.c_str(), recordingDataPoints[i].value.c_str(), recordingDataPoints[i].time.c_str());
         }
 
         saved.close(); // Save and close
 
-        if(isDataBundleFull()){
-        removeOldestDataBundle();
+        if(isBundleStorageFull()){
+        pruneOldestBundle();
         }
 
-        //logMessage("Created %s successfully", currentBundleMetaData.filePath.c_str());
+        //logMessage("Created %s successfully", recordingBundleMetadata.filePath.c_str());
     }
     else
     {
-        logMessage("Error: Failed to create %s", currentBundleMetaData.filePath.c_str());
+        logMessage("Error: Failed to create %s", recordingBundleMetadata.filePath.c_str());
         return false;
     }
 
     listAllBundles();
-    printCSV(currentBundleMetaData.filePath);
+    printBundleCsv(recordingBundleMetadata.filePath);
 
     return true;
 }
 
-void DataBundleManager::scrapRecording()
+void DataBundleManager::discardRecording()
 {
-    currentBundleMetaData.deviceName = "";
-    currentBundleMetaData.filePath = "";
-    currentBundleMetaData.startDate = "";
-    currentBundleData.clear();
+    recordingBundleMetadata.deviceName = "";
+    recordingBundleMetadata.filePath = "";
+    recordingBundleMetadata.startDate = "";
+    recordingDataPoints.clear();
 }
 
-std::array<DataBundleBuffer,6> DataBundleManager::getDataBundles(unsigned char page)
+std::array<DataBundleBuffer,6> DataBundleManager::getBundlePage(unsigned char page)
 {
     std::array<DataBundleBuffer,6> buff;
-    for(unsigned char i=0;i<6&&i<DataBundleNames.size()-(6*page);i++){
-        buff[i].metaBuffer = getBundleMetaData(i+(page*6));
-        buff[i].dataBuffer = getBundleDataValuePreview(i+(page*6));
+    for(unsigned char i=0;i<6&&i<bundleFileNames.size()-(6*page);i++){
+        buff[i].metaBuffer = getBundleMetadata(i+(page*6));
+        buff[i].dataBuffer = getBundleValuePreview(i+(page*6));
     }
     return buff;
 }
 
-bool DataBundleManager::deleteAllDataBundles()
+bool DataBundleManager::deleteAllBundles()
 {
     File dir = SD.open(root);
     if (!dir || !dir.isDirectory())
@@ -245,14 +245,14 @@ bool DataBundleManager::deleteAllDataBundles()
         SD.remove(file.c_str());
     }
 
-    DataBundleNames.clear();
+    bundleFileNames.clear();
 
     return true;
 }
 
-bool DataBundleManager::loadAllDataBundleNames()
+bool DataBundleManager::reloadBundleFileNames()
 {
-    DataBundleNames.clear();
+    bundleFileNames.clear();
 
     File dir = SD.open(root);
     if (!dir || !dir.isDirectory()) {
@@ -270,14 +270,14 @@ bool DataBundleManager::loadAllDataBundleNames()
 
         fileName = fileName.substr(strlen(root));   
 
-        DataBundleNames.push_back(fileName);
+        bundleFileNames.push_back(fileName);
     }
     dir.close();
 
     return true;
 }
 
-void DataBundleManager::removeOldestDataBundle()
+void DataBundleManager::pruneOldestBundle()
 {
     File dir = SD.open(root);
     if (!dir || !dir.isDirectory())
@@ -339,7 +339,7 @@ void DataBundleManager::listAllBundles()
     logMessage("--- End of List ---");
 }
 
-void DataBundleManager::printCSV(std::string filename)
+void DataBundleManager::printBundleCsv(std::string filename)
 {
     std::string fullPath = std::string(root) + filename;
 
@@ -382,8 +382,8 @@ void DataBundleManager::printCSV(std::string filename)
     logMessage("--- End of CSV ---");
 }
 
-BundleMetadata DataBundleManager::getBundleMetaData(unsigned char index){
-    std::string fullPath = root + DataBundleNames[index];
+BundleMetadata DataBundleManager::getBundleMetadata(unsigned char index){
+    std::string fullPath = root + bundleFileNames[index];
 
     File file = SD.open(fullPath.c_str(), FILE_READ);
 
@@ -399,8 +399,8 @@ BundleMetadata DataBundleManager::getBundleMetaData(unsigned char index){
     return {deviceName,fullPath,""};
 }
 
-std::array<std::string,10> DataBundleManager::getBundleDataValuePreview(unsigned char index){
-    std::string fullPath = std::string(root) + DataBundleNames[index];
+std::array<std::string,10> DataBundleManager::getBundleValuePreview(unsigned char index){
+    std::string fullPath = std::string(root) + bundleFileNames[index];
 
     //logMessage("Full path to the file is %s",fullPath.c_str());
     std::array<std::string,10> temp;
@@ -451,17 +451,17 @@ std::array<std::string,10> DataBundleManager::getBundleDataValuePreview(unsigned
     return temp;
 }
 
-bool DataBundleManager::isDataBundleFull(){
-    return (DataBundleNames.size()>=30)? 1 : 0;
+bool DataBundleManager::isBundleStorageFull(){
+    return (bundleFileNames.size()>=30)? 1 : 0;
 }
 
-void DataBundleManager::deleteDataBundle(unsigned char index){
-    if(index >= DataBundleNames.size())
+void DataBundleManager::deleteBundle(unsigned char index){
+    if(index >= bundleFileNames.size())
         return;
 
-    std::string fullPath = std::string(root) + DataBundleNames[index];
+    std::string fullPath = std::string(root) + bundleFileNames[index];
     SD.remove(fullPath.c_str());
-    DataBundleNames.erase(DataBundleNames.begin() + index);
+    bundleFileNames.erase(bundleFileNames.begin() + index);
 }
 
 std::string DataBundleManager::readLine(File &file) {

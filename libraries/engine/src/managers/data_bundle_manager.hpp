@@ -18,10 +18,10 @@ class DataBundleManager {
 private:
     bool initialized = false;                 ///< Initialization state flag
     
-    std::vector<std::string> DataBundleNames;  ///< All saved bundle filenames (for example DHT11_01.csv)
+    std::vector<std::string> bundleFileNames;  ///< All saved bundle filenames (for example DHT11_01.csv)
 
-    BundleMetadata currentBundleMetaData;      ///< Metadata of the active recording session
-    std::vector<DataPoint> currentBundleData;  ///< Buffered signal payload of the active recording session
+    BundleMetadata recordingBundleMetadata;      ///< Metadata of the active recording session
+    std::vector<DataPoint> recordingDataPoints;  ///< Buffered signal payload of the active recording session
 
     const char* root = "/DataBundles/"; ///< Directory where all data bundles are stored
 
@@ -33,10 +33,10 @@ private:
 
     // GETTERS
 
-    BundleMetadata getBundleMetaData(unsigned char index);
+    BundleMetadata getBundleMetadata(unsigned char index);
 
     // Each data bundle preview uses the first 10 values of one recorded signal stream.
-    std::array<std::string,10> getBundleDataValuePreview(unsigned char index);
+    std::array<std::string,10> getBundleValuePreview(unsigned char index);
     
 
 public:
@@ -60,7 +60,7 @@ public:
      * @brief Initialize directories such as DataBundles
      * @return True if init was succesful, false otherwise
      */
-    bool initDirectories();
+    bool ensureStorageDirectories();
 
     /**
      * @brief Check if the manager has been initialized
@@ -72,7 +72,7 @@ public:
      * @brief Load all data bundle names from SD card
      * @return True if initialized, false otherwise
      */
-    bool loadAllDataBundleNames();
+    bool reloadBundleFileNames();
 
     // **************************
     // Active recording session
@@ -85,33 +85,33 @@ public:
 
     bool saveRecording();
 
-    void scrapRecording();
+    void discardRecording();
 
     // *****************
     // Catalog browsing
     // *****************
 
-    std::array<DataBundleBuffer,6> getDataBundles(unsigned char page);
+    std::array<DataBundleBuffer,6> getBundlePage(unsigned char page);
 
-    bool deleteAllDataBundles();
+    bool deleteAllBundles();
 
     // maybe?
 
-    bool renameDataBundle();
+    bool renameBundle();
 
     // *********************
     // Single bundle events
     // *********************
 
-    void deleteDataBundle(unsigned char index);
+    void deleteBundle(unsigned char index);
 
-    bool exportDataBundle();
+    bool exportBundle();
 
     /**
      * @brief Remove the oldest data bundle
      * Called when storage is full
      */
-    void removeOldestDataBundle();
+    void pruneOldestBundle();
 
     // CHECKER
 
@@ -120,13 +120,13 @@ public:
      * There are max 30 data bundles allowed to be stored
      * @return True if full, false otherwise
      */
-    bool isDataBundleFull();
+    bool isBundleStorageFull();
 
     // DEBUG
 
     void listAllBundles();
 
-    void printCSV(std::string filename);
+    void printBundleCsv(std::string filename);
 
     /**
      * @brief Prints size of SD and its used size in bytes
@@ -136,8 +136,8 @@ public:
     // public GETTERS
 
     unsigned char getDataBundleAmount() {
-        loadAllDataBundleNames();
-        return DataBundleNames.size();
+        reloadBundleFileNames();
+        return bundleFileNames.size();
     }
 };
 
