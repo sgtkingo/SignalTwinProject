@@ -55,17 +55,13 @@ std::vector<BaseDevice *> DeviceManager::collectAssignedDevicesFromPinMap() cons
 
 void DeviceManager::resetPinState(size_t pinIndex)
 {
-    if (pinIndex >= NUM_PINS) {
+    if (!isValidPinIndex(pinIndex)) {
         return;
     }
 
-    if (PinMap[pinIndex].assignedSensor) {
-        PinMap[pinIndex].assignedSensor->unassignPin(std::to_string(PinMap[pinIndex].pinNumber));
-    }
-
+    detachDeviceFromPin(pinIndex);
     PinMap[pinIndex].pinNumber = static_cast<int>(pinIndex);
     PinMap[pinIndex].locked = false;
-    PinMap[pinIndex].unassignSensor();
 }
 
 void DeviceManager::applyAssignedPinsToDevices() const
@@ -91,6 +87,45 @@ bool DeviceManager::connectAssignedDevices(const std::vector<BaseDevice *> &devi
         result &= connectDevice(device);
     }
     return result;
+}
+
+bool DeviceManager::isValidPinIndex(size_t pinIndex) const
+{
+    return pinIndex < NUM_PINS;
+}
+
+VirtualPin *DeviceManager::getPinState(size_t pinIndex)
+{
+    if (!isValidPinIndex(pinIndex)) {
+        return nullptr;
+    }
+
+    return &PinMap[pinIndex];
+}
+
+const VirtualPin *DeviceManager::getPinState(size_t pinIndex) const
+{
+    if (!isValidPinIndex(pinIndex)) {
+        return nullptr;
+    }
+
+    return &PinMap[pinIndex];
+}
+
+bool DeviceManager::detachDeviceFromPin(size_t pinIndex)
+{
+    VirtualPin *pin = getPinState(pinIndex);
+    if (!pin) {
+        return false;
+    }
+
+    BaseDevice *device = pin->assignedSensor;
+    if (device) {
+        device->unassignPin(std::to_string(pin->pinNumber));
+    }
+
+    pin->unassignSensor();
+    return true;
 }
 
 BaseDevice *DeviceManager::getSelectedDeviceAt(size_t index) const
@@ -288,20 +323,14 @@ void DeviceManager::resetPinMap() {
 }
 
 bool DeviceManager::assignDeviceToPin(BaseDevice* device, int activePin) {
-    if (activePin >= NUM_PINS) return false;
+    VirtualPin *pin = getPinState(static_cast<size_t>(activePin));
+    if (!pin) return false;
 
-    return PinMap[activePin].assignSensor(device);
+    return pin->assignSensor(device);
 }
 
 bool DeviceManager::unassignDeviceFromPin(int activePin) {
-    if (activePin >= NUM_PINS) return false;
-
-    BaseDevice *device = PinMap[activePin].assignedSensor;
-    if (device) {
-        device->unassignPin(std::to_string(PinMap[activePin].pinNumber));
-    }
-    PinMap[activePin].unassignSensor();
-    return true;
+    return detachDeviceFromPin(static_cast<size_t>(activePin));
 }
 
 bool DeviceManager::unassignAllPinsForDevice(BaseDevice *device)
@@ -322,23 +351,23 @@ bool DeviceManager::unassignAllPinsForDevice(BaseDevice *device)
 }
 
 BaseDevice* DeviceManager::getAssignedDevice(size_t pinIndex) const {
-    if (pinIndex >= NUM_PINS) return nullptr;
-    return PinMap[pinIndex].assignedSensor;
+    const VirtualPin *pin = getPinState(pinIndex);
+    return pin ? pin->assignedSensor : nullptr;
 }
 
 int DeviceManager::getPinNumber(size_t pinIndex) const {
-    if (pinIndex >= NUM_PINS) return -1;
-    return PinMap[pinIndex].pinNumber;
+    const VirtualPin *pin = getPinState(pinIndex);
+    return pin ? pin->pinNumber : -1;
 }
 
 bool DeviceManager::isPinAvailable(size_t pinIndex) const {
-    if (pinIndex >= NUM_PINS) return false;
-    return PinMap[pinIndex].isAvailable();
+    const VirtualPin *pin = getPinState(pinIndex);
+    return pin ? pin->isAvailable() : false;
 }
 
 bool DeviceManager::isPinLocked(size_t pinIndex) const {
-    if (pinIndex >= NUM_PINS) return false;
-    return PinMap[pinIndex].isLocked();
+    const VirtualPin *pin = getPinState(pinIndex);
+    return pin ? pin->isLocked() : false;
 }
 
 bool DeviceManager::hasAssignedDevices() const

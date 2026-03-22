@@ -68,6 +68,10 @@ private:
     void applyAssignedPinsToDevices() const;
     void disconnectAssignedDevices(const std::vector<BaseDevice *> &devices) const;
     bool connectAssignedDevices(const std::vector<BaseDevice *> &devices) const;
+    bool isValidPinIndex(size_t pinIndex) const;
+    VirtualPin *getPinState(size_t pinIndex);
+    const VirtualPin *getPinState(size_t pinIndex) const;
+    bool detachDeviceFromPin(size_t pinIndex);
     BaseDevice *getSelectedDeviceAt(size_t index) const;
     BaseDevice *stepCurrentDevice(int direction);
 
