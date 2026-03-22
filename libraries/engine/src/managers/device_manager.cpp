@@ -20,7 +20,7 @@
 
 namespace
 {
-constexpr const char *DEFAULT_DEVICE_DB_PATH = "/data/device_db.json";
+constexpr const char *DEFAULT_DEVICE_DB_PATH = "/data/DB.json";
 }
 
 DeviceManager::DeviceManager() : Devices(), currentIndex(0) {
