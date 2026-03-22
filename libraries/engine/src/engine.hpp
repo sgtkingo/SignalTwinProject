@@ -16,6 +16,7 @@
 #include "config.hpp"
 
 #include "gui/gui_manager.hpp"
+#include "managers/device_catalog.hpp"
 #include "managers/device_manager.hpp"
 #include "managers/data_bundle_manager.hpp"
 

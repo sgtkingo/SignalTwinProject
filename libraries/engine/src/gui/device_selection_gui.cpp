@@ -2,7 +2,8 @@
 
 #include "../helpers.hpp"
 
-DeviceSelectionGui::DeviceSelectionGui(DeviceManager &sensorManager) : sensorManager(sensorManager)
+DeviceSelectionGui::DeviceSelectionGui(DeviceCatalog &deviceCatalog, DeviceManager &sensorManager)
+    : deviceCatalog(deviceCatalog), sensorManager(sensorManager)
 {
 }
 
@@ -115,7 +116,7 @@ void DeviceSelectionGui::populateAvailableList()
     }
 
     lv_obj_clean(ui_AvailableList);
-    const auto &sensors = sensorManager.getDevices();
+    const auto &sensors = deviceCatalog.getDevices();
     for (size_t i = 0; i < sensors.size(); ++i) {
         BaseDevice *sensor = sensors[i];
         const std::string label = sensor
@@ -145,7 +146,7 @@ void DeviceSelectionGui::populateSelectedList()
     lv_obj_t *header = lv_label_create(ui_SelectedList);
     lv_label_set_text(header, "Configured devices");
 
-    const auto &sensors = sensorManager.getDevices();
+    const auto &sensors = deviceCatalog.getDevices();
     for (BaseDevice *sensor : sensors) {
         if (!sensor || sensor->getPins().empty()) {
             continue;
@@ -336,7 +337,7 @@ void DeviceSelectionGui::hideSelection()
 
 BaseDevice *DeviceSelectionGui::getSelectedDevice()
 {
-    const auto &sensors = sensorManager.getDevices();
+    const auto &sensors = deviceCatalog.getDevices();
     if (sensors.empty() || selectedDeviceIndex < 0 || selectedDeviceIndex >= static_cast<int>(sensors.size())) {
         return nullptr;
     }

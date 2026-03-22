@@ -1,6 +1,7 @@
 #include "library_gui.hpp"
 
-LibraryGui::LibraryGui(DeviceManager &sensorManager) : sensorManager(sensorManager)
+LibraryGui::LibraryGui(DeviceCatalog &deviceCatalog, DeviceManager &sensorManager)
+    : deviceCatalog(deviceCatalog), sensorManager(sensorManager)
 {
 }
 
@@ -80,7 +81,7 @@ void LibraryGui::populateDeviceList()
 
     lv_obj_clean(ui_DeviceList);
 
-    const auto &sensors = sensorManager.getDevices();
+    const auto &sensors = deviceCatalog.getDevices();
     for (size_t i = 0; i < sensors.size(); ++i) {
         BaseDevice *sensor = sensors[i];
         const std::string label = sensor
@@ -106,7 +107,7 @@ void LibraryGui::updateDetail()
         return;
     }
 
-    const auto &sensors = sensorManager.getDevices();
+    const auto &sensors = deviceCatalog.getDevices();
     if (sensors.empty() || selectedDeviceIndex < 0 || selectedDeviceIndex >= static_cast<int>(sensors.size())) {
         lv_label_set_text(ui_DetailLabel, "No entity selected.");
         return;

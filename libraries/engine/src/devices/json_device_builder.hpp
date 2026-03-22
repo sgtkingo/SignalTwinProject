@@ -38,7 +38,7 @@ struct DeviceCatalogSchema
     std::string application;
 };
 
-struct DeviceCatalog
+struct DeviceCatalogLoadResult
 {
     std::vector<BaseDevice *> devices;
     std::string version;
@@ -46,6 +46,6 @@ struct DeviceCatalog
 };
 
 DeviceCatalogSchema parseDeviceCatalogSchemaFromSdFile(const std::string &filePath);
-DeviceCatalog buildDeviceCatalogFromSdFile(const std::string &filePath);
+DeviceCatalogLoadResult buildDeviceCatalogFromSdFile(const std::string &filePath);
 
 #endif // JSON_DEVICE_BUILDER_HPP

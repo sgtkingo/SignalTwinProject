@@ -7,6 +7,7 @@
 #define GUI_MANAGER_HPP
 
 #include "../managers/data_bundle_manager.hpp"
+#include "../managers/device_catalog.hpp"
 #include "../managers/device_manager.hpp"
 #include "app_selection_gui.hpp"
 #include "app_settings.hpp"
@@ -43,6 +44,7 @@ enum class GuiState
 class GuiManager
 {
 private:
+    DeviceCatalog &deviceCatalog;
     DeviceManager &sensorManager;
     DataBundleManager &dataBundleManager;
     MainMenuGui mainMenuGui;
@@ -68,7 +70,7 @@ private:
     void hideAllComponents();
 
 public:
-    explicit GuiManager(DeviceManager &manager, DataBundleManager &dataBundleManager);
+    explicit GuiManager(DeviceCatalog &catalog, DeviceManager &manager, DataBundleManager &dataBundleManager);
 
     bool init();
     bool init(std::string configFile);
@@ -108,6 +110,7 @@ public:
     DeviceSelectionGui &getSelectionGui() { return selectionGui; }
     DeviceSelectionGui &getWikiGui() { return selectionGui; }
     CreditsGui &getCreditsGui() { return creditsGui; }
+    DeviceCatalog &getDeviceCatalog() { return deviceCatalog; }
     DeviceManager &getDeviceManager() { return sensorManager; }
     DataBundleManager &getDataBundleManager() { return dataBundleManager; }
     AppSelectionGui &getAppSelectionGui() { return appSelectionGui; }

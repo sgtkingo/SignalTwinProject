@@ -6,11 +6,13 @@
 #include "lvgl.h"
 
 #include "gui_callbacks.hpp"
+#include "../managers/device_catalog.hpp"
 #include "../managers/device_manager.hpp"
 
 class DeviceSelectionGui
 {
 private:
+    DeviceCatalog &deviceCatalog;
     DeviceManager &sensorManager;
     bool initialized = false;
     int selectedDeviceIndex = 0;
@@ -40,7 +42,7 @@ private:
     std::string getDeviceSpecsText(BaseDevice *sensor);
 
 public:
-    explicit DeviceSelectionGui(DeviceManager &sensorManager);
+    explicit DeviceSelectionGui(DeviceCatalog &deviceCatalog, DeviceManager &sensorManager);
     ~DeviceSelectionGui() = default;
 
     void init();

@@ -19,6 +19,7 @@
 #include "expt.hpp"
 
 #include "../devices/base_device.hpp"
+#include "device_catalog.hpp"
 #include "pin_structure.hpp"
 
 /**
@@ -47,22 +48,25 @@ enum class ManagerStatus
  */
 class DeviceManager {
 private:
+    struct UiState
+    {
+        BaseDevice *selectionDevice = nullptr;
+        BaseDevice *libraryDevice = nullptr;
+    };
+
+    DeviceCatalog &catalog;                        ///< Shared device catalog loaded during boot.
     std::array<VirtualPin, NUM_PINS> PinMap;     ///< Mapping of pins to devices.
-    std::vector<BaseDevice*> Devices;            ///< Complete runtime device catalog.
     std::vector<BaseDevice*> SelectedDevices;    ///< Devices selected for the current visualization session.
 
     size_t currentIndex = 0;                         ///< Index of the current visualized device.
-    BaseDevice* currentSelectionDevice = nullptr;    ///< Device currently highlighted in Selection.
-    BaseDevice* currentLibraryDevice = nullptr;      ///< Device currently highlighted in Library.
+    UiState uiState;                                 ///< UI-focused device references for Selection and Library flows.
 
     bool initialized = false;                 ///< Initialization state flag
     ManagerStatus Status = ManagerStatus::STOPPED; ///< Current status of the manager
 
-    std::string configFilePath;          ///< Path to configuration file
-    std::string DB_VERSION = "";    ///< Database version
-    std::string APP_NAME = ""; ///< Application name
-
     void clearSelectedDevices();
+    void clearUiState();
+    bool isCatalogDevice(const BaseDevice *device) const;
     std::vector<BaseDevice *> collectAssignedDevicesFromPinMap() const;
     void resetPinState(size_t pinIndex);
     void applyAssignedPinsToDevices() const;
@@ -78,9 +82,9 @@ private:
 public:
     const static uint8_t MAX_INIT_ATTEMPTS = 5; ///< Maximum initialization attempts
     /**
-     * @brief Private constructor for singleton pattern
+     * @brief Construct the runtime manager over a shared device catalog.
      */
-    DeviceManager();
+    explicit DeviceManager(DeviceCatalog &catalog);
 
     /**
      * @brief Destructor
@@ -88,17 +92,9 @@ public:
     ~DeviceManager();
 
     /**
-     * @brief Load configuration file
-     * @param configFile Path to configuration file
+     * @brief Initialize runtime/session state after the device catalog is ready.
      */
-    void loadConfigFile(std::string configFile);
-
-    /**
-     * @brief Initialize the manager with a configuration file
-     * @param configFile Path to the configuration file
-     * @return True if initialization was successful, false otherwise
-     */
-    bool init(std::string configFile = "");
+    bool init();
 
     /**
      * @brief Check if the manager has been initialized
@@ -123,7 +119,7 @@ public:
      * @return True if any device has `redrawPending` flag set, false otherwise.
      */
     bool isRedrawPending() const {
-        for (const auto* device : Devices) {
+        for (const auto* device : catalog.getDevices()) {
             if (device && device->getRedrawPending()) {
                 return true;
             }
@@ -245,7 +241,7 @@ public:
      * @brief Get read-only access to the device catalog.
      * @return Const reference to the vector of device pointers.
      */
-    const std::vector<BaseDevice*>& getDevices() const { return Devices; }
+    const std::vector<BaseDevice*>& getDevices() const { return catalog.getDevices(); }
 
     /**
      * @brief Get read-only access to the pin map

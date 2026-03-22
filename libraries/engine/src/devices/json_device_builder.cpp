@@ -404,11 +404,11 @@ DeviceCatalogSchema parseDeviceCatalogSchemaFromSdFile(const std::string &filePa
     return catalog;
 }
 
-DeviceCatalog buildDeviceCatalogFromSdFile(const std::string &filePath)
+DeviceCatalogLoadResult buildDeviceCatalogFromSdFile(const std::string &filePath)
 {
     const DeviceCatalogSchema schemaCatalog = parseDeviceCatalogSchemaFromSdFile(filePath);
 
-    DeviceCatalog catalog;
+    DeviceCatalogLoadResult catalog;
     catalog.version = schemaCatalog.version;
     catalog.application = schemaCatalog.application;
 

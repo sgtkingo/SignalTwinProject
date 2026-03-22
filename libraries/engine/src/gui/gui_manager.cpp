@@ -14,15 +14,16 @@ const int CYCLE_SYNC_MS = 100;
 const int LOOP_SYNC_TH = CYCLE_SYNC_MS / CYCLE_DRAW_MS;
 int LOOP_SYNC_COUNTER = LOOP_SYNC_TH;
 
-GuiManager::GuiManager(DeviceManager &manager, DataBundleManager &dataBundleManager)
-    : sensorManager(manager),
+GuiManager::GuiManager(DeviceCatalog &catalog, DeviceManager &manager, DataBundleManager &dataBundleManager)
+    : deviceCatalog(catalog),
+      sensorManager(manager),
       dataBundleManager(dataBundleManager),
       mainMenuGui(),
       menuGui(manager),
       vizGui(manager, dataBundleManager),
       dataBundleSelectionGui(dataBundleManager),
-      selectionGui(manager),
-      libraryGui(manager),
+      selectionGui(catalog, manager),
+      libraryGui(catalog, manager),
       libraryEditorGui(manager),
       settingsGui(),
       crashGui(),
@@ -48,7 +49,12 @@ bool GuiManager::init(std::string configFile)
             return false;
         }
 
-        if (!sensorManager.init(configFile)) {
+        if (!deviceCatalog.init(configFile)) {
+            crashGui.showCrash("DeviceCatalog initialization failed!");
+            return false;
+        }
+
+        if (!sensorManager.init()) {
             crashGui.showCrash("DeviceManager initialization failed!");
             return false;
         }

@@ -149,9 +149,10 @@ void my_touchpad_read (lv_indev_drv_t * indev_driver, lv_indev_data_t * data)
 }
 
 
-DeviceManager deviceManager;  // Create DeviceManager instance
+DeviceCatalog deviceCatalog; // Shared device catalog initialized from JSON DB on boot
+DeviceManager deviceManager(deviceCatalog);  // Runtime device manager over the shared catalog
 DataBundleManager dataBundleManager; // Create DataBundleManager instance
-GuiManager guiManager(deviceManager, dataBundleManager);  // Create GUI manager instance
+GuiManager guiManager(deviceCatalog, deviceManager, dataBundleManager);  // Create GUI manager instance
 
 // Global GUI screen switching functions for use by GUI components
 void switchToMenu() {

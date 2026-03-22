@@ -4,11 +4,13 @@
 #include "lvgl.h"
 
 #include "gui_callbacks.hpp"
+#include "../managers/device_catalog.hpp"
 #include "../managers/device_manager.hpp"
 
 class LibraryGui
 {
 private:
+    DeviceCatalog &deviceCatalog;
     DeviceManager &sensorManager;
     bool initialized = false;
     int selectedDeviceIndex = 0;
@@ -23,7 +25,7 @@ private:
     void updateDetail();
 
 public:
-    explicit LibraryGui(DeviceManager &sensorManager);
+    explicit LibraryGui(DeviceCatalog &deviceCatalog, DeviceManager &sensorManager);
     ~LibraryGui() = default;
 
     void init();

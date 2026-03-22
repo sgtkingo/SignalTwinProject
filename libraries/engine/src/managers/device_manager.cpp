@@ -15,25 +15,34 @@
 #include <sstream>
 #include <utility>
 #include "device_manager.hpp"
-#include "../devices/json_device_builder.hpp"
 #include "helpers.hpp"
 
-namespace
-{
-constexpr const char *DEFAULT_DEVICE_DB_PATH = "/data/DB.json";
-}
-
-DeviceManager::DeviceManager() : Devices(), currentIndex(0) {
+DeviceManager::DeviceManager(DeviceCatalog &catalog) : catalog(catalog), currentIndex(0) {
 }
 
 DeviceManager::~DeviceManager() {
-    for (auto* device : Devices) delete device;
 }
 
 void DeviceManager::clearSelectedDevices()
 {
     SelectedDevices.clear();
     resetCurrentIndex();
+}
+
+void DeviceManager::clearUiState()
+{
+    uiState.selectionDevice = nullptr;
+    uiState.libraryDevice = nullptr;
+}
+
+bool DeviceManager::isCatalogDevice(const BaseDevice *device) const
+{
+    if (!device) {
+        return false;
+    }
+
+    const auto &devices = catalog.getDevices();
+    return std::find(devices.begin(), devices.end(), device) != devices.end();
 }
 
 std::vector<BaseDevice *> DeviceManager::collectAssignedDevicesFromPinMap() const
@@ -152,22 +161,7 @@ BaseDevice *DeviceManager::stepCurrentDevice(int direction)
     return getSelectedDeviceAt(currentIndex);
 }
 
-void DeviceManager::loadConfigFile(std::string configFile) {
-    configFilePath = configFile.empty() ? DEFAULT_DEVICE_DB_PATH : configFile;
-
-    logMessage("Initializing manager via JSON device DB: %s\n", configFilePath.c_str());
-
-    DeviceCatalog catalog = buildDeviceCatalogFromSdFile(configFilePath);
-    Devices = std::move(catalog.devices);
-    DB_VERSION = catalog.version;
-    APP_NAME = catalog.application;
-
-    if (Devices.empty()) {
-        throw DeviceInitializationFailException("DeviceManager::loadConfigFile", "Device DB did not produce any devices.");
-    }
-}
-
-bool DeviceManager::init(std::string configFile) {
+bool DeviceManager::init() {
     if(initialized)
     {
         erase();
@@ -175,15 +169,9 @@ bool DeviceManager::init(std::string configFile) {
 
     initialized = false;
     Status = ManagerStatus::ERROR;
-    try
-    {
-        loadConfigFile(configFile);
+    if (!catalog.isInitialized()) {
+        throw DeviceInitializationFailException("DeviceManager::init", "Device catalog must be initialized before runtime manager init.");
     }
-    catch(...)
-    {
-        throw;
-    }
-
 
     Status = ManagerStatus::READY;
     resetPinMap();
@@ -202,7 +190,7 @@ bool DeviceManager::ensureProtocolInitialized()
     ResponseStatus response {ResponseStatusEnum::ERROR, "Protocol initialization failed", {}};
     for (size_t i = 0; i < DeviceManager::MAX_INIT_ATTEMPTS; i++)
     {
-        response = Protocol::init(APP_NAME, DB_VERSION);
+        response = Protocol::init(catalog.getApplication(), catalog.getVersion());
         if (response.status == ResponseStatusEnum::OK)
         {
             logMessage("\t\tProtocol initialized successfully!\n");
@@ -220,14 +208,11 @@ bool DeviceManager::ensureProtocolInitialized()
 
 
 BaseDevice* DeviceManager::getDevice(std::string uid) {
-    for (auto* device : Devices) {
-        if (device->UID == uid) return device;
-    }
-    return nullptr;
+    return catalog.getDevice(uid);
 }
 
 void DeviceManager::addDevice(BaseDevice* device) {
-    if (device) Devices.push_back(device);
+    (void)device;
 }
 
 bool DeviceManager::sync(std::string id) {
@@ -269,9 +254,8 @@ bool DeviceManager::connect()
 
 void DeviceManager::erase() {
     resetPinMap();
+    clearUiState();
     currentIndex = 0;
-    for (auto* device : Devices) delete device;
-    Devices.clear();
 }
 
 /////////////////////////
@@ -289,18 +273,11 @@ BaseDevice* DeviceManager::getCurrentDevice()
 }
 
 BaseDevice* DeviceManager::getCurrentSelectionDevice(){
-    if(!currentSelectionDevice){
-        return nullptr;
-    }
-    return currentSelectionDevice;
+    return isCatalogDevice(uiState.selectionDevice) ? uiState.selectionDevice : nullptr;
 }
 
 void DeviceManager::setCurrentSelectionDevice(BaseDevice* device){
-    if(!device){
-        currentSelectionDevice = nullptr;
-        return;
-    }
-    currentSelectionDevice = device;
+    uiState.selectionDevice = isCatalogDevice(device) ? device : nullptr;
 }
 
 BaseDevice* DeviceManager::nextDevice() { 
@@ -382,10 +359,10 @@ bool DeviceManager::hasAssignedDevices() const
 
 BaseDevice* DeviceManager::getCurrentLibraryDevice()
 {
-    return currentLibraryDevice;
+    return isCatalogDevice(uiState.libraryDevice) ? uiState.libraryDevice : nullptr;
 }
 
 void DeviceManager::setCurrentLibraryDevice(BaseDevice *device)
 {
-    currentLibraryDevice = device;
+    uiState.libraryDevice = isCatalogDevice(device) ? device : nullptr;
 }
