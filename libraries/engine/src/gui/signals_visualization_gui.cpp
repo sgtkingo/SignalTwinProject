@@ -3,7 +3,7 @@
  * @brief Implementation of the SignalsVisualizationGui class
  *
  * This source file implements the SignalsVisualizationGui functionality for
- * active sensor visualization, data display, and navigation.
+ * active device visualization, data display, and navigation.
  *
  * @copyright 2025 MTA
  * @author Ing. Jiri Konecny, Ondřej Wrubel
@@ -38,22 +38,12 @@ std::vector<std::string> splitOptionsCsv(const std::string &options)
 }
 }
 
-SignalsVisualizationGui::SignalsVisualizationGui(DeviceManager &sensorManager, DataBundleManager &dataBundleManager) 
-                                              : sensorManager(sensorManager), dataBundleManager(dataBundleManager)
+SignalsVisualizationGui::SignalsVisualizationGui(DeviceManager &deviceManager, DataBundleManager &dataBundleManager)
+                                              : deviceManager(deviceManager), dataBundleManager(dataBundleManager)
 {
     // Initialize all GUI pointers to nullptr
     ui_SensorWidget = nullptr;
     ui_SensorLabel = nullptr;
-    ui_ContainerForValue_1 = nullptr;
-    ui_VisualColorForValue_1 = nullptr;
-    ui_LabelValueValue_1 = nullptr;
-    ui_LabelDescValue_1 = nullptr;
-    ui_LabelTypeValue_1 = nullptr;
-    ui_VisualColorForValue_2 = nullptr;
-    ui_ContainerForValue_2 = nullptr;
-    ui_LabelValueValue_2 = nullptr;
-    ui_LabelDescValue_2 = nullptr;
-    ui_LabelTypeValue_2 = nullptr;
     ui_SignalScrollContainer = nullptr;
     ui_ChartEmptyLabel = nullptr;
     ui_Chart = nullptr;
@@ -133,11 +123,8 @@ void SignalsVisualizationGui::init()
     }
 }
 
-void SignalsVisualizationGui::constructVisualization()
+void SignalsVisualizationGui::createMainWidget()
 {
-    // // logMessage("\t>constructing sensor visualization...\n");
-
-    // Main sensor widget container
     ui_SensorWidget = lv_obj_create(lv_scr_act());
     lv_obj_remove_style_all(ui_SensorWidget);
     lv_obj_set_width(ui_SensorWidget, 760);
@@ -152,174 +139,27 @@ void SignalsVisualizationGui::constructVisualization()
     lv_obj_set_style_border_color(ui_SensorWidget, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_opa(ui_SensorWidget, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(ui_SensorWidget, 2, LV_PART_MAIN | LV_STATE_DEFAULT);
+}
 
-    // Sensor title label
+void SignalsVisualizationGui::createTitleLabel()
+{
     ui_SensorLabel = lv_label_create(ui_SensorWidget);
-    lv_obj_set_width(ui_SensorLabel, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_SensorLabel, LV_SIZE_CONTENT); /// 1
+    lv_obj_set_width(ui_SensorLabel, LV_SIZE_CONTENT);
+    lv_obj_set_height(ui_SensorLabel, LV_SIZE_CONTENT);
     lv_obj_set_x(ui_SensorLabel, 0);
     lv_obj_set_y(ui_SensorLabel, 10);
     lv_obj_set_align(ui_SensorLabel, LV_ALIGN_TOP_MID);
     lv_label_set_text(ui_SensorLabel, "DHT11");
     lv_obj_clear_flag(ui_SensorLabel, LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_GESTURE_BUBBLE |
                                           LV_OBJ_FLAG_SNAPPABLE | LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM |
-                                          LV_OBJ_FLAG_SCROLL_CHAIN); /// Flags
+                                          LV_OBJ_FLAG_SCROLL_CHAIN);
     lv_obj_set_style_text_color(ui_SensorLabel, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_SensorLabel, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_SensorLabel, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
+}
 
-    // Value container 1
-    ui_ContainerForValue_1 = lv_obj_create(ui_SensorWidget);
-    lv_obj_remove_style_all(ui_ContainerForValue_1);
-    lv_obj_set_width(ui_ContainerForValue_1, 230);
-    lv_obj_set_height(ui_ContainerForValue_1, 118);
-    lv_obj_set_x(ui_ContainerForValue_1, -230);
-    lv_obj_set_y(ui_ContainerForValue_1, -85);
-    lv_obj_set_align(ui_ContainerForValue_1, LV_ALIGN_CENTER);
-    lv_obj_clear_flag(ui_ContainerForValue_1,
-                      LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_GESTURE_BUBBLE |
-                          LV_OBJ_FLAG_SNAPPABLE | LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM |
-                          LV_OBJ_FLAG_SCROLL_CHAIN);
-    lv_obj_set_style_radius(ui_ContainerForValue_1, 15, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_ContainerForValue_1, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_ContainerForValue_1, 20, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_color(ui_ContainerForValue_1, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_opa(ui_ContainerForValue_1, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_width(ui_ContainerForValue_1, 2, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    // Color indicator for value 1
-    ui_VisualColorForValue_1 = lv_obj_create(ui_ContainerForValue_1);
-    lv_obj_remove_style_all(ui_VisualColorForValue_1);
-    lv_obj_set_width(ui_VisualColorForValue_1, 20);
-    lv_obj_set_height(ui_VisualColorForValue_1, 20);
-    lv_obj_set_x(ui_VisualColorForValue_1, -10);
-    lv_obj_set_y(ui_VisualColorForValue_1, 10);
-    lv_obj_set_align(ui_VisualColorForValue_1, LV_ALIGN_TOP_RIGHT);
-    lv_obj_clear_flag(ui_VisualColorForValue_1, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_radius(ui_VisualColorForValue_1, 1000, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_VisualColorForValue_1, lv_color_hex(0x009BFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_VisualColorForValue_1, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    // Value label for value 1
-    ui_LabelValueValue_1 = lv_label_create(ui_ContainerForValue_1);
-    lv_obj_set_width(ui_LabelValueValue_1, LV_SIZE_CONTENT);
-    lv_obj_set_height(ui_LabelValueValue_1, LV_SIZE_CONTENT);
-    lv_obj_set_x(ui_LabelValueValue_1, 0);
-    lv_obj_set_y(ui_LabelValueValue_1, -5);
-    lv_obj_set_align(ui_LabelValueValue_1, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_LabelValueValue_1, "0");
-    lv_obj_clear_flag(ui_LabelValueValue_1,
-                      LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_GESTURE_BUBBLE | LV_OBJ_FLAG_SNAPPABLE |
-                          LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM |
-                          LV_OBJ_FLAG_SCROLL_CHAIN);
-    lv_obj_set_style_text_color(ui_LabelValueValue_1, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_opa(ui_LabelValueValue_1, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_LabelValueValue_1, &lv_font_montserrat_40, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    // Description label for value 1
-    ui_LabelDescValue_1 = lv_label_create(ui_ContainerForValue_1);
-    lv_obj_set_width(ui_LabelDescValue_1, LV_SIZE_CONTENT);
-    lv_obj_set_height(ui_LabelDescValue_1, LV_SIZE_CONTENT);
-    lv_obj_set_x(ui_LabelDescValue_1, 0);
-    lv_obj_set_y(ui_LabelDescValue_1, 30);
-    lv_obj_set_align(ui_LabelDescValue_1, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_LabelDescValue_1, "[°C]");
-    lv_obj_clear_flag(ui_LabelDescValue_1,
-                      LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_GESTURE_BUBBLE | LV_OBJ_FLAG_SNAPPABLE |
-                          LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM |
-                          LV_OBJ_FLAG_SCROLL_CHAIN);
-    lv_obj_set_style_text_color(ui_LabelDescValue_1, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_opa(ui_LabelDescValue_1, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_LabelDescValue_1, &lv_font_montserrat_20, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    // Type label for value 1
-    ui_LabelTypeValue_1 = lv_label_create(ui_ContainerForValue_1);
-    lv_obj_set_width(ui_LabelTypeValue_1, LV_SIZE_CONTENT);
-    lv_obj_set_height(ui_LabelTypeValue_1, LV_SIZE_CONTENT);
-    lv_obj_set_x(ui_LabelTypeValue_1, 15);
-    lv_obj_set_y(ui_LabelTypeValue_1, 10);
-    lv_label_set_text(ui_LabelTypeValue_1, "Value");
-    lv_obj_set_style_text_color(ui_LabelTypeValue_1, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_opa(ui_LabelTypeValue_1, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    // Value container 2 (for sensors with multiple values like DHT11)
-    ui_ContainerForValue_2 = lv_obj_create(ui_SensorWidget);
-    lv_obj_remove_style_all(ui_ContainerForValue_2);
-    lv_obj_set_width(ui_ContainerForValue_2, 230);
-    lv_obj_set_height(ui_ContainerForValue_2, 118);
-    lv_obj_set_x(ui_ContainerForValue_2, -230);
-    lv_obj_set_y(ui_ContainerForValue_2, 55);
-    lv_obj_set_align(ui_ContainerForValue_2, LV_ALIGN_CENTER);
-    lv_obj_clear_flag(ui_ContainerForValue_2,
-                      LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_GESTURE_BUBBLE |
-                          LV_OBJ_FLAG_SNAPPABLE | LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM |
-                          LV_OBJ_FLAG_SCROLL_CHAIN);
-    lv_obj_set_style_radius(ui_ContainerForValue_2, 15, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_ContainerForValue_2, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_ContainerForValue_2, 20, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_color(ui_ContainerForValue_2, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_opa(ui_ContainerForValue_2, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_width(ui_ContainerForValue_2, 2, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    // Color indicator for value 2
-    ui_VisualColorForValue_2 = lv_obj_create(ui_ContainerForValue_2);
-    lv_obj_remove_style_all(ui_VisualColorForValue_2);
-    lv_obj_set_width(ui_VisualColorForValue_2, 20);
-    lv_obj_set_height(ui_VisualColorForValue_2, 20);
-    lv_obj_set_x(ui_VisualColorForValue_2, -10);
-    lv_obj_set_y(ui_VisualColorForValue_2, 10);
-    lv_obj_set_align(ui_VisualColorForValue_2, LV_ALIGN_TOP_RIGHT);
-    lv_obj_clear_flag(ui_VisualColorForValue_2, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_radius(ui_VisualColorForValue_2, 1000, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_VisualColorForValue_2, lv_color_hex(0xFF6B35), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_VisualColorForValue_2, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    // Value label for value 2
-    ui_LabelValueValue_2 = lv_label_create(ui_ContainerForValue_2);
-    lv_obj_set_width(ui_LabelValueValue_2, LV_SIZE_CONTENT);
-    lv_obj_set_height(ui_LabelValueValue_2, LV_SIZE_CONTENT);
-    lv_obj_set_x(ui_LabelValueValue_2, 0);
-    lv_obj_set_y(ui_LabelValueValue_2, -5);
-    lv_obj_set_align(ui_LabelValueValue_2, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_LabelValueValue_2, "0");
-    lv_obj_clear_flag(ui_LabelValueValue_2,
-                      LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_GESTURE_BUBBLE | LV_OBJ_FLAG_SNAPPABLE |
-                          LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM |
-                          LV_OBJ_FLAG_SCROLL_CHAIN);
-    lv_obj_set_style_text_color(ui_LabelValueValue_2, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_opa(ui_LabelValueValue_2, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_LabelValueValue_2, &lv_font_montserrat_40, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    // Description label for value 2
-    ui_LabelDescValue_2 = lv_label_create(ui_ContainerForValue_2);
-    lv_obj_set_width(ui_LabelDescValue_2, LV_SIZE_CONTENT);
-    lv_obj_set_height(ui_LabelDescValue_2, LV_SIZE_CONTENT);
-    lv_obj_set_x(ui_LabelDescValue_2, 0);
-    lv_obj_set_y(ui_LabelDescValue_2, 30);
-    lv_obj_set_align(ui_LabelDescValue_2, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_LabelDescValue_2, "[]");
-    lv_obj_clear_flag(ui_LabelDescValue_2,
-                      LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_GESTURE_BUBBLE | LV_OBJ_FLAG_SNAPPABLE |
-                          LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM |
-                          LV_OBJ_FLAG_SCROLL_CHAIN);
-    lv_obj_set_style_text_color(ui_LabelDescValue_2, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_opa(ui_LabelDescValue_2, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_LabelDescValue_2, &lv_font_montserrat_20, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    // Type label for value 2
-    ui_LabelTypeValue_2 = lv_label_create(ui_ContainerForValue_2);
-    lv_obj_set_width(ui_LabelTypeValue_2, LV_SIZE_CONTENT);
-    lv_obj_set_height(ui_LabelTypeValue_2, LV_SIZE_CONTENT);
-    lv_obj_set_x(ui_LabelTypeValue_2, 15);
-    lv_obj_set_y(ui_LabelTypeValue_2, 10);
-    lv_label_set_text(ui_LabelTypeValue_2, "Value2");
-    lv_obj_set_style_text_color(ui_LabelTypeValue_2, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_opa(ui_LabelTypeValue_2, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    // Initially hide second value container
-    lv_obj_add_flag(ui_ContainerForValue_1, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(ui_ContainerForValue_2, LV_OBJ_FLAG_HIDDEN);
-
+void SignalsVisualizationGui::createSignalScrollPanel()
+{
     ui_SignalScrollContainer = lv_obj_create(ui_SensorWidget);
     lv_obj_set_size(ui_SignalScrollContainer, 230, 260);
     lv_obj_set_x(ui_SignalScrollContainer, -230);
@@ -336,8 +176,10 @@ void SignalsVisualizationGui::constructVisualization()
     lv_obj_set_style_radius(ui_SignalScrollContainer, 15, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_flex_flow(ui_SignalScrollContainer, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(ui_SignalScrollContainer, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+}
 
-    // Create chart for sensor history
+void SignalsVisualizationGui::createChartPanel()
+{
     ui_Chart = lv_chart_create(ui_SensorWidget);
     lv_obj_set_width(ui_Chart, 410);
     lv_obj_set_height(ui_Chart, 280);
@@ -351,13 +193,9 @@ void SignalsVisualizationGui::constructVisualization()
     lv_chart_set_axis_tick(ui_Chart, LV_CHART_AXIS_PRIMARY_X, HISTORY_CAP / 2, 0, HISTORY_CAP, 1, true, 50);
     lv_chart_set_axis_tick(ui_Chart, LV_CHART_AXIS_PRIMARY_Y, HISTORY_CAP, 5, 5, 2, true, 50);
 
-    // Chart series for value 1
     ui_Chart_series_V1 = lv_chart_add_series(ui_Chart, lv_color_hex(0x009BFF), LV_CHART_AXIS_PRIMARY_Y);
-
-    // Chart series for value 2 (different color)
     ui_Chart_series_V2 = lv_chart_add_series(ui_Chart, lv_color_hex(0xFF6B35), LV_CHART_AXIS_PRIMARY_Y);
 
-    // Chart styling
     lv_obj_set_style_bg_color(ui_Chart, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_Chart, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_color(ui_Chart, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -373,8 +211,17 @@ void SignalsVisualizationGui::constructVisualization()
     lv_obj_center(ui_ChartEmptyLabel);
     lv_obj_set_style_text_color(ui_ChartEmptyLabel, lv_color_hex(0x5F6B7A), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_add_flag(ui_ChartEmptyLabel, LV_OBJ_FLAG_HIDDEN);
+}
 
-    // Add navigation and control buttons
+void SignalsVisualizationGui::constructVisualization()
+{
+    // // logMessage("\t>constructing sensor visualization...\n");
+
+    createMainWidget();
+    createTitleLabel();
+    createSignalScrollPanel();
+    createChartPanel();
+
     addNavButtonsToWidget(ui_SensorWidget);
     addControlButtonsToWidget(ui_SensorWidget);
     addRecordPanelToWidget(ui_SensorWidget);

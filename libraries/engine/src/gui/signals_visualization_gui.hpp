@@ -3,7 +3,7 @@
  * @brief Declaration of the SignalsVisualizationGui widget
  *
  * This header defines the SignalsVisualizationGui class which handles
- * active sensor visualization, data display, synchronization, and navigation.
+ * active device visualization, data display, synchronization, and navigation.
  *
  * @copyright 2025 MTA
  * @author Ing. Jiri Konecny, Ondřej Wrubel
@@ -25,13 +25,13 @@
 
 /**
  * @class SignalsVisualizationGui
- * @brief Handles active sensor visualization, data display, and navigation.
+ * @brief Handles active device visualization, data display, and navigation.
  *
  * This class is responsible for:
- * - Displaying current sensor data and values
- * - Handling sensor navigation (prev/next)
- * - Managing sensor synchronization operations
- * - Handling sensor-specific events and interactions
+ * - Displaying current device data and values
+ * - Handling device navigation (prev/next)
+ * - Managing device synchronization operations
+ * - Handling device-specific events and interactions
  */
 class SignalsVisualizationGui
 {
@@ -59,9 +59,11 @@ private:
         std::string key;
     };
 
-    DeviceManager &sensorManager;        ///< Reference to the sensor manager instance
+    DeviceManager &deviceManager;        ///< Reference to the device manager instance
+    DeviceManager &sensorManager = deviceManager; ///< Transitional alias while internal implementation is still being renamed
     DataBundleManager &dataBundleManager;///< Reference to the databundle manager instance
-    BaseDevice *currentSensor = nullptr; ///< Currently visualized sensor
+    BaseDevice *currentDevice = nullptr; ///< Currently visualized device
+    BaseDevice *&currentSensor = currentDevice; ///< Transitional alias while internal implementation is still being renamed
 
     /// Static buffers for chart data
     std::map<std::string, std::array<lv_coord_t, HISTORY_CAP>> bufMap;
@@ -71,37 +73,29 @@ private:
     bool paused = false;      ///< Pause state flag
     bool recording = false;   ///< Recording state flag
 
-    // --- SENSOR VISUALIZATION MEMBERS ---
-    lv_obj_t *ui_SensorWidget; ///< Widget for sensor visualisation
-    lv_obj_t *ui_SensorLabel;  ///< Label for sensor name
+    void createMainWidget();
+    void createTitleLabel();
+    void createSignalScrollPanel();
+    void createChartPanel();
 
-    // VALUE_1
-    lv_obj_t *ui_ContainerForValue_1;   ///< Container for first value
-    lv_obj_t *ui_VisualColorForValue_1; ///< Color indicator for first value
-    lv_obj_t *ui_LabelValueValue_1;     ///< Value label for first value
-    lv_obj_t *ui_LabelDescValue_1;      ///< Description label for first value
-    lv_obj_t *ui_LabelTypeValue_1;      ///< Type label for first value
+    // --- DEVICE VISUALIZATION MEMBERS ---
+    lv_obj_t *ui_SensorWidget; ///< Widget for device visualisation
+    lv_obj_t *ui_SensorLabel;  ///< Label for device name
 
-    // VALUE_2
-    lv_obj_t *ui_VisualColorForValue_2; ///< Color indicator for second value
-    lv_obj_t *ui_ContainerForValue_2;   ///< Container for second value
-    lv_obj_t *ui_LabelValueValue_2;     ///< Value label for second value
-    lv_obj_t *ui_LabelDescValue_2;      ///< Description label for second value
-    lv_obj_t *ui_LabelTypeValue_2;      ///< Type label for second value
     lv_obj_t *ui_SignalScrollContainer; ///< Scrollable container for dynamic signal cards
     lv_obj_t *ui_ChartEmptyLabel;       ///< Label shown when no numeric signal is available
-    std::vector<SignalCard> signalCards;///< Dynamic cards for all sensor signals
+    std::vector<SignalCard> signalCards;///< Dynamic cards for all device signals
     std::vector<ConfigControl> configControls; ///< Dynamic controls for actuator configs
 
     // CHART
-    lv_obj_t *ui_Chart;                    ///< Chart widget for sensor data
+    lv_obj_t *ui_Chart;                    ///< Chart widget for device data
     lv_chart_series_t *ui_Chart_series_V1; ///< Chart series for value 1
     lv_chart_series_t *ui_Chart_series_V2; ///< Chart series for value 2
 
     // --- NAVIGATION AND CONTROL MEMBERS ---
-    lv_obj_t *ui_btnPrev;                                ///< Previous sensor button
+    lv_obj_t *ui_btnPrev;                                ///< Previous device button
     lv_obj_t *ui_btnPrevLabel;                           ///< Label for previous button
-    lv_obj_t *ui_btnNext;                                ///< Next sensor button
+    lv_obj_t *ui_btnNext;                                ///< Next device button
     lv_obj_t *ui_btnNextLabel;                           ///< Label for next button
     lv_obj_t *ui_btnBackGroup;                           ///< Group container for back button
     lv_obj_t *ui_btnBack;                                ///< Back to menu button
@@ -177,9 +171,9 @@ private:
     void addLogoPanelToWidget(lv_obj_t *parentWidget);
 
     /**
-     * @brief Build sensor history data for chart display
-     * @param sensor Pointer to the sensor
-     * @param key The key of the sensor parameter
+     * @brief Build device history data for chart display
+     * @param sensor Pointer to the device
+     * @param key The key of the device parameter
      * @param history The history array to store the history
      */
     template <typename T>
@@ -256,12 +250,12 @@ private:
     }
 
     /**
-     * @brief Update sensor data display
+     * @brief Update device data display
      */
     void updateDeviceDataDisplay();
 
     /**
-     * @brief Update chart with current sensor data
+     * @brief Update chart with current device data
      */
     void updateChart();
 
@@ -286,9 +280,9 @@ private:
 public:
     /**
      * @brief Constructor
-     * @param sensorManager Reference to the sensor manager instance
+     * @param deviceManager Reference to the device manager instance
      */
-    SignalsVisualizationGui(DeviceManager &sensorManager, DataBundleManager &dataBundleManager);
+    SignalsVisualizationGui(DeviceManager &deviceManager, DataBundleManager &dataBundleManager);
 
     /**
      * @brief Destructor
@@ -296,7 +290,7 @@ public:
     ~SignalsVisualizationGui() = default;
 
     /**
-     * @brief Initialize the sensor visualization GUI
+     * @brief Initialize the device visualization GUI
      */
     void init();
 
@@ -307,7 +301,7 @@ public:
     bool isInitialized() const { return initialized; }
 
     /**
-     * @brief Construct the sensor visualization widget
+     * @brief Construct the device visualization widget
      */
     void constructVisualization();
 
@@ -322,12 +316,12 @@ public:
     void drawCurrentDevice();
 
     /**
-     * @brief Go to the previous sensor in the list
+     * @brief Go to the previous device in the list
      */
     void goToPreviousDevice();
 
     /**
-     * @brief Go to the next sensor in the list
+     * @brief Go to the next device in the list
      */
     void goToNextDevice();
 
@@ -358,12 +352,12 @@ public:
     void handleRecordButtonClick(const char *message);
 
     /**
-     * @brief opens a confirmation dialog to clear the current sensor's history data
+     * @brief opens a confirmation dialog to clear the current device's history data
      */
     void handleClearButtonClick();
 
     /**
-     * @brief clears the current sensor's history data upon confirmation
+     * @brief clears the current device's history data upon confirmation
      */
     void handleClearConfirmButtonClick();
 
@@ -395,7 +389,7 @@ public:
     void handleStillRecording();
 
     /**
-     * @brief Synchronize the current sensor data
+     * @brief Synchronize the current device data
      * @return True if synchronization was successful, false otherwise
      */
     bool syncCurrentDevice();
@@ -417,12 +411,12 @@ public:
     void hideSettingsPanel();
 
     /**
-     * @brief Show the sensor visualization screen
+     * @brief Show the device visualization screen
      */
     void showVisualization();
 
     /**
-     * @brief Hide the sensor visualization screen
+     * @brief Hide the device visualization screen
      */
     void hideVisualization();
 
