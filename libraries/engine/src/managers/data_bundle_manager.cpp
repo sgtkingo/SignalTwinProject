@@ -2,7 +2,7 @@
  * @file data_bundle_manager.hpp
  * @brief bundles made from recording
  *
- * This header defines the manager for data bundles recorded from sensors.
+ * This header defines the manager for data bundles recorded from live device signals.
  *
  * @copyright 2025 MTA
  * @author Ondřej Wrubel
@@ -88,7 +88,7 @@ bool DataBundleManager::initDirectories()
 
     if (myFile)
     {
-        myFile.println("Sensor Data: 123");
+        myFile.println("Device Data: 123");
         myFile.close(); // Save and close
         logMessage("Created log.txt successfully");
     }

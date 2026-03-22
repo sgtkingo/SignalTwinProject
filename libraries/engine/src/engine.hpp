@@ -1,10 +1,10 @@
 
 /**
  * @file engine.hpp
- * @brief Main engine include header for VirtualSensors project
+ * @brief Main engine include header for the runtime device platform.
  *
- * This header includes the core configuration, GUI manager, and sensor manager headers
- * for the VirtualSensors engine. Include this file to access the main engine components.
+ * This header includes the core configuration, GUI manager, and device runtime headers.
+ * Include this file to access the main engine components.
  *
  * @copyright 2025 MTA
  * @author (see individual headers)

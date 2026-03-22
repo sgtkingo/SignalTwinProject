@@ -62,8 +62,8 @@ private:
     void createChartPanel();
 
     // --- DEVICE VISUALIZATION MEMBERS ---
-    lv_obj_t *ui_SensorWidget; ///< Widget for device visualisation
-    lv_obj_t *ui_SensorLabel;  ///< Label for device name
+    lv_obj_t *ui_DeviceWidget; ///< Widget for device visualisation
+    lv_obj_t *ui_DeviceLabel;  ///< Label for device name
 
     SignalsListPanel signalListPanel; ///< Scrollable panel for live values and editable controls
     SignalsChartPanel chartPanel;     ///< Chart panel for numeric signal history
@@ -243,7 +243,7 @@ public:
     /**
      * @brief Get parent widget
      */
-    lv_obj_t *getParentWidget() const { return ui_SensorWidget; }
+    lv_obj_t *getParentWidget() const { return ui_DeviceWidget; }
 
     /**
      * @brief Draw/update the currently selected device visualization

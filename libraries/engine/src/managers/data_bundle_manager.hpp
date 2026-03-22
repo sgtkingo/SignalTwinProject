@@ -2,7 +2,7 @@
  * @file data_bundle_manager.hpp
  * @brief bundles made from recording
  *
- * This header defines the manager for data bundles recorded from sensors.
+ * This header defines the manager for data bundles recorded from live device signals.
  *
  * @copyright 2025 MTA
  * @author Ondřej Wrubel
@@ -35,7 +35,7 @@ private:
 
     BundleMetadata getBundleMetaData(unsigned char index);
 
-    // each databundle has as a preview chart with first 10 values from one of the sensor parts
+    // each databundle has as a preview chart with first 10 values from one of the recorded signal parts
     std::array<std::string,10> getBundleDataValuePreview(unsigned char index);
     
 

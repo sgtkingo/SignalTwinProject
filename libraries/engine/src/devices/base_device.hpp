@@ -1,11 +1,9 @@
 /**
  * @file base_device.hpp
- * @brief Declaration and implementation of sensor classes for sensor management using built-in exceptions.
+ * @brief Declaration and implementation of the runtime device model and helpers.
  *
- * This header defines the abstract BaseDevice class and its derived ADC and CustomSensor classes.
- * BaseDevice provides a helper method printBasicInfo() to output common sensor details.
- * Derived classes override printDevice() to print extra sensor-specific information.
- * Factory functions are provided to create sensor instances.
+ * This header defines the BaseDevice runtime type together with shared helper
+ * functions for configuration, synchronization, connection and diagnostics.
  *
  * @copyright 2025 MTA
  * @author Ing. Jiri Konecny
@@ -19,7 +17,7 @@
  *      INCLUDES
  *********************/
 #include "vscp.hpp"
-#include "../exceptions/devices_exceptions.hpp" ///< Sensor related exceptions.
+#include "../exceptions/devices_exceptions.hpp" ///< Device related exceptions.
 #include "../helpers.hpp"    ///< Helper functions.
 
 #include <string>
@@ -33,27 +31,28 @@
 
 /**
  * @enum DeviceStatus
- * @brief Enumeration representing possible sensor statuses.
+ * @brief Enumeration representing possible device statuses.
  *
- * - OK: Sensor is operating normally.
- * - ERROR: Sensor has encountered an error.
- * - OFFLINE: Sensor is offline.
+ * - OK: Device is operating normally.
+ * - ERROR: Device has encountered an error.
+ * - OFFLINE: Device is offline.
  */
 enum class DeviceStatus
 {
-    OK = 1,     ///< Sensor operating normally.
-    ERROR = -1, ///< Sensor has an error.
-    OFFLINE = 0 ///< Sensor is offline.
+    OK = 1,     ///< Device operating normally.
+    ERROR = -1, ///< Device has an error.
+    OFFLINE = 0 ///< Device is offline.
 };
 
 /**
  * @enum DeviceCommandsEnum
- * @brief Enumeration representing possible sensor commands.
+ * @brief Enumeration representing possible device protocol commands.
  *
- * - CONFIG: Configure sensor.
- * - UPDATE: Update sensor.
- * - INIT: Initialize sensor.
- * - RESET: Reset sensor.
+ * - CONFIG: Configure the device.
+ * - UPDATE: Read runtime values from the device.
+ * - CONTROL: Send runtime control payload to the device.
+ * - INIT: Initialize the device.
+ * - RESET: Reset the device.
  */
 enum class DeviceCommandsEnum
 {
@@ -97,9 +96,9 @@ enum class DeviceRole
 
 /**
  * @struct DeviceRestrictions
- * @brief Structure for sensor parameter restrictions.
+ * @brief Structure for device parameter restrictions.
  *
- * This structure can be used to define restrictions for sensor parameters such as minimum,
+ * This structure can be used to define restrictions for device parameters such as minimum,
  * maximum, step size, and options (for enum types).
  */
 struct DeviceRestrictions
@@ -112,9 +111,9 @@ struct DeviceRestrictions
 
 /**
  * @struct DeviceParam
- * @brief Structure for sensor parameters.
+ * @brief Structure for device parameters.
  *
- * This structure can be used to store sensor parameters for configuration and updating.
+ * This structure can be used to store runtime values and configuration parameters.
  */
 struct DeviceParam
 {
@@ -128,32 +127,31 @@ struct DeviceParam
 
 /**
  * @class BaseDevice
- * @brief Abstract base class for sensors.
+ * @brief Abstract base class for devices.
  *
- * Defines common properties and virtual methods for sensor initialization, configuration,
- * updating, and printing. It also provides a helper method, printBasicInfo(), that prints
- * common sensor details.
+ * Defines common properties and virtual methods for device initialization,
+ * configuration, synchronization, control, and diagnostics.
  */
 class BaseDevice
 {
 protected:
-    bool redrawPending = true;  ///< Flag to indicate if sensor needs to be redrawn.
-    bool isConfigsSync = false; ///< Flag to indicate if sensor congig is synchronized with real sensor.
-    bool isValuesSync = false;  ///< Flag to indicate if sensor values is synchronized with real sensor.
+    bool redrawPending = true;  ///< Flag to indicate if the device needs to be redrawn.
+    bool isConfigsSync = false; ///< Flag to indicate if config state is synchronized with the real device.
+    bool isValuesSync = false;  ///< Flag to indicate if runtime values are synchronized with the real device.
     bool isControlsSync = true; ///< Flag to indicate if control payload is synchronized with real device.
 
-    std::unordered_map<std::string, DeviceParam> Values;            ///< Sensor values.
-    std::unordered_map<std::string, DeviceParam> Configs;          ///< Sensor configurations.
+    std::unordered_map<std::string, DeviceParam> Values;            ///< Runtime values.
+    std::unordered_map<std::string, DeviceParam> Configs;           ///< Persistent configuration values.
     std::vector<std::string> ValueKeyOrder;                        ///< Stable UI order for value keys.
     std::vector<std::string> ConfigKeyOrder;                       ///< Stable UI order for config keys.
-    std::vector<std::string> Pins;                                 ///< Sensor pins.
-    std::string AllowedPins;                                       ///< Allowed sensor pins, enter as list of values separated by ",".
+    std::vector<std::string> Pins;                                 ///< Assigned device pins.
+    std::string AllowedPins;                                       ///< Allowed device pins, stored as comma separated values.
     DeviceRole Role = DeviceRole::SENSOR;                          ///< Runtime device role.
 
     /**
-     * @brief Set sensor status.
+     * @brief Set device status from protocol string.
      *
-     * This function sets the sensor status based on the given status string.
+     * This function sets the device status based on the given status string.
      *
      * @param status The status string.
      */
@@ -179,9 +177,9 @@ protected:
     }
 
     /**
-     * @brief Set sensor status.
+     * @brief Set device status.
      *
-     * This function sets the sensor status based on the given status.
+     * This function sets the device status based on the given status.
      *
      * @param status The status.
      */
@@ -192,13 +190,13 @@ protected:
 
 
     /**
-     * @brief Synchronize sensor configurations with real sensor.
+     * @brief Synchronize configuration values with the real device.
      *
-     * This function sends a request to the real sensor to synchronize the configurations.
+     * This function sends a request to the real device to synchronize configuration values.
      */
     void syncConfigs()
     {
-        isConfigsSync = false; // Set flag to indicate sensor is not synchronized with real sensor.
+        isConfigsSync = false; // Set flag to indicate config state is not synchronized with the real device.
         redrawPending = false; // Reset redraw flag.
 
         //Convert Configs to unordered_map<std::string, std::string>
@@ -213,20 +211,20 @@ protected:
             throw DeviceSynchronizationFailException("BaseDevice::syncConfigs", response.error);
         }
 
-        isConfigsSync = response.status == ResponseStatusEnum::OK; // Set flag to indicate sensor is synchronized with real sensor.
-        redrawPending = isConfigsSync; // Set flag to redraw sensor - values updated.
+        isConfigsSync = response.status == ResponseStatusEnum::OK; // Set flag to indicate config state is synchronized with the real device.
+        redrawPending = isConfigsSync; // Redraw after config changes are acknowledged.
     }
 
     /**
-     * @brief Synchronize sensor values with real sensor.
+     * @brief Synchronize runtime values with the real device.
      *
-     * This function sends a request to the real sensor to synchronize the values.
+     * This function sends a request to the real device to read runtime values.
      */
     void syncValues()
     {
         try
         {
-            isValuesSync = false; // Set flag to indicate sensor is not synchronized with real sensor.
+            isValuesSync = false; // Set flag to indicate runtime values are not synchronized with the real device.
             redrawPending = false; // Reset redraw flag.
 
             auto response = Protocol::update(UID);
@@ -235,10 +233,10 @@ protected:
                 throw DeviceSynchronizationFailException("BaseDevice::syncValues", response.error);
             }
 
-            update(response.params); // Update sensor values from response parameters
+            update(response.params); // Update runtime values from response parameters.
 
-            isValuesSync = response.status == ResponseStatusEnum::OK; // Set flag to indicate sensor is synchronized with real sensor.
-            redrawPending = isValuesSync; // Set flag to redraw sensor - values updated.
+            isValuesSync = response.status == ResponseStatusEnum::OK; // Set flag to indicate runtime values are synchronized with the real device.
+            redrawPending = isValuesSync; // Redraw after runtime values are updated.
         }
         catch (...)
         {
@@ -249,10 +247,10 @@ protected:
 
 
     /**
-     * @brief Check if the given value meets the restrictions defined in the sensor parameter.
+     * @brief Check if the given value meets the restrictions defined in the device parameter.
      *
      * @param value The value to check.
-     * @param param The sensor parameter containing the restrictions.
+     * @param param The device parameter containing the restrictions.
      * @return true if the value meets the restrictions, false otherwise.
      */
     bool checkRestrictions(std::string value, const DeviceParam &param)
@@ -298,29 +296,29 @@ protected:
     }
 
 public:
-    std::string UID;         ///< Unique sensor identifier.
-    DeviceStatus Status;     ///< Sensor status.
-    std::string Type;        ///< Sensor type as text.
-    std::string Description; ///< Description of the sensor.
+    std::string UID;         ///< Unique device identifier.
+    DeviceStatus Status;     ///< Device status.
+    std::string Type;        ///< Device type as text.
+    std::string Description; ///< Human readable device description.
     std::string LastError;   ///< Error message (if any).
 
     // lv_obj_t *ui_Container; ///< Pointer to the UI widgets container.
     /**
-     * @brief Equality operator for comparing sensors by UID.
+     * @brief Equality operator for comparing devices by UID.
      *
-     * @param sensor The sensor to compare with.
-     * @return true if the sensors have the same UID, false otherwise.
+     * @param device The device to compare with.
+     * @return true if the devices have the same UID, false otherwise.
      */
-    bool operator==(const BaseDevice &sensor) const
+    bool operator==(const BaseDevice &device) const
     {
-        return UID == sensor.UID;
+        return UID == device.UID;
     }
 
     /**
-     * @brief Equality operator for comparing sensors by UID.
+     * @brief Equality operator for comparing devices by UID.
      *
      * @param uid The UID to compare with.
-     * @return true if the sensor's UID matches the given UID, false otherwise.
+     * @return true if the device UID matches the given UID, false otherwise.
      */
     bool operator==(const std::string uid) const
     {
@@ -340,7 +338,7 @@ public:
     /**
      * @brief Constructs a new BaseDevice object.
      *
-     * @param uid The unique sensor identifier.
+     * @param uid The unique device identifier.
      */
     BaseDevice(std::string uid) : UID(uid), Status(DeviceStatus::OK)
     {
@@ -501,42 +499,42 @@ public:
     void setRedrawPending(bool pending) { redrawPending = pending; }
 
     /**
-     * @brief Get the sensor unique identifier.
+     * @brief Get the device unique identifier.
      *
-     * @return The sensor UID.
+     * @return The device UID.
      */
     std::string getId() const { return UID; }
 
     /**
-     * @brief Get the sensor name (same as UID for compatibility).
+     * @brief Get the device name (same as UID for compatibility).
      *
-     * @return The sensor name.
+     * @return The device name.
      */
     std::string getName() const { return Type + " (" + UID + ")"; }
 
     /**
-     * @brief Get the sensor type name.
+     * @brief Get the device type name.
      *
-     * @return The sensor type.
+     * @return The device type.
      */
     std::string getTypeName() const { return Type; }
 
     /**
-     * @brief Get the sensor description.
+     * @brief Get the device description.
      *
-     * @return The sensor description.
+     * @return The device description.
      */
     std::string getDescription() const { return Description; }
 
     /**
-     * @brief Get the sensor status.
+     * @brief Get the device status.
      *
-     * @return The sensor status.
+     * @return The device status.
      */
     DeviceStatus getStatus() const { return Status; }
 
     /**
-     * @brief Assign a pin to the sensor.
+     * @brief Assign a pin to the device.
      * 
      * @param pin The pin to assign.
      */
@@ -549,7 +547,7 @@ public:
     }
 
     /**
-     * @brief Unassign a pin from the sensor.
+     * @brief Unassign a pin from the device.
      * 
      * @param pin The pin to unassign.
      */
@@ -604,7 +602,7 @@ public:
     }
 
     /**
-     * @brief Check whether a pin number is allowed for this sensor.
+     * @brief Check whether a pin number is allowed for this device.
      *
      * @param pinNumber The pin number to check
      * @return True if the pin is allowed or if the allowed list is empty
@@ -620,14 +618,14 @@ public:
     }
 
     /**
-     * @brief Connect the sensor to its assigned pins.
+     * @brief Connect the device to its assigned pins.
      * 
      */
     bool connect() 
     {
         std::string pins = getPins();
         if(pins.empty()) {
-            throw DevicePinAssignmentException("connectDevice", "No pins assigned to sensor.");
+            throw DevicePinAssignmentException("connectDevice", "No pins assigned to device.");
         }
 
         auto response = Protocol::connect(UID, pins);
@@ -640,7 +638,7 @@ public:
     }
 
     /**
-     * @brief Disconnect the sensor from its assigned pins.
+     * @brief Disconnect the device from its assigned pins.
      * 
      */
     bool disconnect() 
@@ -712,17 +710,17 @@ public:
             throw ConfigurationNotFoundException("BaseDevice::setConfig", "Configuration not found for key: " + key);
         }
 
-        isConfigsSync = false; // Set flag to indicate sensor is not synchronized with real sensor.
+        isConfigsSync = false; // Set flag to indicate config state is not synchronized with the real device.
         redrawPending = true;
     }
 
     /**
-     * @brief Get value from sensor.
+     * @brief Get a runtime value from the device.
      *
-     * This function retrieves the value of a sensor parameter by key.
+     * This function retrieves the value of a device runtime parameter by key.
      *
-     * @param key The key of the sensor parameter.
-     * @return The value of the sensor parameter.
+     * @param key The key of the device value parameter.
+     * @return The value of the device parameter.
      */
     template <typename T>
     T getValue(const std::string &key)
@@ -748,11 +746,11 @@ public:
     }
 
     /**
-     * @brief Set sensor value.
+     * @brief Set a runtime value.
      *
-     * This function sets the value of a sensor parameter by key.
+     * This function sets the value of a device runtime parameter by key.
      *
-     * @param key The key of the sensor parameter.
+     * @param key The key of the device value parameter.
      * @param value The value to set.
      */
     void setValue(const std::string &key, const std::string &value)
@@ -784,12 +782,12 @@ public:
     }
 
     /**
-     * @brief Get units of sensor value parameter.
+     * @brief Get units of a device value parameter.
      *
-     * This function retrieves the units of a sensor value parameter by key.
+     * This function retrieves the units of a device value parameter by key.
      *
-     * @param key The key of the value sensor parameter.
-     * @return The units of the value sensor parameter.
+     * @param key The key of the device value parameter.
+     * @return The units of the device value parameter.
      */
     std::string getValueUnits(const std::string &key) const
     {
@@ -802,12 +800,12 @@ public:
     }
 
     /**
-     * @brief Get units of sensor config parameter.
+     * @brief Get units of a device config parameter.
      *
-     * This function retrieves the units of a sensor config parameter by key.
+     * This function retrieves the units of a device config parameter by key.
      *
-     * @param key The key of the sensor config parameter.
-     * @return The units of the sensor config parameter.
+     * @param key The key of the device config parameter.
+     * @return The units of the device config parameter.
      */
     std::string getConfigUnits(const std::string &key) const
     {
@@ -853,12 +851,12 @@ public:
     }
 
     /**
-     * @brief Get history of sensor value parameter.
+     * @brief Get history of a device value parameter.
      *
-     * This function retrieves the history of a sensor value parameter by key.
+     * This function retrieves the history of a device value parameter by key.
      *
-     * @param key The key of the value sensor parameter.
-     * @return The history array of the value sensor parameter.
+     * @param key The key of the device value parameter.
+     * @return The history array of the device value parameter.
      */
     std::string* getHistory(const std::string &key)
     {
@@ -873,7 +871,7 @@ public:
     }
 
     /**
-     * @brief Clear history of all sensor value parameters.
+     * @brief Clear history of all device value parameters.
      */
     void clearHistory()
     {
@@ -888,7 +886,7 @@ public:
     }
 
     /**
-     * @brief Synchronize with the real sensor.
+     * @brief Synchronize with the real device.
      *
      * @throws Exception if synchronization fails.
      */
@@ -955,7 +953,7 @@ public:
     }
 
     /**
-     * @brief Add configuration parameter to the sensor.
+     * @brief Add a configuration parameter to the device.
      *
      * @param key The key of the configuration parameter.
      * @param param The configuration parameter to add.
@@ -974,11 +972,11 @@ public:
             throw InvalidConfigurationException("BaseDevice::addConfigParameter", e.what());
         }
 
-        isConfigsSync = false; // Set flag to indicate sensor is not synchronized with real sensor.
+        isConfigsSync = false; // Set flag to indicate config state is not synchronized with the real device.
     }
 
     /**
-     * @brief Configures the sensor with the given configuration map.
+     * @brief Configure the device with the given configuration map.
      *
      * @param cfg The configuration map.
      * @throws Exception if configuration fails.
@@ -992,7 +990,7 @@ public:
         std::string value;
         try
         {
-            // Parse the config string and update the sensor configs.
+            // Parse the config string and update the device configs.
             for (auto &c : Configs)
             {
                 value = cfg.find(c.first) != cfg.end() ? cfg.at(c.first) : "";
@@ -1010,7 +1008,7 @@ public:
                         c.second.lastHistoryIndex = 0;
                     }
 
-                    redrawPending = true; // Set flag to redraw sensor - values updated.
+                    redrawPending = true; // Redraw after configuration values are updated.
                 }
             }
         }
@@ -1021,7 +1019,7 @@ public:
     }
 
     /**
-     * @brief Adds a value parameter to the sensor.
+     * @brief Add a value parameter to the device.
      *
      * @param key The key of the value parameter.
      * @param param The value parameter to add.
@@ -1041,7 +1039,7 @@ public:
             throw InvalidValueException("BaseDevice::addValueParameter", new Exception(e));
         }
 
-        isValuesSync = false; // Set flag to indicate sensor is not synchronized with real sensor.
+        isValuesSync = false; // Set flag to indicate runtime values are not synchronized with the real device.
     }
 
     /**
@@ -1055,9 +1053,9 @@ public:
     }
 
     /**
-     * @brief Updates the sensor with new data.
+     * @brief Update the device with new runtime data.
      *
-     * @param upd The update map containing new sensor data.
+     * @param upd The update map containing new device data.
      * @throws Exception if update fails.
      */
     virtual void update(const std::unordered_map<std::string, std::string> &upd)
@@ -1070,7 +1068,7 @@ public:
         std::string value;
         try
         {
-            // Parse the update string and update the sensor values.
+            // Parse the update string and update the device values.
             for (auto &c : Values)
             {
                 value = upd.find(c.first) != upd.end() ? upd.at(c.first) : "";
@@ -1087,7 +1085,7 @@ public:
                         c.second.lastHistoryIndex = 0;
                     }
 
-                    redrawPending = true; // Set flag to redraw sensor - values updated.
+                    redrawPending = true; // Redraw after runtime values are updated.
                 }
             }
 
@@ -1100,7 +1098,7 @@ public:
     }
 
     /**
-     * @brief Prints sensor information.
+     * @brief Print device information.
      */
     void print() const
     {
@@ -1124,15 +1122,15 @@ public:
     }
 
     /**
-     * @brief Initializes the sensor.
+     * @brief Initialize the device.
      *
      * @throws Exception if initialization fails.
      */
     virtual void init()
     {
-        redrawPending = true; // Set flag to redraw sensor - values updated.
-        isConfigsSync = true; // Set flag to indicate sensor is synchronized by default with real sensor.
-        isValuesSync = false; // Set flag to indicate sensor is not synchronized with real sensor
+        redrawPending = true; // Redraw after initialization.
+        isConfigsSync = true; // Config state starts synchronized by default.
+        isValuesSync = false; // Runtime values must be fetched from the real device.
         isControlsSync = true; // Control payload is synchronized until the user changes it locally.
 
         clearError();
@@ -1144,36 +1142,36 @@ public:
 /**************************************************************************/
 
 /**
- * @brief Factory function template to create a sensor of type T.
+ * @brief Factory function template to create a device of type T.
  *
- * This function creates a sensor object of type T (which must have a constructor taking an int)
+ * This function creates a device object of type T (which must have a constructor taking an int)
  * and returns a pointer to the newly created object. If initialization fails, it logs the error,
  * deletes the partially constructed object, and rethrows the exception.
  *
- * @tparam T The sensor type, which must be derived from BaseDevice.
- * @param uid The unique sensor identifier.
- * @return T* Pointer to the newly created sensor.
- * @throws DeviceInitializationFailException if sensor initialization fails.
+ * @tparam T The device type, which must be derived from BaseDevice.
+ * @param uid The unique device identifier.
+ * @return T* Pointer to the newly created device.
+ * @throws DeviceInitializationFailException if device initialization fails.
  */
 template <typename T>
 T *createDevice(std::string uid)
 {
     static_assert(std::is_base_of<BaseDevice, T>::value, "T must be derived from BaseDevice");
 
-    T *sensor = nullptr;
+    T *device = nullptr;
     try
     {
-        sensor = new T(uid);
+        device = new T(uid);
     }
     catch (const std::exception &ex)
     {
-        logMessage("Error during sensor initialization: %s\n", ex.what());
-        delete sensor;
+        logMessage("Error during device initialization: %s\n", ex.what());
+        delete device;
         throw DeviceInitializationFailException("createDevice", "Error during device initialization.", new Exception(ex));
     }
 
-    logMessage("Device [%s]:%s created successfully.\n", sensor->UID.c_str(), sensor->Type.c_str());
-    return sensor;
+    logMessage("Device [%s]:%s created successfully.\n", device->UID.c_str(), device->Type.c_str());
+    return device;
 }
 
 /**************************************************************************/
@@ -1181,25 +1179,25 @@ T *createDevice(std::string uid)
 /**************************************************************************/
 
 /**
- * @brief Configures the sensor using the given configuration string.
+ * @brief Configure the device using the given configuration string.
  *
- * This function applies the configuration specified in the string to the provided sensor.
- * The configuration string should follow the expected format for that sensor (e.g. "Resolution=12").
+ * This function applies the configuration specified in the string to the provided device.
+ * The configuration string should follow the expected device-specific format (e.g. "Resolution=12").
  *
- * @param sensor Pointer to the sensor to be configured.
+ * @param device Pointer to the device to be configured.
  * @param config The configuration string.
  * @throws Exceptions should be internally resolved to prevent program from crash.
  */
 bool configDevice(BaseDevice *device, const std::string &config);
 
 /**
- * @brief Updates the sensor with new measurement data.
+ * @brief Update the device with new runtime data.
  *
- * This function updates the sensor's parameters based on the provided update string.
+ * This function updates the device parameters based on the provided update string.
  * The update string should follow the expected format (e.g. "Value=3.3").
  *
- * @param sensor Pointer to the sensor to be updated.
- * @param update The update string containing new sensor data.
+ * @param device Pointer to the device to be updated.
+ * @param update The update string containing new device data.
  * @throws Exceptions should be internally resolved to prevent program from crash.
  */
 bool updateDevice(BaseDevice *device, const std::string &update);
@@ -1214,48 +1212,48 @@ bool updateDevice(BaseDevice *device, const std::string &update);
 bool controlDevice(BaseDevice *device, const std::string &control);
 
 /**
- * @brief Prints detailed information about the sensor.
+ * @brief Print detailed information about the device.
  *
- * This function prints sensor details by calling the sensor's own printDevice() method,
- * which includes both basic sensor info and any additional sensor-specific data.
+ * This function prints device details by calling the device print method,
+ * which includes both basic info and any additional device-specific data.
  *
- * @param sensor Pointer to the sensor whose information is to be printed.
+ * @param device Pointer to the device whose information is to be printed.
  * @throws Exceptions should be internally resolved to prevent program from crash.
  */
 void printDevice(BaseDevice *device);
 
 /**
- * @brief Synchronizes the sensor with the real sensor.
+ * @brief Synchronize the device with the real device.
  *
- * This function synchronizes the sensor with the real sensor by calling the sensor's synchronize() method.
+ * This function synchronizes the device with the real hardware by calling the device synchronize() method.
  *
- * @param sensor Pointer to the sensor to be synchronized.
+ * @param device Pointer to the device to be synchronized.
  * @throws Exceptions should be internally resolved to prevent program from crash.
  */
 bool syncDevice(BaseDevice *device);
 
 /**
- * @brief Initializes the sensor.
+ * @brief Initialize the device.
  *
- * This function initializes the sensor by calling the sensor's init() method.
+ * This function initializes the device by calling the device init() method.
  *
- * @param sensor Pointer to the sensor to be initialized.
+ * @param device Pointer to the device to be initialized.
  * @throws Exceptions should be internally resolved to prevent program from crash.
  */
 bool initDevice(BaseDevice *device);
 
 /**
- * @brief Connect the sensor to the specified pins.
+ * @brief Connect the device to the specified pins.
  * 
- * @param sensor Pointer to the sensor to be connected.
+ * @param device Pointer to the device to be connected.
  * @throws Exceptions should be internally resolved to prevent program from crash.
  */
 bool connectDevice(BaseDevice *device);
 
 /**
- * @brief Disconnect the sensor from its current pins.
+ * @brief Disconnect the device from its current pins.
  * 
- * @param sensor Pointer to the sensor to be disconnected.
+ * @param device Pointer to the device to be disconnected.
  * @throws Exceptions should be internally resolved to prevent program from crash.
  */
 bool disconnectDevice(BaseDevice *device);

@@ -42,8 +42,8 @@ SignalsVisualizationGui::SignalsVisualizationGui(GuiRouter &router, DeviceManage
                                               : router(router), deviceManager(deviceManager), visualizationSession(visualizationSession), dataBundleManager(dataBundleManager)
 {
     // Initialize all GUI pointers to nullptr
-    ui_SensorWidget = nullptr;
-    ui_SensorLabel = nullptr;
+    ui_DeviceWidget = nullptr;
+    ui_DeviceLabel = nullptr;
     ui_LogoGroup = nullptr;
     ui_LogoCornerBottomLeft = nullptr;
     ui_LogoCornerFillBottomLeft = nullptr;
@@ -74,43 +74,43 @@ void SignalsVisualizationGui::init()
 
 void SignalsVisualizationGui::createMainWidget()
 {
-    ui_SensorWidget = lv_obj_create(lv_scr_act());
-    lv_obj_remove_style_all(ui_SensorWidget);
-    lv_obj_set_width(ui_SensorWidget, 760);
-    lv_obj_set_height(ui_SensorWidget, 440);
-    lv_obj_set_align(ui_SensorWidget, LV_ALIGN_CENTER);
-    lv_obj_clear_flag(ui_SensorWidget, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE |
+    ui_DeviceWidget = lv_obj_create(lv_scr_act());
+    lv_obj_remove_style_all(ui_DeviceWidget);
+    lv_obj_set_width(ui_DeviceWidget, 760);
+    lv_obj_set_height(ui_DeviceWidget, 440);
+    lv_obj_set_align(ui_DeviceWidget, LV_ALIGN_CENTER);
+    lv_obj_clear_flag(ui_DeviceWidget, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE |
                                            LV_OBJ_FLAG_GESTURE_BUBBLE | LV_OBJ_FLAG_SNAPPABLE | LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC |
                                            LV_OBJ_FLAG_SCROLL_MOMENTUM | LV_OBJ_FLAG_SCROLL_CHAIN);
-    lv_obj_set_style_radius(ui_SensorWidget, 15, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_SensorWidget, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_SensorWidget, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_color(ui_SensorWidget, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_opa(ui_SensorWidget, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_width(ui_SensorWidget, 2, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(ui_DeviceWidget, 15, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui_DeviceWidget, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_DeviceWidget, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_color(ui_DeviceWidget, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_opa(ui_DeviceWidget, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_width(ui_DeviceWidget, 2, LV_PART_MAIN | LV_STATE_DEFAULT);
 }
 
 void SignalsVisualizationGui::createTitleLabel()
 {
-    ui_SensorLabel = lv_label_create(ui_SensorWidget);
-    lv_obj_set_width(ui_SensorLabel, LV_SIZE_CONTENT);
-    lv_obj_set_height(ui_SensorLabel, LV_SIZE_CONTENT);
-    lv_obj_set_x(ui_SensorLabel, 0);
-    lv_obj_set_y(ui_SensorLabel, 10);
-    lv_obj_set_align(ui_SensorLabel, LV_ALIGN_TOP_MID);
-    lv_label_set_text(ui_SensorLabel, "DHT11");
-    lv_obj_clear_flag(ui_SensorLabel, LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_GESTURE_BUBBLE |
+    ui_DeviceLabel = lv_label_create(ui_DeviceWidget);
+    lv_obj_set_width(ui_DeviceLabel, LV_SIZE_CONTENT);
+    lv_obj_set_height(ui_DeviceLabel, LV_SIZE_CONTENT);
+    lv_obj_set_x(ui_DeviceLabel, 0);
+    lv_obj_set_y(ui_DeviceLabel, 10);
+    lv_obj_set_align(ui_DeviceLabel, LV_ALIGN_TOP_MID);
+    lv_label_set_text(ui_DeviceLabel, "DHT11");
+    lv_obj_clear_flag(ui_DeviceLabel, LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_GESTURE_BUBBLE |
                                           LV_OBJ_FLAG_SNAPPABLE | LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM |
                                           LV_OBJ_FLAG_SCROLL_CHAIN);
-    lv_obj_set_style_text_color(ui_SensorLabel, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_opa(ui_SensorLabel, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_SensorLabel, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ui_DeviceLabel, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui_DeviceLabel, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_DeviceLabel, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
 }
 
 void SignalsVisualizationGui::createSignalScrollPanel()
 {
     signalListPanel.create(
-        ui_SensorWidget,
+        ui_DeviceWidget,
         this,
         [](lv_event_t *e) {
             if (lv_event_get_code(e) != LV_EVENT_VALUE_CHANGED) {
@@ -143,27 +143,27 @@ void SignalsVisualizationGui::createSignalScrollPanel()
 
 void SignalsVisualizationGui::createChartPanel()
 {
-    chartPanel.create(ui_SensorWidget);
+    chartPanel.create(ui_DeviceWidget);
 }
 
 void SignalsVisualizationGui::constructVisualization()
 {
-    // // logMessage("\t>constructing sensor visualization...\n");
+    // // logMessage("\t>constructing device visualization...\n");
 
     createMainWidget();
     createTitleLabel();
     createSignalScrollPanel();
     createChartPanel();
     createToolbarPanel();
-    addLogoPanelToWidget(ui_SensorWidget);
+    addLogoPanelToWidget(ui_DeviceWidget);
 
-    // // logMessage("\t>sensor visualization constructed!\n");
+    // // logMessage("\t>device visualization constructed!\n");
 }
 
 void SignalsVisualizationGui::createToolbarPanel()
 {
     toolbarPanel.create(
-        ui_SensorWidget,
+        ui_DeviceWidget,
         this,
         [](lv_event_t *e) {
             auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
@@ -348,12 +348,12 @@ void SignalsVisualizationGui::clearUnusedConfigControls(size_t usedCount)
 
 void SignalsVisualizationGui::updateDeviceTitle()
 {
-    if (!currentDevice || !ui_SensorLabel) {
+    if (!currentDevice || !ui_DeviceLabel) {
         return;
     }
 
     const std::string title = currentDevice->getName() + " [" + currentDevice->getRoleLabel() + "]";
-    lv_label_set_text(ui_SensorLabel, title.c_str());
+    lv_label_set_text(ui_DeviceLabel, title.c_str());
 }
 
 void SignalsVisualizationGui::updateSignalCards(const std::unordered_map<std::string, DeviceParam> &values,
@@ -755,7 +755,7 @@ void SignalsVisualizationGui::handleRecordButtonClick(const char *message)
 
     if (!currentDeviceSupportsRecording())
     {
-        showAlert("Recording is available only for numeric sensor signals");
+        showAlert("Recording is available only for numeric device signals");
         return;
     }
 
@@ -790,7 +790,7 @@ void SignalsVisualizationGui::handleClearButtonClick()
     static const char *btns[] = {"Yes", ""};
     const char *message = recording
                               ? "Are you sure you want to scrape this recording?"
-                              : "Are you sure you want to clear the sensor history?";
+        : "Are you sure you want to clear the device history?";
 
     feedbackPanel.showConfirmationDialog(
         "Confirm Clear",
@@ -996,10 +996,10 @@ bool SignalsVisualizationGui::syncCurrentDevice()
 
 void SignalsVisualizationGui::showVisualization()
 {
-    if (!initialized || !ui_SensorWidget)
+    if (!initialized || !ui_DeviceWidget)
         return;
 
-    lv_obj_clear_flag(ui_SensorWidget, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(ui_DeviceWidget, LV_OBJ_FLAG_HIDDEN);
 
     // Refresh the display with current device data
     goToFirstDevice();
@@ -1009,19 +1009,19 @@ void SignalsVisualizationGui::showVisualization()
 
 void SignalsVisualizationGui::hideVisualization()
 {
-    if (!initialized || !ui_SensorWidget)
+    if (!initialized || !ui_DeviceWidget)
         return;
 
-    lv_obj_add_flag(ui_SensorWidget, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(ui_DeviceWidget, LV_OBJ_FLAG_HIDDEN);
     // logMessage("Hiding device visualization\n");
 }
 
 void SignalsVisualizationGui::showAlert(const char *message){
-    if(message == nullptr || !initialized || !ui_SensorWidget) 
+    if(message == nullptr || !initialized || !ui_DeviceWidget)
         return;
 
     feedbackPanel.showAlert(
-        ui_SensorWidget,
+        ui_DeviceWidget,
         this,
         message,
         [](lv_event_t *e) {

@@ -1,8 +1,8 @@
 /**
  * @file devices_exceptions.hpp
- * @brief Specialized exceptions for sensor operations.
+ * @brief Specialized exceptions for device operations.
  *
- * This header defines exception classes for various sensor-related errors, such as initialization,
+ * This header defines exception classes for various device-related errors, such as initialization,
  * synchronization, reset, connection, and disconnection failures. These exceptions inherit from the base
  * Exception class and provide constructors for different error reporting scenarios.
  *
@@ -17,9 +17,9 @@
 
 /**
  * @class DeviceInitializationFailException
- * @brief Exception for sensor initialization failures.
+ * @brief Exception for device initialization failures.
  *
- * Use this exception to indicate errors during sensor initialization.
+ * Use this exception to indicate errors during device initialization.
  */
 class DeviceInitializationFailException : public Exception
 {
@@ -34,9 +34,9 @@ public:
 
 /**
  * @class DeviceSynchronizationFailException
- * @brief Exception for sensor synchronization failures.
+ * @brief Exception for device synchronization failures.
  *
- * Use this exception to indicate errors during sensor synchronization.
+ * Use this exception to indicate errors during device synchronization.
  */
 class DeviceSynchronizationFailException : public Exception
 {
@@ -51,9 +51,9 @@ public:
 
 /**
  * @class DeviceResetFailException
- * @brief Exception for sensor reset failures.
+ * @brief Exception for device reset failures.
  *
- * Use this exception to indicate errors during sensor reset operations.
+ * Use this exception to indicate errors during device reset operations.
  */
 class DeviceResetFailException : public Exception
 {
@@ -67,9 +67,9 @@ public:
 
 /**
  * @class DeviceDisconnectFailException
- * @brief Exception for sensor disconnection failures.
+ * @brief Exception for device disconnection failures.
  *
- * Use this exception to indicate errors during sensor disconnection operations.
+ * Use this exception to indicate errors during device disconnection operations.
  */
 class DeviceDisconnectFailException : public Exception
 {
@@ -84,9 +84,9 @@ public:
 
 /**
  * @class DeviceConnectionFailException
- * @brief Exception for sensor connection failures (general connection errors).
+ * @brief Exception for device connection failures (general connection errors).
  *
- * Use this exception to indicate errors when a sensor fails to establish or maintain a connection.
+ * Use this exception to indicate errors when a device fails to establish or maintain a connection.
  */
 class DeviceConnectionFailException : public Exception
 {
@@ -101,9 +101,9 @@ public:
 
 /**
  * @class DevicePinAssignmentException
- * @brief Exception for sensor pin assignment errors.
+ * @brief Exception for device pin assignment errors.
  *
- * Use this exception to indicate errors when assigning pins to sensors (e.g., invalid, unavailable, or conflicting pin assignments).
+ * Use this exception to indicate errors when assigning pins to devices (e.g., invalid, unavailable, or conflicting pin assignments).
  */
 class DevicePinAssignmentException : public Exception
 {

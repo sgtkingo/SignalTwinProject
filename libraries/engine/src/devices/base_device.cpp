@@ -1,9 +1,9 @@
 /**
  * @file base_device.cpp
- * @brief Implementation of sensor management functions.
+ * @brief Implementation of generic device management functions.
  * 
- * This file implements sensor functionalities, including the factory function for creating
- * sensors instances. The factory function dynamically allocates an sensor, calls its
+ * This file implements device helper functions, including the factory function for creating
+ * device instances. The factory function dynamically allocates a device, calls its
  * initialization method, and returns a pointer. If initialization fails, it logs the error,
  * cleans up, and rethrows the exception.
  * 

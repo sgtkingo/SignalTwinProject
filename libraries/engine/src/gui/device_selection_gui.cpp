@@ -82,10 +82,10 @@ void DeviceSelectionGui::populateAvailableList()
     }
 
     lv_obj_clean(ui_AvailableList);
-    const auto &sensors = catalogBrowser.getDevices();
-    for (size_t i = 0; i < sensors.size(); ++i) {
-        BaseDevice *sensor = sensors[i];
-        const std::string label = DeviceCatalogBrowserFormatter::buildDeviceListLabel(sensor);
+    const auto &devices = catalogBrowser.getDevices();
+    for (size_t i = 0; i < devices.size(); ++i) {
+        BaseDevice *device = devices[i];
+        const std::string label = DeviceCatalogBrowserFormatter::buildDeviceListLabel(device);
         lv_obj_t *button = lv_list_add_btn(ui_AvailableList, nullptr, label.c_str());
         lv_obj_set_user_data(button, reinterpret_cast<void *>(static_cast<intptr_t>(i)));
         lv_obj_add_event_cb(button, [](lv_event_t *e) {
@@ -110,31 +110,31 @@ void DeviceSelectionGui::populateSelectedList()
     lv_obj_t *header = lv_label_create(ui_SelectedList);
     lv_label_set_text(header, "Configured devices");
 
-    const auto &sensors = catalogBrowser.getDevices();
-    for (BaseDevice *sensor : sensors) {
-        if (!sensor || sensor->getPins().empty()) {
+    const auto &devices = catalogBrowser.getDevices();
+    for (BaseDevice *device : devices) {
+        if (!device || device->getPins().empty()) {
             continue;
         }
 
-        std::string entry = sensor->getTypeName() + " [" + sensor->getRoleLabel() + "] -> " + sensor->getPins();
+        std::string entry = device->getTypeName() + " [" + device->getRoleLabel() + "] -> " + device->getPins();
         lv_list_add_text(ui_SelectedList, entry.c_str());
     }
 }
 
 void DeviceSelectionGui::updateDeviceInfo()
 {
-    BaseDevice *sensor = catalogBrowser.getSelectedDevice();
-    if (!sensor) {
+    BaseDevice *device = catalogBrowser.getSelectedDevice();
+    if (!device) {
         lv_label_set_text(ui_DeviceTitle, "No device selected");
         lv_label_set_text(ui_DeviceDescription, "Choose a device from the list.");
         lv_label_set_text(ui_DeviceSpecs, "");
         return;
     }
 
-    browserState.setSelectionDevice(sensor);
-    lv_label_set_text(ui_DeviceTitle, sensor->getName().c_str());
-    lv_label_set_text(ui_DeviceDescription, DeviceCatalogBrowserFormatter::buildSelectionInfoText(sensor).c_str());
-    lv_label_set_text(ui_DeviceSpecs, DeviceCatalogBrowserFormatter::buildSelectionSpecsText(sensor).c_str());
+    browserState.setSelectionDevice(device);
+    lv_label_set_text(ui_DeviceTitle, device->getName().c_str());
+    lv_label_set_text(ui_DeviceDescription, DeviceCatalogBrowserFormatter::buildSelectionInfoText(device).c_str());
+    lv_label_set_text(ui_DeviceSpecs, DeviceCatalogBrowserFormatter::buildSelectionSpecsText(device).c_str());
 }
 
 void DeviceSelectionGui::updateStartButtonState()
@@ -159,25 +159,25 @@ void DeviceSelectionGui::handleDeviceSelection(int deviceIndex)
 
 void DeviceSelectionGui::handleConfigureButtonClick()
 {
-    BaseDevice *sensor = getSelectedDevice();
-    if (!sensor) {
+    BaseDevice *device = getSelectedDevice();
+    if (!device) {
         splashMessage("Select a device first.");
         return;
     }
 
-    browserState.setSelectionDevice(sensor);
+    browserState.setSelectionDevice(device);
     router.showConnection();
 }
 
 void DeviceSelectionGui::handleRemoveButtonClick()
 {
-    BaseDevice *sensor = getSelectedDevice();
-    if (!sensor) {
+    BaseDevice *device = getSelectedDevice();
+    if (!device) {
         splashMessage("Select a configured device to remove.");
         return;
     }
 
-    deviceManager.unassignAllPinsForDevice(sensor);
+    deviceManager.unassignAllPinsForDevice(device);
     populateSelectedList();
     updateStartButtonState();
 }

@@ -32,8 +32,8 @@ std::vector<BaseDevice *> DeviceManager::collectAssignedDevicesFromPinMap() cons
             continue;
         }
 
-        if (!std::count(uniqueDevices.begin(), uniqueDevices.end(), virtualPin.assignedSensor)) {
-            uniqueDevices.push_back(virtualPin.assignedSensor);
+        if (!std::count(uniqueDevices.begin(), uniqueDevices.end(), virtualPin.assignedDevice)) {
+            uniqueDevices.push_back(virtualPin.assignedDevice);
         }
     }
 
@@ -55,7 +55,7 @@ void DeviceManager::applyAssignedPinsToDevices() const
 {
     for (const auto &virtualPin : PinMap) {
         if (virtualPin.isAssigned()) {
-            virtualPin.assignedSensor->assignPin(std::to_string(virtualPin.pinNumber));
+            virtualPin.assignedDevice->assignPin(std::to_string(virtualPin.pinNumber));
         }
     }
 }
@@ -106,12 +106,12 @@ bool DeviceManager::detachDeviceFromPin(size_t pinIndex)
         return false;
     }
 
-    BaseDevice *device = pin->assignedSensor;
+    BaseDevice *device = pin->assignedDevice;
     if (device) {
         device->unassignPin(std::to_string(pin->pinNumber));
     }
 
-    pin->unassignSensor();
+    pin->unassignDevice();
     return true;
 }
 
@@ -221,7 +221,7 @@ bool DeviceManager::assignDeviceToPin(BaseDevice* device, int activePin) {
     VirtualPin *pin = getPinState(static_cast<size_t>(activePin));
     if (!pin) return false;
 
-    return pin->assignSensor(device);
+    return pin->assignDevice(device);
 }
 
 bool DeviceManager::unassignDeviceFromPin(int activePin) {
@@ -236,7 +236,7 @@ bool DeviceManager::unassignAllPinsForDevice(BaseDevice *device)
 
     bool changed = false;
     for (size_t i = 0; i < NUM_PINS; ++i) {
-        if (PinMap[i].assignedSensor == device) {
+        if (PinMap[i].assignedDevice == device) {
             unassignDeviceFromPin(static_cast<int>(i));
             changed = true;
         }
@@ -247,7 +247,7 @@ bool DeviceManager::unassignAllPinsForDevice(BaseDevice *device)
 
 BaseDevice* DeviceManager::getAssignedDevice(size_t pinIndex) const {
     const VirtualPin *pin = getPinState(pinIndex);
-    return pin ? pin->assignedSensor : nullptr;
+    return pin ? pin->assignedDevice : nullptr;
 }
 
 int DeviceManager::getPinNumber(size_t pinIndex) const {

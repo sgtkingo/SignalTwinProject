@@ -21,7 +21,7 @@
  */
 enum class PinState {
     AVAILABLE,    ///< Pin is available (green)
-    USED,         ///< Pin has an assigned sensor (red)  
+    USED,         ///< Pin has an assigned device (red)
     LOCKED        ///< Pin is locked and cannot be used (gray)
 };
 
@@ -43,7 +43,7 @@ enum class PinLockReason {
 struct VirtualPin {
     int pinNumber;                    ///< Physical pin number (GPIO)
     PinState state;                   ///< Current pin state
-    BaseDevice* assignedSensor;       ///< Pointer to assigned sensor (nullptr if none)
+    BaseDevice* assignedDevice;       ///< Pointer to assigned device (nullptr if none)
     bool locked;                      ///< Whether pin is locked
     PinLockReason lockReason;         ///< Reason for locking
     std::string customName;           ///< Optional custom name for pin
@@ -54,7 +54,7 @@ struct VirtualPin {
      */
     VirtualPin() : pinNumber(-1)
          , state(PinState::LOCKED)
-         , assignedSensor(nullptr)
+         , assignedDevice(nullptr)
          , locked(true)
          , lockReason(PinLockReason::SYSTEM_RESERVED)
          , customName("")
@@ -71,7 +71,7 @@ struct VirtualPin {
         const std::string& description = "")
         : pinNumber(pin)
         , state(isLocked ? PinState::LOCKED : PinState::AVAILABLE)
-        , assignedSensor(nullptr)
+        , assignedDevice(nullptr)
         , locked(isLocked)
         , lockReason(reason)
         , customName("")
@@ -79,18 +79,18 @@ struct VirtualPin {
     
     /**
      * @brief Check if pin is available for assignment
-     * @return True if pin can be assigned a sensor
+     * @return True if pin can be assigned a device
      */
     bool isAvailable() const {
         return !locked && state == PinState::AVAILABLE;
     }
 
     /**
-     * @brief Check if pin has an assigned sensor
-     * @return True if pin has a sensor assigned
+     * @brief Check if pin has an assigned device
+     * @return True if pin has a device assigned
      */
     bool isAssigned() const {
-        return assignedSensor != nullptr;
+        return assignedDevice != nullptr;
     }
 
     bool isLocked() const {
@@ -98,25 +98,25 @@ struct VirtualPin {
     }
     
     /**
-     * @brief Assign a sensor to this pin
-     * @param sensor Pointer to sensor to assign
+     * @brief Assign a device to this pin
+     * @param device Pointer to device to assign
      * @return True if assignment successful
      */
-    bool assignSensor(BaseDevice* sensor) {
+    bool assignDevice(BaseDevice* device) {
         if (!isAvailable()) return false;
-        if(!sensor) return false;
+        if(!device) return false;
 
-        assignedSensor = sensor;
-        assignedSensor->assignPin(std::to_string(pinNumber));
+        assignedDevice = device;
+        assignedDevice->assignPin(std::to_string(pinNumber));
         state = PinState::USED;
         return true;
     }
     
     /**
-     * @brief Unassign sensor from this pin
+     * @brief Unassign device from this pin
      */
-    void unassignSensor() {
-        assignedSensor = nullptr;
+    void unassignDevice() {
+        assignedDevice = nullptr;
         state = locked ? PinState::LOCKED : PinState::AVAILABLE;
     }
     
@@ -129,8 +129,8 @@ struct VirtualPin {
         locked = true;
         lockReason = reason;
         lockDescription = description;
-        if (assignedSensor) {
-            unassignSensor();
+        if (assignedDevice) {
+            unassignDevice();
         }
         state = PinState::LOCKED;
     }
@@ -142,7 +142,7 @@ struct VirtualPin {
         locked = false;
         lockReason = PinLockReason::NONE;
         lockDescription = "";
-        state = assignedSensor ? PinState::USED : PinState::AVAILABLE;
+        state = assignedDevice ? PinState::USED : PinState::AVAILABLE;
     }
     
     /**
@@ -153,8 +153,8 @@ struct VirtualPin {
         if (!customName.empty()) {
             return customName;
         }
-        if (assignedSensor) {
-            return assignedSensor->getName();
+        if (assignedDevice) {
+            return assignedDevice->getName();
         }
         return "Pin " + std::to_string(pinNumber);
     }

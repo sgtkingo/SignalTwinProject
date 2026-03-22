@@ -9,7 +9,6 @@
 #include <ui.h>
 #include <expt.hpp>
 #include <engine.hpp>  // include engine header
-#include <gui/gui_callbacks.hpp>  // include GUI callback declarations
 
 /*Don't forget to set Sketchbook location in File/Preferences to the path of your UI project (the parent foder of this INO file)*/
 
@@ -159,95 +158,6 @@ GuiManager guiManager(deviceCatalog, deviceBrowserState, deviceManager, deviceVi
 static GuiManager &router()
 {
     return guiManager;
-}
-
-// Compatibility wrappers for legacy code paths outside router-aware GUI classes.
-void switchToConnection() {
-    router().showConnection();
-}
-
-void switchToMenu() {
-    switchToConnection();
-}
-
-void switchToMainMenu() {
-    router().showMainMenu();
-}
-
-void switchToSelection() {
-    router().showSelection();
-}
-
-void switchToWiki() {
-    switchToSelection();
-}
-
-void switchToVisualization() {
-    router().showVisualization();
-}
-
-void switchToDataBundleSelection() {
-    router().openDatabankFromVisualization();
-}
-
-void switchToDatabank() {
-    router().openDatabankFromMainMenu();
-}
-
-void switchToCrashScreen(const std::string &reason) {
-    router().showCrashScreen(reason);
-}
-
-void switchToCreditsScreen() {
-    router().showCreditsScreen();
-}
-
-void switchToAppSelectionScreen() {
-    router().showAppSelectionScreen();
-}
-
-void switchToCommunicationSelectionScreen() {
-    router().showCommunicationSelectionScreen();
-}
-
-void switchToLibrary() {
-    router().showLibrary();
-}
-
-void switchToLibraryEditor() {
-    router().showLibraryEditor();
-}
-
-void prepareNewLibraryEntity() {
-    router().prepareNewLibraryEntity();
-}
-
-void switchToSettings() {
-    router().showSettings();
-}
-
-void navigateBackFromDatabank() {
-    router().navigateBackFromDatabank();
-}
-
-void openVisualizationFlow() {
-    router().openVisualizationFlow();
-}
-
-void completeCommunicationSelection(DefaultCommunicationMode mode) {
-    router().completeCommunicationSelection(mode);
-}
-
-void setDefaultCommunicationMode(DefaultCommunicationMode mode) {
-    router().setDefaultCommunicationMode(mode);
-}
-
-DefaultCommunicationMode getDefaultCommunicationMode() {
-    return router().getDefaultCommunicationMode();
-}
-
-bool shouldSelectionBackGoToMainMenu() {
-    return router().shouldSelectionBackGoToMainMenu();
 }
 
 void setup ()
