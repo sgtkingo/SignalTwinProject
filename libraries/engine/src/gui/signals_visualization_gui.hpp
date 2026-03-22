@@ -19,6 +19,9 @@
 #include <vector>
 
 #include "gui_callbacks.hpp"
+#include "signals_chart_panel.hpp"
+#include "signals_list_panel.hpp"
+#include "signals_toolbar_panel.hpp"
 #include "../managers/device_manager.hpp"
 #include "../managers/device_visualization_session.hpp"
 #include "../managers/data_bundle_manager.hpp"
@@ -37,29 +40,6 @@
 class SignalsVisualizationGui
 {
 private:
-    struct SignalCard
-    {
-        lv_obj_t *container = nullptr;
-        lv_obj_t *accent = nullptr;
-        lv_obj_t *nameLabel = nullptr;
-        lv_obj_t *valueLabel = nullptr;
-        lv_obj_t *unitLabel = nullptr;
-    };
-
-    struct ConfigControl
-    {
-        lv_obj_t *container = nullptr;
-        lv_obj_t *accent = nullptr;
-        lv_obj_t *nameLabel = nullptr;
-        lv_obj_t *valueLabel = nullptr;
-        lv_obj_t *unitLabel = nullptr;
-        lv_obj_t *editor = nullptr;
-        bool usesDropdown = false;
-        bool usesSlider = false;
-        bool isValueControl = false;
-        std::string key;
-    };
-
     DeviceManager &deviceManager;        ///< Reference to the device manager instance
     DeviceManager &sensorManager = deviceManager; ///< Transitional alias while internal implementation is still being renamed
     DeviceVisualizationSession &visualizationSession; ///< Active visualization session of selected devices
@@ -84,43 +64,11 @@ private:
     lv_obj_t *ui_SensorWidget; ///< Widget for device visualisation
     lv_obj_t *ui_SensorLabel;  ///< Label for device name
 
-    lv_obj_t *ui_SignalScrollContainer; ///< Scrollable container for dynamic signal cards
-    lv_obj_t *ui_ChartEmptyLabel;       ///< Label shown when no numeric signal is available
-    std::vector<SignalCard> signalCards;///< Dynamic cards for all device signals
-    std::vector<ConfigControl> configControls; ///< Dynamic controls for actuator configs
-
-    // CHART
-    lv_obj_t *ui_Chart;                    ///< Chart widget for device data
-    lv_chart_series_t *ui_Chart_series_V1; ///< Chart series for value 1
-    lv_chart_series_t *ui_Chart_series_V2; ///< Chart series for value 2
+    SignalsListPanel signalListPanel; ///< Scrollable panel for live values and editable controls
+    SignalsChartPanel chartPanel;     ///< Chart panel for numeric signal history
+    SignalsToolbarPanel toolbarPanel; ///< Bottom navigation and recording toolbar
 
     // --- NAVIGATION AND CONTROL MEMBERS ---
-    lv_obj_t *ui_btnPrev;                                ///< Previous device button
-    lv_obj_t *ui_btnPrevLabel;                           ///< Label for previous button
-    lv_obj_t *ui_btnNext;                                ///< Next device button
-    lv_obj_t *ui_btnNextLabel;                           ///< Label for next button
-    lv_obj_t *ui_btnBackGroup;                           ///< Group container for back button
-    lv_obj_t *ui_btnBack;                                ///< Back to menu button
-    lv_obj_t *ui_btnBackLabel;                           ///< Label for back button
-    lv_obj_t *ui_btnBackCornerBottomLeft;                ///< Decorative corner for back button
-    lv_obj_t *ui_btnBackCornerTopRight;                  ///< Decorative corner for back button
-    lv_obj_t *ui_RecordGroup;                            ///< Group container for record panel
-    lv_obj_t *ui_RecordCornerTopLeft;                    ///< Decorative corner for record panel
-    lv_obj_t *ui_RecordCornerFillTopLeft;                ///< Decorative fill for record panel
-    lv_obj_t *ui_RecordCornerTopRight;                   ///< Decorative corner for record panel
-    lv_obj_t *ui_RecordCornerFillTopRight;               ///< Decorative fill for record panel
-    lv_obj_t *ui_RecordCornerFillTopRight2;              ///< Additional decorative fill for record panel
-    lv_obj_t *ui_RecordOutlay;                           ///< Decorative outlay for record panel
-    lv_obj_t *ui_btnPause;                               ///< Pause recording button
-    lv_obj_t *ui_pauseImage;                             ///< Image for pause button
-    lv_obj_t *ui_btnSync;                                ///< Sync button
-    lv_obj_t *ui_syncImage;                              ///< Image for sync button
-    lv_obj_t *ui_btnRecord;                              ///< Record button
-    lv_obj_t *ui_recordImage;                            ///< Image for record button
-    lv_obj_t *ui_btnClear;                               ///< Clear data button
-    lv_obj_t *ui_clearImage;                             ///< Image for clear button
-    lv_obj_t *ui_btnSettings;                            ///< Settings button
-    lv_obj_t *ui_settingsImage;                          ///< Image for settings button
     lv_obj_t *ui_SettingsOverlay;                        ///< Click blocking overlay
     lv_obj_t *ui_SettingsBridgeGroup;                    ///< Bridge group container that will remain under record and settings button
     lv_obj_t *ui_SettingsBridge;                         ///< Decorative bridge element
@@ -149,22 +97,7 @@ private:
     lv_obj_t *ui_Alert;                                  ///< Alert dialog container
     lv_obj_t *ui_AlertLabel;                             ///< Alert dialog label
 
-    /**
-     * @brief Add navigation buttons to a widget
-     * @param parentWidget The parent widget to add buttons to
-     */
-    void addNavButtonsToWidget(lv_obj_t *parentWidget);
-
-    /**
-     * @brief Add control buttons (sync, back) to a widget
-     * @param parentWidget The parent widget to add the buttons to
-     */
-    void addControlButtonsToWidget(lv_obj_t *parentWidget);
-
-    /**
-     * @brief Add record panel to a widget
-     */
-    void addRecordPanelToWidget(lv_obj_t *parentWidget);
+    void createToolbarPanel();
 
     /**
      * @brief Add logo panel to a widget
@@ -274,8 +207,8 @@ private:
                                 const std::unordered_map<std::string, DeviceParam> &configs,
                                 const std::vector<std::string> &configKeys,
                                 bool useValueControls);
-    void ensureControlEditor(ConfigControl &control, const DeviceParam &param, size_t controlIndex);
-    void syncControlEditorValue(ConfigControl &control, const DeviceParam &param);
+    void ensureControlEditor(size_t controlIndex, const DeviceParam &param);
+    void syncControlEditorValue(size_t controlIndex, const DeviceParam &param);
     bool buildNumericHistoryForKey(const std::string &key, lv_coord_t *history);
     std::vector<std::string> getChartableValueKeys() const;
     void showEmptyChartState(const char *message);

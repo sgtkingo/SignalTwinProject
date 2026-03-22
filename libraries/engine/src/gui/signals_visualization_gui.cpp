@@ -44,37 +44,6 @@ SignalsVisualizationGui::SignalsVisualizationGui(DeviceManager &deviceManager, D
     // Initialize all GUI pointers to nullptr
     ui_SensorWidget = nullptr;
     ui_SensorLabel = nullptr;
-    ui_SignalScrollContainer = nullptr;
-    ui_ChartEmptyLabel = nullptr;
-    ui_Chart = nullptr;
-    ui_Chart_series_V1 = nullptr;
-    ui_Chart_series_V2 = nullptr;
-    ui_btnPrev = nullptr;
-    ui_btnPrevLabel = nullptr;
-    ui_btnNext = nullptr;
-    ui_btnNextLabel = nullptr;
-    ui_btnBackGroup = nullptr;
-    ui_btnBack = nullptr;
-    ui_btnBackLabel = nullptr;
-    ui_btnBackCornerBottomLeft = nullptr;
-    ui_btnBackCornerTopRight = nullptr;
-    ui_RecordGroup = nullptr;
-    ui_RecordCornerTopLeft = nullptr;
-    ui_RecordCornerFillTopLeft = nullptr;
-    ui_RecordCornerTopRight = nullptr;
-    ui_RecordCornerFillTopRight = nullptr;
-    ui_RecordCornerFillTopRight2 = nullptr;
-    ui_RecordOutlay = nullptr;
-    ui_btnPause = nullptr;
-    ui_pauseImage = nullptr;
-    ui_btnSync = nullptr;
-    ui_syncImage = nullptr;
-    ui_btnRecord = nullptr;
-    ui_recordImage = nullptr;
-    ui_btnClear = nullptr;
-    ui_clearImage = nullptr;
-    ui_btnSettings = nullptr;
-    ui_settingsImage = nullptr;
     ui_SettingsOverlay = nullptr;
     ui_SettingsBridgeGroup = nullptr;
     ui_SettingsBridge = nullptr;
@@ -160,57 +129,41 @@ void SignalsVisualizationGui::createTitleLabel()
 
 void SignalsVisualizationGui::createSignalScrollPanel()
 {
-    ui_SignalScrollContainer = lv_obj_create(ui_SensorWidget);
-    lv_obj_set_size(ui_SignalScrollContainer, 230, 260);
-    lv_obj_set_x(ui_SignalScrollContainer, -230);
-    lv_obj_set_y(ui_SignalScrollContainer, -15);
-    lv_obj_set_align(ui_SignalScrollContainer, LV_ALIGN_CENTER);
-    lv_obj_set_scroll_dir(ui_SignalScrollContainer, LV_DIR_VER);
-    lv_obj_set_scrollbar_mode(ui_SignalScrollContainer, LV_SCROLLBAR_MODE_AUTO);
-    lv_obj_set_style_pad_all(ui_SignalScrollContainer, 8, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_gap(ui_SignalScrollContainer, 8, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_SignalScrollContainer, lv_color_hex(0xF8FAFC), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_SignalScrollContainer, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_color(ui_SignalScrollContainer, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_width(ui_SignalScrollContainer, 2, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_radius(ui_SignalScrollContainer, 15, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_flex_flow(ui_SignalScrollContainer, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_flex_align(ui_SignalScrollContainer, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+    signalListPanel.create(
+        ui_SensorWidget,
+        this,
+        [](lv_event_t *e) {
+            if (lv_event_get_code(e) != LV_EVENT_VALUE_CHANGED) {
+                return;
+            }
+
+            auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
+            const int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_target(e))));
+            self->handleDropdownConfigChanged(static_cast<size_t>(index));
+        },
+        [](lv_event_t *e) {
+            if (lv_event_get_code(e) != LV_EVENT_VALUE_CHANGED) {
+                return;
+            }
+
+            auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
+            const int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_target(e))));
+            self->handleSliderConfigChanged(static_cast<size_t>(index));
+        },
+        [](lv_event_t *e) {
+            if (lv_event_get_code(e) != LV_EVENT_READY && lv_event_get_code(e) != LV_EVENT_DEFOCUSED) {
+                return;
+            }
+
+            auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
+            const int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_target(e))));
+            self->handleTextConfigSubmitted(static_cast<size_t>(index));
+        });
 }
 
 void SignalsVisualizationGui::createChartPanel()
 {
-    ui_Chart = lv_chart_create(ui_SensorWidget);
-    lv_obj_set_width(ui_Chart, 410);
-    lv_obj_set_height(ui_Chart, 280);
-    lv_obj_set_x(ui_Chart, 150);
-    lv_obj_set_y(ui_Chart, 20);
-    lv_obj_set_align(ui_Chart, LV_ALIGN_CENTER);
-    lv_obj_clear_flag(ui_Chart, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE |
-                                    LV_OBJ_FLAG_GESTURE_BUBBLE | LV_OBJ_FLAG_SNAPPABLE);
-    lv_chart_set_type(ui_Chart, LV_CHART_TYPE_LINE);
-    lv_chart_set_div_line_count(ui_Chart, HISTORY_CAP - 1, HISTORY_CAP);
-    lv_chart_set_axis_tick(ui_Chart, LV_CHART_AXIS_PRIMARY_X, HISTORY_CAP / 2, 0, HISTORY_CAP, 1, true, 50);
-    lv_chart_set_axis_tick(ui_Chart, LV_CHART_AXIS_PRIMARY_Y, HISTORY_CAP, 5, 5, 2, true, 50);
-
-    ui_Chart_series_V1 = lv_chart_add_series(ui_Chart, lv_color_hex(0x009BFF), LV_CHART_AXIS_PRIMARY_Y);
-    ui_Chart_series_V2 = lv_chart_add_series(ui_Chart, lv_color_hex(0xFF6B35), LV_CHART_AXIS_PRIMARY_Y);
-
-    lv_obj_set_style_bg_color(ui_Chart, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_Chart, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_color(ui_Chart, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_opa(ui_Chart, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_width(ui_Chart, 2, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_line_color(ui_Chart, lv_color_hex(0x000000), LV_PART_TICKS | LV_STATE_DEFAULT);
-    lv_obj_set_style_line_opa(ui_Chart, 255, LV_PART_TICKS | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_color(ui_Chart, lv_color_hex(0x000000), LV_PART_TICKS | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_opa(ui_Chart, 255, LV_PART_TICKS | LV_STATE_DEFAULT);
-
-    ui_ChartEmptyLabel = lv_label_create(ui_Chart);
-    lv_label_set_text(ui_ChartEmptyLabel, "No numeric signal available");
-    lv_obj_center(ui_ChartEmptyLabel);
-    lv_obj_set_style_text_color(ui_ChartEmptyLabel, lv_color_hex(0x5F6B7A), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_add_flag(ui_ChartEmptyLabel, LV_OBJ_FLAG_HIDDEN);
+    chartPanel.create(ui_SensorWidget);
 }
 
 void SignalsVisualizationGui::constructVisualization()
@@ -221,326 +174,49 @@ void SignalsVisualizationGui::constructVisualization()
     createTitleLabel();
     createSignalScrollPanel();
     createChartPanel();
-
-    addNavButtonsToWidget(ui_SensorWidget);
-    addControlButtonsToWidget(ui_SensorWidget);
-    addRecordPanelToWidget(ui_SensorWidget);
+    createToolbarPanel();
     addLogoPanelToWidget(ui_SensorWidget);
 
     // // logMessage("\t>sensor visualization constructed!\n");
 }
 
-void SignalsVisualizationGui::addNavButtonsToWidget(lv_obj_t *parentWidget)
+void SignalsVisualizationGui::createToolbarPanel()
 {
-    if (!parentWidget)
-        return;
-
-    // Previous button
-    ui_btnPrev = lv_btn_create(parentWidget);
-    lv_obj_set_width(ui_btnPrev, 80);
-    lv_obj_set_height(ui_btnPrev, 40);
-    lv_obj_set_x(ui_btnPrev, 35);
-    lv_obj_set_y(ui_btnPrev, -40);
-    lv_obj_set_align(ui_btnPrev, LV_ALIGN_BOTTOM_LEFT);
-    lv_obj_add_event_cb(ui_btnPrev, [](lv_event_t *e)
-                        {
-        auto self = static_cast<SignalsVisualizationGui*>(lv_event_get_user_data(e));
-        self->goToPreviousDevice(); }, LV_EVENT_CLICKED, this);
-
-    ui_btnPrevLabel = lv_label_create(ui_btnPrev);
-    lv_label_set_text(ui_btnPrevLabel, "Prev");
-    lv_obj_center(ui_btnPrevLabel);
-    lv_obj_set_style_text_font(ui_btnPrevLabel, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    // Next button
-    ui_btnNext = lv_btn_create(parentWidget);
-    lv_obj_set_width(ui_btnNext, 80);
-    lv_obj_set_height(ui_btnNext, 40);
-    lv_obj_set_x(ui_btnNext, 183);
-    lv_obj_set_y(ui_btnNext, -40);
-    lv_obj_set_align(ui_btnNext, LV_ALIGN_BOTTOM_LEFT);
-    lv_obj_add_event_cb(ui_btnNext, [](lv_event_t *e)
-                        {
-        auto self = static_cast<SignalsVisualizationGui*>(lv_event_get_user_data(e));
-        self->goToNextDevice(); }, LV_EVENT_CLICKED, this);
-
-    ui_btnNextLabel = lv_label_create(ui_btnNext);
-    lv_label_set_text(ui_btnNextLabel, "Next");
-    lv_obj_center(ui_btnNextLabel);
-    lv_obj_set_style_text_font(ui_btnNextLabel, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    // // logMessage("Navigation buttons added to widget\n");
-}
-
-void SignalsVisualizationGui::addControlButtonsToWidget(lv_obj_t *parentWidget)
-{
-    if (!parentWidget)
-        return;
-
-    ui_btnBackGroup = lv_obj_create(parentWidget);
-    lv_obj_remove_style_all(ui_btnBackGroup);
-    lv_obj_set_width(ui_btnBackGroup, 100);
-    lv_obj_set_height(ui_btnBackGroup, 40);
-    lv_obj_clear_flag(ui_btnBackGroup, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE); /// Flags
-
-    ui_btnBackCornerBottomLeft = lv_obj_create(ui_btnBackGroup);
-    lv_obj_remove_style_all(ui_btnBackCornerBottomLeft);
-    lv_obj_set_width(ui_btnBackCornerBottomLeft, 20);
-    lv_obj_set_height(ui_btnBackCornerBottomLeft, 20);
-    lv_obj_set_align(ui_btnBackCornerBottomLeft, LV_ALIGN_BOTTOM_LEFT);
-    lv_obj_clear_flag(ui_btnBackCornerBottomLeft, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_obj_set_style_bg_color(ui_btnBackCornerBottomLeft, lv_color_hex(0x009BFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_btnBackCornerBottomLeft, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_clip_corner(ui_btnBackCornerBottomLeft, false, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_btnBackCornerTopRight = lv_obj_create(ui_btnBackGroup);
-    lv_obj_remove_style_all(ui_btnBackCornerTopRight);
-    lv_obj_set_width(ui_btnBackCornerTopRight, 20);
-    lv_obj_set_height(ui_btnBackCornerTopRight, 20);
-    lv_obj_set_align(ui_btnBackCornerTopRight, LV_ALIGN_TOP_RIGHT);
-    lv_obj_clear_flag(ui_btnBackCornerTopRight, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_obj_set_style_bg_color(ui_btnBackCornerTopRight, lv_color_hex(0x009BFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_btnBackCornerTopRight, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_clip_corner(ui_btnBackCornerTopRight, false, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    // Back button for returning to menu
-    ui_btnBack = lv_btn_create(ui_btnBackGroup);
-    lv_obj_set_width(ui_btnBack, 100);
-    lv_obj_set_height(ui_btnBack, 40);
-    lv_obj_set_align(ui_btnBack, LV_ALIGN_CENTER);
-    lv_obj_add_event_cb(ui_btnBack, [](lv_event_t *e)
-                        {
-        auto self = static_cast<SignalsVisualizationGui*>(lv_event_get_user_data(e));
-        // // logMessage("Back button pressed - returning to menu\n");
-        self->handleBackButtonClick(); }, LV_EVENT_CLICKED, this);
-
-    ui_btnBackLabel = lv_label_create(ui_btnBack);
-    lv_label_set_text(ui_btnBackLabel, "Back");
-    lv_obj_center(ui_btnBackLabel);
-    lv_obj_set_style_text_font(ui_btnBackLabel, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    // // logMessage("Control buttons added to widget\n");
-}
-
-void SignalsVisualizationGui::addRecordPanelToWidget(lv_obj_t *parentWidget)
-{
-    if (!parentWidget)
-        return;
-
-    ui_RecordGroup = lv_obj_create(parentWidget);
-    lv_obj_remove_style_all(ui_RecordGroup);
-    lv_obj_set_width(ui_RecordGroup, 195);
-    lv_obj_set_height(ui_RecordGroup, 45);
-    lv_obj_set_x(ui_RecordGroup, -40);
-    lv_obj_set_y(ui_RecordGroup, 0);
-    lv_obj_set_align(ui_RecordGroup, LV_ALIGN_TOP_RIGHT);
-    lv_obj_clear_flag(ui_RecordGroup, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE); /// Flags
-
-    ui_RecordCornerTopLeft = lv_obj_create(ui_RecordGroup);
-    lv_obj_remove_style_all(ui_RecordCornerTopLeft);
-    lv_obj_set_width(ui_RecordCornerTopLeft, 40);
-    lv_obj_set_height(ui_RecordCornerTopLeft, 20);
-    lv_obj_clear_flag(ui_RecordCornerTopLeft, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_obj_set_style_bg_color(ui_RecordCornerTopLeft, lv_color_hex(0x055DA9), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_RecordCornerTopLeft, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_clip_corner(ui_RecordCornerTopLeft, false, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_RecordCornerFillTopLeft = lv_obj_create(ui_RecordGroup);
-    lv_obj_remove_style_all(ui_RecordCornerFillTopLeft);
-    lv_obj_set_width(ui_RecordCornerFillTopLeft, 30);
-    lv_obj_set_height(ui_RecordCornerFillTopLeft, 40);
-    lv_obj_set_x(ui_RecordCornerFillTopLeft, -20);
-    lv_obj_set_y(ui_RecordCornerFillTopLeft, 0);
-    lv_obj_clear_flag(ui_RecordCornerFillTopLeft, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_obj_set_style_radius(ui_RecordCornerFillTopLeft, 1000, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_RecordCornerFillTopLeft, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_RecordCornerFillTopLeft, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_clip_corner(ui_RecordCornerFillTopLeft, false, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_RecordCornerTopRight = lv_obj_create(ui_RecordGroup);
-    lv_obj_remove_style_all(ui_RecordCornerTopRight);
-    lv_obj_set_width(ui_RecordCornerTopRight, 40);
-    lv_obj_set_height(ui_RecordCornerTopRight, 20);
-    lv_obj_set_align(ui_RecordCornerTopRight, LV_ALIGN_TOP_RIGHT);
-    lv_obj_clear_flag(ui_RecordCornerTopRight, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_obj_set_style_bg_color(ui_RecordCornerTopRight, lv_color_hex(0x055DA9), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_RecordCornerTopRight, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_clip_corner(ui_RecordCornerTopRight, false, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_RecordCornerFillTopRight = lv_obj_create(ui_RecordGroup);
-    lv_obj_remove_style_all(ui_RecordCornerFillTopRight);
-    lv_obj_set_width(ui_RecordCornerFillTopRight, 26);
-    lv_obj_set_height(ui_RecordCornerFillTopRight, 26);
-    lv_obj_set_x(ui_RecordCornerFillTopRight, 16);
-    lv_obj_set_y(ui_RecordCornerFillTopRight, 0);
-    lv_obj_set_align(ui_RecordCornerFillTopRight, LV_ALIGN_TOP_RIGHT);
-    lv_obj_clear_flag(ui_RecordCornerFillTopRight, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_radius(ui_RecordCornerFillTopRight, 1000, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_RecordCornerFillTopRight, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_RecordCornerFillTopRight, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_clip_corner(ui_RecordCornerFillTopRight, false, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_RecordCornerFillTopRight2 = lv_obj_create(ui_RecordGroup);
-    lv_obj_remove_style_all(ui_RecordCornerFillTopRight2);
-    lv_obj_set_width(ui_RecordCornerFillTopRight2, 10);
-    lv_obj_set_height(ui_RecordCornerFillTopRight2, 10);
-    lv_obj_set_x(ui_RecordCornerFillTopRight2, 0);
-    lv_obj_set_y(ui_RecordCornerFillTopRight2, 13);
-    lv_obj_set_align(ui_RecordCornerFillTopRight2, LV_ALIGN_TOP_RIGHT);
-    lv_obj_clear_flag(ui_RecordCornerFillTopRight2, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_radius(ui_RecordCornerFillTopRight2, 2, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_RecordCornerFillTopRight2, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_RecordCornerFillTopRight2, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_clip_corner(ui_RecordCornerFillTopRight2, false, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_RecordOutlay = lv_obj_create(ui_RecordGroup);
-    lv_obj_remove_style_all(ui_RecordOutlay);
-    lv_obj_set_width(ui_RecordOutlay, 175);
-    lv_obj_set_height(ui_RecordOutlay, 45);
-    lv_obj_set_align(ui_RecordOutlay, LV_ALIGN_CENTER);
-    lv_obj_clear_flag(ui_RecordOutlay, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_obj_set_style_radius(ui_RecordOutlay, 10, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_RecordOutlay, lv_color_hex(0x055DA9), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_RecordOutlay, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_clip_corner(ui_RecordOutlay, false, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_btnPause = lv_btn_create(ui_RecordGroup);
-    lv_obj_set_width(ui_btnPause, 37);
-    lv_obj_set_height(ui_btnPause, 35);
-    lv_obj_set_x(ui_btnPause, 15);
-    lv_obj_set_y(ui_btnPause, -1);
-    lv_obj_set_align(ui_btnPause, LV_ALIGN_LEFT_MID);
-    lv_obj_add_flag(ui_btnPause, LV_OBJ_FLAG_EVENT_BUBBLE); /// Flags
-    lv_obj_clear_flag(ui_btnPause, LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_GESTURE_BUBBLE |
-                                       LV_OBJ_FLAG_SNAPPABLE | LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM |
-                                       LV_OBJ_FLAG_SCROLL_CHAIN); /// Flags
-    lv_obj_set_style_radius(ui_btnPause, 7, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_add_event_cb(ui_btnPause, [](lv_event_t *e)
-                        {
-        auto self = static_cast<SignalsVisualizationGui*>(lv_event_get_user_data(e));
-        self->handlePauseButtonClick(); }, LV_EVENT_CLICKED, this);
-
-    ui_pauseImage = lv_img_create(ui_btnPause);
-    lv_img_set_src(ui_pauseImage, &ui_img_playpauseicon_png);
-    lv_obj_set_width(ui_pauseImage, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_pauseImage, LV_SIZE_CONTENT); /// 1
-    lv_obj_set_x(ui_pauseImage, -1);
-    lv_obj_set_y(ui_pauseImage, 0);
-    lv_obj_set_align(ui_pauseImage, LV_ALIGN_CENTER);
-    lv_obj_clear_flag(ui_pauseImage, LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_GESTURE_BUBBLE |
-                                         LV_OBJ_FLAG_SNAPPABLE | LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_img_set_zoom(ui_pauseImage, 119);
-
-    ui_btnSync = lv_btn_create(ui_RecordGroup);
-    lv_obj_set_width(ui_btnSync, 37);
-    lv_obj_set_height(ui_btnSync, 35);
-    lv_obj_set_x(ui_btnSync, 57);
-    lv_obj_set_y(ui_btnSync, -1);
-    lv_obj_set_align(ui_btnSync, LV_ALIGN_LEFT_MID);
-    lv_obj_add_flag(ui_btnSync, LV_OBJ_FLAG_EVENT_BUBBLE); /// Flags
-    lv_obj_clear_flag(ui_btnSync, LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_GESTURE_BUBBLE |
-                                      LV_OBJ_FLAG_SNAPPABLE | LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM |
-                                      LV_OBJ_FLAG_SCROLL_CHAIN); /// Flags
-    lv_obj_set_style_radius(ui_btnSync, 7, LV_PART_MAIN | LV_STATE_DEFAULT);
-    // Sync is disabled on start
-    lv_obj_set_style_bg_color(ui_btnSync, lv_color_hex(0x949494), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_clear_flag(ui_btnSync, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_add_event_cb(ui_btnSync, [](lv_event_t *e)
-                        {
-        auto self = static_cast<SignalsVisualizationGui*>(lv_event_get_user_data(e));
-        self->handleSyncButtonClick(); }, LV_EVENT_CLICKED, this);
-
-    ui_syncImage = lv_img_create(ui_btnSync);
-    lv_img_set_src(ui_syncImage, &ui_img_clockicon_png);
-    lv_obj_set_width(ui_syncImage, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_syncImage, LV_SIZE_CONTENT); /// 1
-    lv_obj_set_x(ui_syncImage, -1);
-    lv_obj_set_y(ui_syncImage, 0);
-    lv_obj_set_align(ui_syncImage, LV_ALIGN_CENTER);
-    lv_obj_clear_flag(ui_syncImage, LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_GESTURE_BUBBLE |
-                                        LV_OBJ_FLAG_SNAPPABLE | LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_img_set_zoom(ui_syncImage, 119);
-
-    ui_btnRecord = lv_btn_create(ui_RecordGroup);
-    lv_obj_set_width(ui_btnRecord, 37);
-    lv_obj_set_height(ui_btnRecord, 35);
-    lv_obj_set_x(ui_btnRecord, 99);
-    lv_obj_set_y(ui_btnRecord, -1);
-    lv_obj_set_align(ui_btnRecord, LV_ALIGN_LEFT_MID);
-    lv_obj_add_flag(ui_btnRecord, LV_OBJ_FLAG_EVENT_BUBBLE); /// Flags
-    lv_obj_clear_flag(ui_btnRecord, LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_GESTURE_BUBBLE |
-                                        LV_OBJ_FLAG_SNAPPABLE | LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM |
-                                        LV_OBJ_FLAG_SCROLL_CHAIN); /// Flags
-    lv_obj_set_style_radius(ui_btnRecord, 7, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_add_event_cb(ui_btnRecord, [](lv_event_t *e)
-                        {
-        auto self = static_cast<SignalsVisualizationGui*>(lv_event_get_user_data(e));
-        self->handleRecordButtonClick(nullptr); }, LV_EVENT_CLICKED, this);
-
-    ui_recordImage = lv_img_create(ui_btnRecord);
-    lv_img_set_src(ui_recordImage, &ui_img_recordicon_png);
-    lv_obj_set_width(ui_recordImage, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_recordImage, LV_SIZE_CONTENT); /// 1
-    lv_obj_set_x(ui_recordImage, -1);
-    lv_obj_set_y(ui_recordImage, 0);
-    lv_obj_set_align(ui_recordImage, LV_ALIGN_CENTER);
-    lv_obj_clear_flag(ui_recordImage, LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_GESTURE_BUBBLE |
-                                          LV_OBJ_FLAG_SNAPPABLE | LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_img_set_zoom(ui_recordImage, 119);
-
-    ui_btnClear = lv_btn_create(ui_RecordGroup);
-    lv_obj_set_width(ui_btnClear, 37);
-    lv_obj_set_height(ui_btnClear, 35);
-    lv_obj_set_x(ui_btnClear, 141);
-    lv_obj_set_y(ui_btnClear, -1);
-    lv_obj_set_align(ui_btnClear, LV_ALIGN_LEFT_MID);
-    lv_obj_add_flag(ui_btnClear, LV_OBJ_FLAG_EVENT_BUBBLE); /// Flags
-    lv_obj_clear_flag(ui_btnClear, LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_GESTURE_BUBBLE |
-                                       LV_OBJ_FLAG_SNAPPABLE | LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM |
-                                       LV_OBJ_FLAG_SCROLL_CHAIN); /// Flags
-    lv_obj_set_style_radius(ui_btnClear, 7, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_add_event_cb(ui_btnClear, [](lv_event_t *e)
-                        {
-        auto self = static_cast<SignalsVisualizationGui*>(lv_event_get_user_data(e));
-        self->handleClearButtonClick(); }, LV_EVENT_CLICKED, this);
-
-    ui_clearImage = lv_img_create(ui_btnClear);
-    lv_img_set_src(ui_clearImage, &ui_img_trashicon_png);
-    lv_obj_set_width(ui_clearImage, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_clearImage, LV_SIZE_CONTENT); /// 1
-    lv_obj_set_x(ui_clearImage, -1);
-    lv_obj_set_y(ui_clearImage, 0);
-    lv_obj_set_align(ui_clearImage, LV_ALIGN_CENTER);
-    lv_obj_clear_flag(ui_clearImage, LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_GESTURE_BUBBLE |
-                                         LV_OBJ_FLAG_SNAPPABLE | LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_img_set_zoom(ui_clearImage, 119);
-
-    ui_btnSettings = lv_btn_create(parentWidget);
-    lv_obj_set_width(ui_btnSettings, 37);
-    lv_obj_set_height(ui_btnSettings, 36);
-    lv_obj_set_x(ui_btnSettings, -7);
-    lv_obj_set_y(ui_btnSettings, 4);
-    lv_obj_set_align(ui_btnSettings, LV_ALIGN_TOP_RIGHT);
-    lv_obj_add_flag(ui_btnSettings, LV_OBJ_FLAG_EVENT_BUBBLE); /// Flags
-    lv_obj_clear_flag(ui_btnSettings, LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_GESTURE_BUBBLE |
-                                          LV_OBJ_FLAG_SNAPPABLE | LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM |
-                                          LV_OBJ_FLAG_SCROLL_CHAIN); /// Flags
-    lv_obj_set_style_radius(ui_btnSettings, 20, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_add_event_cb(ui_btnSettings, [](lv_event_t *e)
-                        {
-        auto self = static_cast<SignalsVisualizationGui*>(lv_event_get_user_data(e));
-        self->handleSettingsButtonClick(self->ui_RecordGroup,self->ui_btnSettings,self->getParentWidget()); }, LV_EVENT_CLICKED, this);
-
-    ui_settingsImage = lv_img_create(ui_btnSettings);
-    lv_img_set_src(ui_settingsImage, &ui_img_settings_png);
-    lv_obj_set_width(ui_settingsImage, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_settingsImage, LV_SIZE_CONTENT); /// 1
-    lv_obj_set_x(ui_settingsImage, -1);
-    lv_obj_set_y(ui_settingsImage, 0);
-    lv_obj_set_align(ui_settingsImage, LV_ALIGN_CENTER);
-    lv_obj_clear_flag(ui_settingsImage, LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_GESTURE_BUBBLE |
-                                            LV_OBJ_FLAG_SNAPPABLE | LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_img_set_zoom(ui_settingsImage, 119);
+    toolbarPanel.create(
+        ui_SensorWidget,
+        this,
+        [](lv_event_t *e) {
+            auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
+            self->goToPreviousDevice();
+        },
+        [](lv_event_t *e) {
+            auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
+            self->goToNextDevice();
+        },
+        [](lv_event_t *e) {
+            auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
+            self->handleBackButtonClick();
+        },
+        [](lv_event_t *e) {
+            auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
+            self->handlePauseButtonClick();
+        },
+        [](lv_event_t *e) {
+            auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
+            self->handleSyncButtonClick();
+        },
+        [](lv_event_t *e) {
+            auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
+            self->handleRecordButtonClick(nullptr);
+        },
+        [](lv_event_t *e) {
+            auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
+            self->handleClearButtonClick();
+        },
+        [](lv_event_t *e) {
+            auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
+            self->handleSettingsButtonClick(self->toolbarPanel.getRecordGroup(), self->toolbarPanel.getSettingsButton(), self->getParentWidget());
+        });
 }
 
 void SignalsVisualizationGui::showShadowOverlay()
@@ -691,149 +367,22 @@ bool SignalsVisualizationGui::currentDeviceSupportsRecording() const
 
 void SignalsVisualizationGui::ensureSignalCards(size_t count)
 {
-    if (!ui_SignalScrollContainer) {
-        return;
-    }
-
-    while (signalCards.size() < count) {
-        SignalCard card;
-        card.container = lv_obj_create(ui_SignalScrollContainer);
-        lv_obj_set_width(card.container, lv_pct(100));
-        lv_obj_set_height(card.container, 74);
-        lv_obj_clear_flag(card.container, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_set_style_pad_left(card.container, 16, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_pad_right(card.container, 10, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_pad_top(card.container, 8, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_pad_bottom(card.container, 8, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_radius(card.container, 12, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_bg_color(card.container, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_border_color(card.container, lv_color_hex(0xD0D7DE), LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_border_width(card.container, 1, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-        card.accent = lv_obj_create(card.container);
-        lv_obj_remove_style_all(card.accent);
-        lv_obj_set_size(card.accent, 6, 54);
-        lv_obj_align(card.accent, LV_ALIGN_LEFT_MID, -8, 0);
-        lv_obj_set_style_radius(card.accent, 6, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_bg_opa(card.accent, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-        card.nameLabel = lv_label_create(card.container);
-        lv_obj_align(card.nameLabel, LV_ALIGN_TOP_LEFT, 6, 0);
-        lv_obj_set_style_text_font(card.nameLabel, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_text_color(card.nameLabel, lv_color_hex(0x3B4252), LV_PART_MAIN | LV_STATE_DEFAULT);
-
-        card.valueLabel = lv_label_create(card.container);
-        lv_obj_align(card.valueLabel, LV_ALIGN_CENTER, 0, 6);
-        lv_obj_set_style_text_font(card.valueLabel, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_text_color(card.valueLabel, lv_color_hex(0x111111), LV_PART_MAIN | LV_STATE_DEFAULT);
-
-        card.unitLabel = lv_label_create(card.container);
-        lv_obj_align(card.unitLabel, LV_ALIGN_BOTTOM_LEFT, 6, 0);
-        lv_obj_set_width(card.unitLabel, 190);
-        lv_obj_set_style_text_font(card.unitLabel, &lv_font_montserrat_12, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_text_color(card.unitLabel, lv_color_hex(0x5F6B7A), LV_PART_MAIN | LV_STATE_DEFAULT);
-
-        signalCards.push_back(card);
-    }
+    signalListPanel.ensureSignalCards(count);
 }
 
 void SignalsVisualizationGui::clearUnusedSignalCards(size_t usedCount)
 {
-    for (size_t i = 0; i < signalCards.size(); ++i) {
-        if (!signalCards[i].container) {
-            continue;
-        }
-
-        if (i < usedCount) {
-            lv_obj_clear_flag(signalCards[i].container, LV_OBJ_FLAG_HIDDEN);
-        } else {
-            lv_obj_add_flag(signalCards[i].container, LV_OBJ_FLAG_HIDDEN);
-        }
-    }
+    signalListPanel.clearUnusedSignalCards(usedCount);
 }
 
 void SignalsVisualizationGui::ensureConfigControls(size_t count)
 {
-    if (!ui_SignalScrollContainer) {
-        return;
-    }
-
-    while (configControls.size() < count) {
-        const size_t nextIndex = configControls.size();
-
-        ConfigControl control;
-        control.container = lv_obj_create(ui_SignalScrollContainer);
-        lv_obj_set_width(control.container, lv_pct(100));
-        lv_obj_set_height(control.container, 108);
-        lv_obj_clear_flag(control.container, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_set_style_pad_left(control.container, 16, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_pad_right(control.container, 10, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_pad_top(control.container, 8, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_pad_bottom(control.container, 8, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_radius(control.container, 12, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_bg_color(control.container, lv_color_hex(0xF3F9FF), LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_border_color(control.container, lv_color_hex(0x8FBDE8), LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_border_width(control.container, 1, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-        control.accent = lv_obj_create(control.container);
-        lv_obj_remove_style_all(control.accent);
-        lv_obj_set_size(control.accent, 6, 88);
-        lv_obj_align(control.accent, LV_ALIGN_LEFT_MID, -8, 0);
-        lv_obj_set_style_radius(control.accent, 6, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_bg_opa(control.accent, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-        control.nameLabel = lv_label_create(control.container);
-        lv_obj_align(control.nameLabel, LV_ALIGN_TOP_LEFT, 6, 0);
-        lv_obj_set_width(control.nameLabel, 150);
-        lv_obj_set_style_text_font(control.nameLabel, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_text_color(control.nameLabel, lv_color_hex(0x24415E), LV_PART_MAIN | LV_STATE_DEFAULT);
-
-        control.valueLabel = lv_label_create(control.container);
-        lv_obj_align(control.valueLabel, LV_ALIGN_TOP_RIGHT, -4, 0);
-        lv_obj_set_width(control.valueLabel, 70);
-        lv_obj_set_style_text_align(control.valueLabel, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_text_font(control.valueLabel, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_text_color(control.valueLabel, lv_color_hex(0x0B7285), LV_PART_MAIN | LV_STATE_DEFAULT);
-
-        control.unitLabel = lv_label_create(control.container);
-        lv_obj_align(control.unitLabel, LV_ALIGN_BOTTOM_LEFT, 6, 0);
-        lv_obj_set_width(control.unitLabel, 190);
-        lv_obj_set_style_text_font(control.unitLabel, &lv_font_montserrat_12, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_text_color(control.unitLabel, lv_color_hex(0x5F6B7A), LV_PART_MAIN | LV_STATE_DEFAULT);
-
-        control.editor = lv_textarea_create(control.container);
-        lv_obj_set_size(control.editor, 180, 34);
-        lv_obj_align(control.editor, LV_ALIGN_BOTTOM_RIGHT, -4, -2);
-        lv_textarea_set_one_line(control.editor, true);
-        lv_textarea_set_max_length(control.editor, 24);
-        lv_obj_set_user_data(control.editor, reinterpret_cast<void *>(static_cast<intptr_t>(nextIndex)));
-        lv_obj_add_event_cb(control.editor, [](lv_event_t *e) {
-            if (lv_event_get_code(e) != LV_EVENT_READY && lv_event_get_code(e) != LV_EVENT_DEFOCUSED) {
-                return;
-            }
-
-            auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
-            const int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_target(e))));
-            self->handleTextConfigSubmitted(static_cast<size_t>(index));
-        }, LV_EVENT_ALL, this);
-
-        configControls.push_back(control);
-    }
+    signalListPanel.ensureConfigControls(count);
 }
 
 void SignalsVisualizationGui::clearUnusedConfigControls(size_t usedCount)
 {
-    for (size_t i = 0; i < configControls.size(); ++i) {
-        if (!configControls[i].container) {
-            continue;
-        }
-
-        if (i < usedCount) {
-            lv_obj_clear_flag(configControls[i].container, LV_OBJ_FLAG_HIDDEN);
-        } else {
-            lv_obj_add_flag(configControls[i].container, LV_OBJ_FLAG_HIDDEN);
-        }
-    }
+    signalListPanel.clearUnusedConfigControls(usedCount);
 }
 
 void SignalsVisualizationGui::updateDeviceTitle()
@@ -860,87 +409,25 @@ void SignalsVisualizationGui::updateSignalCards(const std::unordered_map<std::st
     for (size_t i = 0; i < valueKeys.size(); ++i) {
         const auto &key = valueKeys[i];
         auto it = values.find(key);
-        if (it == values.end() || i >= signalCards.size()) {
+        if (it == values.end()) {
             continue;
         }
 
-        const uint32_t accentColor = getSignalAccentColor(i);
-        lv_obj_set_style_bg_color(signalCards[i].accent, lv_color_hex(accentColor), LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_label_set_text(signalCards[i].nameLabel, key.c_str());
-        lv_label_set_text(signalCards[i].valueLabel, it->second.Value.c_str());
         const std::string units = buildUnitText(currentSensor->getValueUnits(key), "Live value");
-        lv_label_set_text(signalCards[i].unitLabel, units.c_str());
+        signalListPanel.setSignalCard(i, getSignalAccentColor(i), key, it->second.Value, units);
     }
 
     clearUnusedSignalCards(valueKeys.size());
 }
 
-void SignalsVisualizationGui::ensureControlEditor(ConfigControl &control, const DeviceParam &param, size_t controlIndex)
+void SignalsVisualizationGui::ensureControlEditor(size_t controlIndex, const DeviceParam &param)
 {
-    if (hasSelectableOptions(param)) {
-        if (control.editor) {
-            lv_obj_del(control.editor);
-        }
-
-        control.editor = lv_dropdown_create(control.container);
-        control.usesDropdown = true;
-        lv_obj_set_size(control.editor, 180, 34);
-        lv_obj_align(control.editor, LV_ALIGN_BOTTOM_RIGHT, -4, -2);
-        lv_obj_set_user_data(control.editor, reinterpret_cast<void *>(static_cast<intptr_t>(controlIndex)));
-        lv_obj_add_event_cb(control.editor, [](lv_event_t *e) {
-            if (lv_event_get_code(e) != LV_EVENT_VALUE_CHANGED) {
-                return;
-            }
-
-            auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
-            const int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_target(e))));
-            self->handleDropdownConfigChanged(static_cast<size_t>(index));
-        }, LV_EVENT_ALL, this);
-    } else if (supportsSliderInput(param)) {
-        if (control.editor) {
-            lv_obj_del(control.editor);
-        }
-
-        control.editor = lv_slider_create(control.container);
-        control.usesSlider = true;
-        lv_obj_set_size(control.editor, 180, 16);
-        lv_obj_align(control.editor, LV_ALIGN_BOTTOM_RIGHT, -4, -12);
-        lv_obj_set_user_data(control.editor, reinterpret_cast<void *>(static_cast<intptr_t>(controlIndex)));
-        lv_obj_add_event_cb(control.editor, [](lv_event_t *e) {
-            if (lv_event_get_code(e) != LV_EVENT_VALUE_CHANGED) {
-                return;
-            }
-
-            auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
-            const int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_target(e))));
-            self->handleSliderConfigChanged(static_cast<size_t>(index));
-        }, LV_EVENT_ALL, this);
-    } else if (!control.editor || control.usesDropdown || control.usesSlider) {
-        if (control.editor) {
-            lv_obj_del(control.editor);
-        }
-
-        control.editor = lv_textarea_create(control.container);
-        lv_obj_set_size(control.editor, 180, 34);
-        lv_obj_align(control.editor, LV_ALIGN_BOTTOM_RIGHT, -4, -2);
-        lv_textarea_set_one_line(control.editor, true);
-        lv_textarea_set_max_length(control.editor, 24);
-        lv_obj_set_user_data(control.editor, reinterpret_cast<void *>(static_cast<intptr_t>(controlIndex)));
-        lv_obj_add_event_cb(control.editor, [](lv_event_t *e) {
-            if (lv_event_get_code(e) != LV_EVENT_READY && lv_event_get_code(e) != LV_EVENT_DEFOCUSED) {
-                return;
-            }
-
-            auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
-            const int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_target(e))));
-            self->handleTextConfigSubmitted(static_cast<size_t>(index));
-        }, LV_EVENT_ALL, this);
+    auto *control = signalListPanel.getConfigControl(controlIndex);
+    if (!control) {
+        return;
     }
-}
 
-void SignalsVisualizationGui::syncControlEditorValue(ConfigControl &control, const DeviceParam &param)
-{
-    if (control.usesDropdown) {
+    if (hasSelectableOptions(param)) {
         std::string optionsText;
         int selectedIndex = 0;
         int currentIndex = 0;
@@ -954,16 +441,21 @@ void SignalsVisualizationGui::syncControlEditorValue(ConfigControl &control, con
             }
             ++currentIndex;
         }
-        lv_dropdown_set_options(control.editor, optionsText.c_str());
-        lv_dropdown_set_selected(control.editor, selectedIndex);
-    } else if (control.usesSlider) {
-        const int minValue = convertStringToType<int>(param.Restrictions.Min);
-        const int maxValue = convertStringToType<int>(param.Restrictions.Max);
-        lv_slider_set_range(control.editor, minValue, maxValue);
-        lv_slider_set_value(control.editor, convertStringToType<int>(param.Value), LV_ANIM_OFF);
+        signalListPanel.ensureDropdownEditor(controlIndex, optionsText, static_cast<uint16_t>(selectedIndex));
+    } else if (supportsSliderInput(param)) {
+        signalListPanel.ensureSliderEditor(
+            controlIndex,
+            convertStringToType<int>(param.Restrictions.Min),
+            convertStringToType<int>(param.Restrictions.Max),
+            convertStringToType<int>(param.Value));
     } else {
-        lv_textarea_set_text(control.editor, param.Value.c_str());
+        signalListPanel.ensureTextEditor(controlIndex, param.Value);
     }
+}
+
+void SignalsVisualizationGui::syncControlEditorValue(size_t controlIndex, const DeviceParam &param)
+{
+    ensureControlEditor(controlIndex, param);
 }
 
 void SignalsVisualizationGui::updateEditableControls(const std::unordered_map<std::string, DeviceParam> &values,
@@ -978,29 +470,25 @@ void SignalsVisualizationGui::updateEditableControls(const std::unordered_map<st
     for (size_t i = 0; i < editableKeys.size(); ++i) {
         const auto &key = editableKeys[i];
         const auto editableIt = useValueControls ? values.find(key) : configs.find(key);
-        if (editableIt == (useValueControls ? values.end() : configs.end()) || i >= configControls.size()) {
+        if (editableIt == (useValueControls ? values.end() : configs.end()) || i >= signalListPanel.getConfigControlCount()) {
             continue;
         }
 
         const DeviceParam &param = editableIt->second;
-        ConfigControl &control = configControls[i];
-        control.key = key;
-        control.usesDropdown = false;
-        control.usesSlider = false;
-        control.isValueControl = useValueControls;
-
         const uint32_t accentColor = getSignalAccentColor(i + (useValueControls ? 0 : valueKeys.size()));
-        lv_obj_set_style_bg_color(control.accent, lv_color_hex(accentColor), LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_label_set_text(control.nameLabel, key.c_str());
-        lv_label_set_text(control.valueLabel, param.Value.c_str());
-        lv_label_set_text(
-            control.unitLabel,
+        signalListPanel.setControlVisual(
+            i,
+            accentColor,
+            key,
+            param.Value,
             buildUnitText(
                 useValueControls ? currentSensor->getValueUnits(key) : currentSensor->getConfigUnits(key),
-                useValueControls ? "Queued via CONTROL" : "Queued via CONFIG").c_str());
+                useValueControls ? "Queued via CONTROL" : "Queued via CONFIG"),
+            key,
+            useValueControls);
 
-        ensureControlEditor(control, param, i);
-        syncControlEditorValue(control, param);
+        ensureControlEditor(i, param);
+        syncControlEditorValue(i, param);
     }
 
     clearUnusedConfigControls(editableKeys.size());
@@ -1066,22 +554,12 @@ std::vector<std::string> SignalsVisualizationGui::getChartableValueKeys() const
 
 void SignalsVisualizationGui::showEmptyChartState(const char *message)
 {
-    lv_chart_set_all_value(ui_Chart, ui_Chart_series_V1, LV_CHART_POINT_NONE);
-    lv_chart_set_all_value(ui_Chart, ui_Chart_series_V2, LV_CHART_POINT_NONE);
-
-    if (ui_ChartEmptyLabel) {
-        lv_label_set_text(ui_ChartEmptyLabel, message);
-        lv_obj_clear_flag(ui_ChartEmptyLabel, LV_OBJ_FLAG_HIDDEN);
-    }
-
-    lv_chart_refresh(ui_Chart);
+    chartPanel.showEmptyState(message);
 }
 
 void SignalsVisualizationGui::hideEmptyChartState()
 {
-    if (ui_ChartEmptyLabel) {
-        lv_obj_add_flag(ui_ChartEmptyLabel, LV_OBJ_FLAG_HIDDEN);
-    }
+    chartPanel.hideEmptyState();
 }
 
 std::pair<lv_coord_t, lv_coord_t> SignalsVisualizationGui::computeChartRange(const lv_coord_t *history)
@@ -1109,12 +587,12 @@ std::pair<lv_coord_t, lv_coord_t> SignalsVisualizationGui::computeChartRange(con
 
 void SignalsVisualizationGui::populateChartSeries(lv_chart_series_t *series, const lv_coord_t *history)
 {
-    if (!series || !history) {
+    if (!series || !history || !chartPanel.getChart()) {
         return;
     }
 
     for (int i = 0; i < HISTORY_CAP; ++i) {
-        lv_chart_set_next_value(ui_Chart, series, history[i]);
+        lv_chart_set_next_value(chartPanel.getChart(), series, history[i]);
     }
 }
 
@@ -1142,7 +620,7 @@ void SignalsVisualizationGui::finishDeviceNavigation(bool wasRunning, BaseDevice
 
 void SignalsVisualizationGui::updateDeviceDataDisplay()
 {
-    if (!currentSensor || !ui_SignalScrollContainer)
+    if (!currentSensor || !signalListPanel.getContainer())
         return;
 
     const auto values = currentSensor->getValues();
@@ -1159,7 +637,7 @@ void SignalsVisualizationGui::updateDeviceDataDisplay()
 
 void SignalsVisualizationGui::updateChart()
 {
-    if (!currentSensor || !ui_Chart || !ui_Chart_series_V1 || !ui_Chart_series_V2)
+    if (!currentSensor || !chartPanel.isReady())
         return;
 
     if (sensorManager.isRedrawPending() == false)
@@ -1202,18 +680,15 @@ void SignalsVisualizationGui::updateChart()
             }
         }
 
-        lv_chart_set_range(ui_Chart, LV_CHART_AXIS_PRIMARY_Y, globalMin, globalMax);
-        lv_chart_set_range(ui_Chart, LV_CHART_AXIS_SECONDARY_Y, globalMin, globalMax);
-        lv_chart_set_all_value(ui_Chart, ui_Chart_series_V1, LV_CHART_POINT_NONE);
-        lv_chart_set_all_value(ui_Chart, ui_Chart_series_V2, LV_CHART_POINT_NONE);
-
-        populateChartSeries(ui_Chart_series_V1, historyPrimary);
+        chartPanel.setRange(globalMin, globalMax);
+        chartPanel.clearSeries();
+        chartPanel.populatePrimarySeries(historyPrimary);
 
         if (haveSecond) {
-            populateChartSeries(ui_Chart_series_V2, historySecondary);
+            chartPanel.populateSecondarySeries(historySecondary);
         }
 
-        lv_chart_refresh(ui_Chart);
+        chartPanel.refresh();
     }
     catch (const std::exception &e)
     {
@@ -1223,27 +698,7 @@ void SignalsVisualizationGui::updateChart()
 
 void SignalsVisualizationGui::updateActionButtonsState()
 {
-    const bool canRecord = currentDeviceSupportsRecording();
-    const lv_color_t enabledColor = lv_color_hex(0x009BFF);
-    const lv_color_t disabledColor = lv_color_hex(0x949494);
-
-    if (ui_btnRecord) {
-        lv_obj_set_style_bg_color(ui_btnRecord, canRecord && recording ? lv_color_hex(0xE55858) : (canRecord ? enabledColor : disabledColor), LV_PART_MAIN | LV_STATE_DEFAULT);
-        if (canRecord) {
-            lv_obj_add_flag(ui_btnRecord, LV_OBJ_FLAG_CLICKABLE);
-        } else {
-            lv_obj_clear_flag(ui_btnRecord, LV_OBJ_FLAG_CLICKABLE);
-        }
-    }
-
-    if (ui_btnClear) {
-        lv_obj_set_style_bg_color(ui_btnClear, canRecord ? enabledColor : disabledColor, LV_PART_MAIN | LV_STATE_DEFAULT);
-        if (canRecord) {
-            lv_obj_add_flag(ui_btnClear, LV_OBJ_FLAG_CLICKABLE);
-        } else {
-            lv_obj_clear_flag(ui_btnClear, LV_OBJ_FLAG_CLICKABLE);
-        }
-    }
+    toolbarPanel.setRecordingState(currentDeviceSupportsRecording(), recording);
 }
 
 bool SignalsVisualizationGui::applyEditableValue(bool isValueControl, const std::string &key, const std::string &value)
@@ -1267,53 +722,41 @@ bool SignalsVisualizationGui::applyEditableValue(bool isValueControl, const std:
 
 void SignalsVisualizationGui::handleDropdownConfigChanged(size_t controlIndex)
 {
-    if (controlIndex >= configControls.size()) {
-        return;
-    }
-
-    ConfigControl &control = configControls[controlIndex];
-    if (!control.editor || control.key.empty()) {
+    auto *control = signalListPanel.getConfigControl(controlIndex);
+    if (!control || !control->editor || control->key.empty()) {
         return;
     }
 
     char selected[64] = {0};
-    lv_dropdown_get_selected_str(control.editor, selected, sizeof(selected));
-    if (applyEditableValue(control.isValueControl, control.key, selected) && control.valueLabel) {
-        lv_label_set_text(control.valueLabel, selected);
+    lv_dropdown_get_selected_str(control->editor, selected, sizeof(selected));
+    if (applyEditableValue(control->isValueControl, control->key, selected) && control->valueLabel) {
+        lv_label_set_text(control->valueLabel, selected);
     }
 }
 
 void SignalsVisualizationGui::handleSliderConfigChanged(size_t controlIndex)
 {
-    if (controlIndex >= configControls.size()) {
+    auto *control = signalListPanel.getConfigControl(controlIndex);
+    if (!control || !control->editor || control->key.empty()) {
         return;
     }
 
-    ConfigControl &control = configControls[controlIndex];
-    if (!control.editor || control.key.empty()) {
-        return;
-    }
-
-    const std::string value = std::to_string(lv_slider_get_value(control.editor));
-    if (applyEditableValue(control.isValueControl, control.key, value) && control.valueLabel) {
-        lv_label_set_text(control.valueLabel, value.c_str());
+    const std::string value = std::to_string(lv_slider_get_value(control->editor));
+    if (applyEditableValue(control->isValueControl, control->key, value) && control->valueLabel) {
+        lv_label_set_text(control->valueLabel, value.c_str());
     }
 }
 
 void SignalsVisualizationGui::handleTextConfigSubmitted(size_t controlIndex)
 {
-    if (controlIndex >= configControls.size()) {
+    auto *control = signalListPanel.getConfigControl(controlIndex);
+    if (!control || !control->editor || control->key.empty()) {
         return;
     }
 
-    ConfigControl &control = configControls[controlIndex];
-    if (!control.editor || control.key.empty()) {
-        return;
-    }
-
-    const char *value = lv_textarea_get_text(control.editor);
-    if (applyEditableValue(control.isValueControl, control.key, value) && control.valueLabel) {
-        lv_label_set_text(control.valueLabel, value);
+    const char *value = lv_textarea_get_text(control->editor);
+    if (applyEditableValue(control->isValueControl, control->key, value) && control->valueLabel) {
+        lv_label_set_text(control->valueLabel, value);
     }
 }
 
@@ -1329,18 +772,7 @@ void SignalsVisualizationGui::handlePauseButtonClick()
 {
     paused = !paused;
     sensorManager.setRunning(!paused);
-    if (paused)
-    {
-        lv_obj_set_style_bg_color(ui_btnPause, lv_color_hex(0xE55858), LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_bg_color(ui_btnSync, lv_color_hex(0x009BFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_add_flag(ui_btnSync, LV_OBJ_FLAG_CLICKABLE);
-    }
-    else
-    {
-        lv_obj_set_style_bg_color(ui_btnPause, lv_color_hex(0x009BFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_bg_color(ui_btnSync, lv_color_hex(0x949494), LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_clear_flag(ui_btnSync, LV_OBJ_FLAG_CLICKABLE);
-    }
+    toolbarPanel.setPaused(paused);
 }
 
 void SignalsVisualizationGui::handleSyncButtonClick()
@@ -1371,20 +803,10 @@ void SignalsVisualizationGui::handleRecordButtonClick(const char *message)
     if (recording)
     {
         dataBundleManager.saveRecording();
-        lv_obj_set_style_bg_color(ui_btnRecord, lv_color_hex(0x009BFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_bg_color(ui_btnPrev, lv_color_hex(0x009BFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_bg_color(ui_btnNext, lv_color_hex(0x009BFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_add_flag(ui_btnPrev, LV_OBJ_FLAG_CLICKABLE);
-        lv_obj_add_flag(ui_btnNext, LV_OBJ_FLAG_CLICKABLE);
     }
     else
     {
         dataBundleManager.startRecording(currentSensor->Type);
-        lv_obj_set_style_bg_color(ui_btnRecord, lv_color_hex(0xE55858), LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_bg_color(ui_btnPrev, lv_color_hex(0x949494), LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_bg_color(ui_btnNext, lv_color_hex(0x949494), LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_clear_flag(ui_btnPrev, LV_OBJ_FLAG_CLICKABLE);
-        lv_obj_clear_flag(ui_btnNext, LV_OBJ_FLAG_CLICKABLE);
     }
 
     recording = !recording;
@@ -1463,18 +885,8 @@ void SignalsVisualizationGui::handleClearConfirmButtonClick()
             clearSensorHistoryBuffer(v);
         }
 
-        if (ui_Chart && ui_Chart_series_V1)
-            lv_chart_set_all_value(ui_Chart, ui_Chart_series_V1, 0);
-        if (ui_Chart && ui_Chart_series_V2)
-            lv_chart_set_all_value(ui_Chart, ui_Chart_series_V2, 0);
-
-        lv_chart_refresh(ui_Chart);
-
-        for (auto &card : signalCards) {
-            if (card.valueLabel) {
-                lv_label_set_text(card.valueLabel, "0");
-            }
-        }
+        chartPanel.resetToZero();
+        signalListPanel.setAllSignalCardValues("0");
     }
 }
 
