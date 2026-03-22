@@ -5,6 +5,7 @@
 
 #include "lvgl.h"
 
+#include "device_catalog_browser.hpp"
 #include "gui_callbacks.hpp"
 #include "../managers/device_browser_state.hpp"
 #include "../managers/device_catalog.hpp"
@@ -14,12 +15,11 @@
 class DeviceSelectionGui
 {
 private:
-    DeviceCatalog &deviceCatalog;
+    DeviceCatalogBrowserModel catalogBrowser;
     DeviceBrowserState &browserState;
     DeviceManager &sensorManager;
     DeviceVisualizationSession &visualizationSession;
     bool initialized = false;
-    int selectedDeviceIndex = 0;
 
     lv_obj_t *ui_SelectionWidget = nullptr;
     lv_obj_t *ui_AvailableList = nullptr;
@@ -42,8 +42,6 @@ private:
     void handleRemoveButtonClick();
     void handleStartButtonClick();
     void handleBackButtonClick();
-    std::string getDeviceInfoText(BaseDevice *sensor);
-    std::string getDeviceSpecsText(BaseDevice *sensor);
 
 public:
     explicit DeviceSelectionGui(DeviceCatalog &deviceCatalog, DeviceBrowserState &browserState, DeviceManager &sensorManager, DeviceVisualizationSession &visualizationSession);

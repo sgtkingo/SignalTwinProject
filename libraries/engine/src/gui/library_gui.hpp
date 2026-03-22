@@ -3,6 +3,7 @@
 
 #include "lvgl.h"
 
+#include "device_catalog_browser.hpp"
 #include "gui_callbacks.hpp"
 #include "../managers/device_browser_state.hpp"
 #include "../managers/device_catalog.hpp"
@@ -10,10 +11,9 @@
 class LibraryGui
 {
 private:
-    DeviceCatalog &deviceCatalog;
+    DeviceCatalogBrowserModel catalogBrowser;
     DeviceBrowserState &browserState;
     bool initialized = false;
-    int selectedDeviceIndex = 0;
 
     lv_obj_t *ui_Widget = nullptr;
     lv_obj_t *ui_DeviceList = nullptr;

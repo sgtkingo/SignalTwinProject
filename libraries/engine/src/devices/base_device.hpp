@@ -791,11 +791,12 @@ public:
      * @param key The key of the value sensor parameter.
      * @return The units of the value sensor parameter.
      */
-    std::string getValueUnits(const std::string &key)
+    std::string getValueUnits(const std::string &key) const
     {
-        if (Values.find(key) != Values.end())
+        auto it = Values.find(key);
+        if (it != Values.end())
         {
-            return Values[key].Unit;
+            return it->second.Unit;
         }
         return "";
     }
@@ -808,11 +809,12 @@ public:
      * @param key The key of the sensor config parameter.
      * @return The units of the sensor config parameter.
      */
-    std::string getConfigUnits(const std::string &key)
+    std::string getConfigUnits(const std::string &key) const
     {
-        if (Configs.find(key) != Configs.end())
+        auto it = Configs.find(key);
+        if (it != Configs.end())
         {
-            return Configs[key].Unit;
+            return it->second.Unit;
         }
         return "";
     }
