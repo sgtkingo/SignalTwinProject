@@ -38,8 +38,8 @@ std::vector<std::string> splitOptionsCsv(const std::string &options)
 }
 }
 
-SignalsVisualizationGui::SignalsVisualizationGui(DeviceManager &deviceManager, DeviceVisualizationSession &visualizationSession, DataBundleManager &dataBundleManager)
-                                              : deviceManager(deviceManager), visualizationSession(visualizationSession), dataBundleManager(dataBundleManager)
+SignalsVisualizationGui::SignalsVisualizationGui(GuiRouter &router, DeviceManager &deviceManager, DeviceVisualizationSession &visualizationSession, DataBundleManager &dataBundleManager)
+                                              : router(router), deviceManager(deviceManager), visualizationSession(visualizationSession), dataBundleManager(dataBundleManager)
 {
     // Initialize all GUI pointers to nullptr
     ui_SensorWidget = nullptr;
@@ -726,7 +726,7 @@ void SignalsVisualizationGui::handleBackButtonClick(){
         handleStillRecording();
         return;
     }
-    switchToSelection();
+    router.showSelection();
 }
 
 void SignalsVisualizationGui::handlePauseButtonClick()
@@ -868,7 +868,7 @@ void SignalsVisualizationGui::handleDataBundleShowButtonClick(){
     }
     hideSettingsPanel();
     
-    switchToDataBundleSelection();
+    router.openDatabankFromVisualization();
 }
 
 void SignalsVisualizationGui::handleDataBundleDeleteAllButtonClick(){
@@ -907,7 +907,7 @@ void SignalsVisualizationGui::handleCreditsButtonClick(){
         return;
     }
     hideSettingsPanel();
-    switchToCreditsScreen();
+    router.showCreditsScreen();
 }
 
 void SignalsVisualizationGui::handleStillRecording(){

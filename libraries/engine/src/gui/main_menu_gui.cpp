@@ -1,5 +1,9 @@
 #include "main_menu_gui.hpp"
 
+MainMenuGui::MainMenuGui(GuiRouter &router) : router(router)
+{
+}
+
 lv_obj_t *MainMenuGui::createMenuButton(lv_obj_t *parent, const char *text, lv_align_t align, lv_coord_t x_ofs, lv_coord_t y_ofs)
 {
     lv_obj_t *button = lv_btn_create(parent);
@@ -35,30 +39,34 @@ void MainMenuGui::build()
     ui_btnVisualization = createMenuButton(ui_Widget, "Visualization", LV_ALIGN_TOP_MID, 0, 70);
     lv_obj_add_event_cb(ui_btnVisualization, [](lv_event_t *e) {
         if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-            openVisualizationFlow();
+            auto *self = static_cast<MainMenuGui *>(lv_event_get_user_data(e));
+            self->router.openVisualizationFlow();
         }
-    }, LV_EVENT_ALL, nullptr);
+    }, LV_EVENT_ALL, this);
 
     ui_btnLibrary = createMenuButton(ui_Widget, "Library", LV_ALIGN_CENTER, -140, 85);
     lv_obj_add_event_cb(ui_btnLibrary, [](lv_event_t *e) {
         if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-            switchToLibrary();
+            auto *self = static_cast<MainMenuGui *>(lv_event_get_user_data(e));
+            self->router.showLibrary();
         }
-    }, LV_EVENT_ALL, nullptr);
+    }, LV_EVENT_ALL, this);
 
     ui_btnDatabank = createMenuButton(ui_Widget, "Databank", LV_ALIGN_CENTER, 140, 85);
     lv_obj_add_event_cb(ui_btnDatabank, [](lv_event_t *e) {
         if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-            switchToDatabank();
+            auto *self = static_cast<MainMenuGui *>(lv_event_get_user_data(e));
+            self->router.openDatabankFromMainMenu();
         }
-    }, LV_EVENT_ALL, nullptr);
+    }, LV_EVENT_ALL, this);
 
     ui_btnSettings = createMenuButton(ui_Widget, "Settings", LV_ALIGN_BOTTOM_MID, 0, -35);
     lv_obj_add_event_cb(ui_btnSettings, [](lv_event_t *e) {
         if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-            switchToSettings();
+            auto *self = static_cast<MainMenuGui *>(lv_event_get_user_data(e));
+            self->router.showSettings();
         }
-    }, LV_EVENT_ALL, nullptr);
+    }, LV_EVENT_ALL, this);
 }
 
 void MainMenuGui::init()

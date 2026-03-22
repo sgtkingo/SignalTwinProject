@@ -4,11 +4,12 @@
 #include "lvgl.h"
 
 #include "app_settings.hpp"
-#include "gui_callbacks.hpp"
+#include "gui_router.hpp"
 
 class SettingsGui
 {
 private:
+    GuiRouter &router;
     bool initialized = false;
 
     lv_obj_t *ui_Widget = nullptr;
@@ -19,7 +20,7 @@ private:
     void addModeButton(const char *text, DefaultCommunicationMode mode, lv_coord_t y);
 
 public:
-    SettingsGui() = default;
+    explicit SettingsGui(GuiRouter &router);
     ~SettingsGui() = default;
 
     void init();

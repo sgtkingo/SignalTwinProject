@@ -2,8 +2,8 @@
 
 #include "../helpers.hpp"
 
-ConnectionGui::ConnectionGui(DeviceBrowserState &browserState, DeviceManager &deviceManager)
-    : browserState(browserState), deviceManager(deviceManager)
+ConnectionGui::ConnectionGui(DeviceBrowserState &browserState, GuiRouter &router, DeviceManager &deviceManager)
+    : browserState(browserState), router(router), deviceManager(deviceManager)
 {
     pinContainers.fill(nullptr);
     pinLabels.fill(nullptr);
@@ -45,9 +45,10 @@ void ConnectionGui::buildMenu()
     lv_obj_align(ui_btnBack, LV_ALIGN_TOP_LEFT, 12, 10);
     lv_obj_add_event_cb(ui_btnBack, [](lv_event_t *e) {
         if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-            switchToSelection();
+            auto *self = static_cast<ConnectionGui *>(lv_event_get_user_data(e));
+            self->router.showSelection();
         }
-    }, LV_EVENT_ALL, nullptr);
+    }, LV_EVENT_ALL, this);
     lv_obj_t *backLabel = lv_label_create(ui_btnBack);
     lv_label_set_text(backLabel, "Back");
     lv_obj_center(backLabel);
@@ -227,7 +228,7 @@ void ConnectionGui::handleConnectButtonClick()
         return;
     }
 
-    switchToSelection();
+    router.showSelection();
 }
 
 void ConnectionGui::handlePinClick(int pinIndex)

@@ -3,11 +3,12 @@
 
 #include "lvgl.h"
 
-#include "gui_callbacks.hpp"
+#include "gui_router.hpp"
 
 class CommunicationSelectionGui
 {
 private:
+    GuiRouter &router;
     bool initialized = false;
 
     lv_obj_t *ui_Widget = nullptr;
@@ -15,7 +16,7 @@ private:
     void createOptionButton(const char *text, lv_coord_t x, lv_coord_t y, DefaultCommunicationMode mode);
 
 public:
-    CommunicationSelectionGui();
+    explicit CommunicationSelectionGui(GuiRouter &router);
     ~CommunicationSelectionGui() = default;
 
     void init(void);

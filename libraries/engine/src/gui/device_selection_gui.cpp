@@ -2,8 +2,8 @@
 
 #include "../helpers.hpp"
 
-DeviceSelectionGui::DeviceSelectionGui(DeviceCatalog &deviceCatalog, DeviceBrowserState &browserState, DeviceManager &deviceManager, DeviceVisualizationSession &visualizationSession)
-    : catalogBrowser(deviceCatalog), browserState(browserState), deviceManager(deviceManager), visualizationSession(visualizationSession)
+DeviceSelectionGui::DeviceSelectionGui(DeviceCatalog &deviceCatalog, DeviceBrowserState &browserState, GuiRouter &router, DeviceManager &deviceManager, DeviceVisualizationSession &visualizationSession)
+    : catalogBrowser(deviceCatalog), browserState(browserState), router(router), deviceManager(deviceManager), visualizationSession(visualizationSession)
 {
 }
 
@@ -166,7 +166,7 @@ void DeviceSelectionGui::handleConfigureButtonClick()
     }
 
     browserState.setSelectionDevice(sensor);
-    switchToConnection();
+    router.showConnection();
 }
 
 void DeviceSelectionGui::handleRemoveButtonClick()
@@ -198,17 +198,17 @@ void DeviceSelectionGui::handleStartButtonClick()
         return;
     }
 
-    switchToVisualization();
+    router.showVisualization();
 }
 
 void DeviceSelectionGui::handleBackButtonClick()
 {
-    if (shouldSelectionBackGoToMainMenu()) {
-        switchToMainMenu();
+    if (router.shouldSelectionBackGoToMainMenu()) {
+        router.showMainMenu();
         return;
     }
 
-    switchToCommunicationSelectionScreen();
+    router.showCommunicationSelectionScreen();
 }
 
 void DeviceSelectionGui::init()

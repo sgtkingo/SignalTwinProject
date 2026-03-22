@@ -13,7 +13,7 @@
 #include "../helpers.hpp"
 #include "./images/ui_images.h"
 
-DataBundleSelectionGui::DataBundleSelectionGui(DataBundleManager &dataBundleManager) : dataBundleManager(dataBundleManager)
+DataBundleSelectionGui::DataBundleSelectionGui(GuiRouter &router, DataBundleManager &dataBundleManager) : router(router), dataBundleManager(dataBundleManager)
 {
     ui_DataBundlesWidget = nullptr;
     ui_DataBundlePageWatcher = nullptr;
@@ -512,7 +512,7 @@ void DataBundleSelectionGui::addControlButtonsToWidget(lv_obj_t *parentWidget)
     lv_obj_add_event_cb(ui_btnBack, [](lv_event_t *e)
                         {
         auto self = static_cast<DataBundleSelectionGui*>(lv_event_get_user_data(e));
-        navigateBackFromDatabank(); }, LV_EVENT_CLICKED, this);
+        self->router.navigateBackFromDatabank(); }, LV_EVENT_CLICKED, this);
 
     lv_obj_t * ui_btnBackLabel = lv_label_create(ui_btnBack);
     lv_label_set_text(ui_btnBackLabel, "Back");

@@ -6,7 +6,7 @@
 #include "lvgl.h"
 
 #include "device_catalog_browser.hpp"
-#include "gui_callbacks.hpp"
+#include "gui_router.hpp"
 #include "../managers/device_browser_state.hpp"
 #include "../managers/device_catalog.hpp"
 #include "../managers/device_manager.hpp"
@@ -17,6 +17,7 @@ class DeviceSelectionGui
 private:
     DeviceCatalogBrowserModel catalogBrowser;
     DeviceBrowserState &browserState;
+    GuiRouter &router;
     DeviceManager &deviceManager;
     DeviceVisualizationSession &visualizationSession;
     bool initialized = false;
@@ -44,7 +45,7 @@ private:
     void handleBackButtonClick();
 
 public:
-    explicit DeviceSelectionGui(DeviceCatalog &deviceCatalog, DeviceBrowserState &browserState, DeviceManager &deviceManager, DeviceVisualizationSession &visualizationSession);
+    explicit DeviceSelectionGui(DeviceCatalog &deviceCatalog, DeviceBrowserState &browserState, GuiRouter &router, DeviceManager &deviceManager, DeviceVisualizationSession &visualizationSession);
     ~DeviceSelectionGui() = default;
 
     void init();

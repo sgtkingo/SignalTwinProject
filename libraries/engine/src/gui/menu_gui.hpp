@@ -5,7 +5,7 @@
 
 #include "lvgl.h"
 
-#include "gui_callbacks.hpp"
+#include "gui_router.hpp"
 #include "../managers/device_browser_state.hpp"
 #include "../managers/device_manager.hpp"
 
@@ -13,6 +13,7 @@ class ConnectionGui
 {
 private:
     DeviceBrowserState &browserState;
+    GuiRouter &router;
     DeviceManager &deviceManager;
     bool initialized = false;
 
@@ -33,7 +34,7 @@ private:
     bool isPinAllowedForCurrentDevice(int pinIndex) const;
 
 public:
-    explicit ConnectionGui(DeviceBrowserState &browserState, DeviceManager &deviceManager);
+    explicit ConnectionGui(DeviceBrowserState &browserState, GuiRouter &router, DeviceManager &deviceManager);
     ~ConnectionGui() = default;
 
     void init();

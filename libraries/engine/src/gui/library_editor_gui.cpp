@@ -2,7 +2,7 @@
 
 #include "../helpers.hpp"
 
-LibraryEditorGui::LibraryEditorGui(DeviceBrowserState &browserState) : browserState(browserState)
+LibraryEditorGui::LibraryEditorGui(DeviceBrowserState &browserState, GuiRouter &router) : browserState(browserState), router(router)
 {
 }
 
@@ -32,9 +32,10 @@ void LibraryEditorGui::build()
     lv_obj_align(back, LV_ALIGN_BOTTOM_LEFT, 16, -14);
     lv_obj_add_event_cb(back, [](lv_event_t *e) {
         if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-            switchToLibrary();
+            auto *self = static_cast<LibraryEditorGui *>(lv_event_get_user_data(e));
+            self->router.showLibrary();
         }
-    }, LV_EVENT_ALL, nullptr);
+    }, LV_EVENT_ALL, this);
     lv_obj_t *backLabel = lv_label_create(back);
     lv_label_set_text(backLabel, "Back");
     lv_obj_center(backLabel);

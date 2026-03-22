@@ -11,39 +11,13 @@
 #include "../managers/device_catalog.hpp"
 #include "../managers/device_manager.hpp"
 #include "../managers/device_visualization_session.hpp"
-#include "app_selection_gui.hpp"
 #include "app_settings.hpp"
-#include "communication_selection_gui.hpp"
-#include "crash_gui.hpp"
-#include "credits_gui.hpp"
-#include "data_bundle_selection_gui.hpp"
-#include "library_editor_gui.hpp"
-#include "library_gui.hpp"
-#include "main_menu_gui.hpp"
-#include "menu_gui.hpp"
-#include "signals_visualization_gui.hpp"
-#include "device_selection_gui.hpp"
-#include "settings_gui.hpp"
+#include "gui_router.hpp"
+#include "gui_runtime_policy.hpp"
+#include "gui_screen_registry.hpp"
+#include "gui_state.hpp"
 
-enum class GuiState
-{
-    MAIN_MENU,
-    CONNECTION,
-    VISUALIZATION,
-    DATA_BUNDLE_SELECTION,
-    SELECTION,
-    LIBRARY,
-    LIBRARY_EDITOR,
-    SETTINGS,
-    READY,
-    CRASH,
-    CREDITS,
-    APP_SELECTION,
-    COMMUNICATION_SELECTION,
-    NONE
-};
-
-class GuiManager
+class GuiManager : public GuiRouter
 {
 private:
     DeviceCatalog &deviceCatalog;
@@ -51,18 +25,8 @@ private:
     DeviceManager &deviceManager;
     DeviceVisualizationSession &visualizationSession;
     DataBundleManager &dataBundleManager;
-    MainMenuGui mainMenuGui;
-    ConnectionGui connectionGui;
-    SignalsVisualizationGui vizGui;
-    DataBundleSelectionGui dataBundleSelectionGui;
-    DeviceSelectionGui selectionGui;
-    LibraryGui libraryGui;
-    LibraryEditorGui libraryEditorGui;
-    SettingsGui settingsGui;
-    CrashGui crashGui;
-    CreditsGui creditsGui;
-    AppSelectionGui appSelectionGui;
-    CommunicationSelectionGui communicationSelectionGui;
+    GuiRuntimePolicy runtimePolicy;
+    GuiScreenRegistry screenRegistry;
 
     GuiState currentState;
     bool initialized;
@@ -85,49 +49,49 @@ public:
 
     GuiState getCurrentState() const { return currentState; }
 
-    void showMainMenu();
-    void showConnection();
+    void showMainMenu() override;
+    void showConnection() override;
     void showMenu();
-    void showVisualization();
+    void showVisualization() override;
     void showDataBundleSelection();
-    void showSelection();
-    void showLibrary();
-    void showLibraryEditor();
-    void showSettings();
+    void showSelection() override;
+    void showLibrary() override;
+    void showLibraryEditor() override;
+    void showSettings() override;
     void showCrashScreen(const std::string &reason = "Unexpected error");
-    void showCreditsScreen();
-    void showAppSelectionScreen();
-    void showCommunicationSelectionScreen();
+    void showCreditsScreen() override;
+    void showAppSelectionScreen() override;
+    void showCommunicationSelectionScreen() override;
 
     void navigateTo(GuiState targetState);
     void navigateBack();
     void switchContent(GuiState targetState);
     void redraw();
 
-    void openVisualizationFlow();
-    void completeCommunicationSelection(DefaultCommunicationMode mode);
-    void openDatabankFromMainMenu();
-    void openDatabankFromVisualization();
-    void navigateBackFromDatabank();
-    void prepareNewLibraryEntity();
-    bool shouldSelectionBackGoToMainMenu() const { return selectionBackToMainMenu; }
+    void openVisualizationFlow() override;
+    void completeCommunicationSelection(DefaultCommunicationMode mode) override;
+    void openDatabankFromMainMenu() override;
+    void openDatabankFromVisualization() override;
+    void navigateBackFromDatabank() override;
+    void prepareNewLibraryEntity() override;
+    bool shouldSelectionBackGoToMainMenu() const override { return selectionBackToMainMenu; }
 
-    DefaultCommunicationMode getDefaultCommunicationMode() const { return defaultCommunicationMode; }
-    void setDefaultCommunicationMode(DefaultCommunicationMode mode) { defaultCommunicationMode = mode; }
+    DefaultCommunicationMode getDefaultCommunicationMode() const override { return defaultCommunicationMode; }
+    void setDefaultCommunicationMode(DefaultCommunicationMode mode) override { defaultCommunicationMode = mode; }
 
-    ConnectionGui &getConnectionGui() { return connectionGui; }
-    MenuGui &getMenuGui() { return connectionGui; }
-    SignalsVisualizationGui &getVisualizationGui() { return vizGui; }
-    DataBundleSelectionGui &getDataBundleSelectionGui() { return dataBundleSelectionGui; }
-    DeviceSelectionGui &getSelectionGui() { return selectionGui; }
-    DeviceSelectionGui &getWikiGui() { return selectionGui; }
-    CreditsGui &getCreditsGui() { return creditsGui; }
+    ConnectionGui &getConnectionGui() { return screenRegistry.getConnectionGui(); }
+    MenuGui &getMenuGui() { return screenRegistry.getConnectionGui(); }
+    SignalsVisualizationGui &getVisualizationGui() { return screenRegistry.getVisualizationGui(); }
+    DataBundleSelectionGui &getDataBundleSelectionGui() { return screenRegistry.getDataBundleSelectionGui(); }
+    DeviceSelectionGui &getSelectionGui() { return screenRegistry.getSelectionGui(); }
+    DeviceSelectionGui &getWikiGui() { return screenRegistry.getSelectionGui(); }
+    CreditsGui &getCreditsGui() { return screenRegistry.getCreditsGui(); }
     DeviceCatalog &getDeviceCatalog() { return deviceCatalog; }
     DeviceBrowserState &getDeviceBrowserState() { return deviceBrowserState; }
     DeviceManager &getDeviceManager() { return deviceManager; }
     DataBundleManager &getDataBundleManager() { return dataBundleManager; }
-    AppSelectionGui &getAppSelectionGui() { return appSelectionGui; }
-    CommunicationSelectionGui &getCommunicationSelectionGui() { return communicationSelectionGui; }
+    AppSelectionGui &getAppSelectionGui() { return screenRegistry.getAppSelectionGui(); }
+    CommunicationSelectionGui &getCommunicationSelectionGui() { return screenRegistry.getCommunicationSelectionGui(); }
 };
 
 #endif // GUI_MANAGER_HPP

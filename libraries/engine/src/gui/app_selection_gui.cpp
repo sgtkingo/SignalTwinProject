@@ -11,7 +11,8 @@
 #include "app_selection_gui.hpp"
 #include "./images/ui_images.h"
 
-AppSelectionGui::AppSelectionGui()
+AppSelectionGui::AppSelectionGui(GuiRouter &router)
+    : router(router)
 {
     lv_obj_t *ui_Widget = nullptr;
     lv_obj_t *ui_LogoGroup = nullptr;
@@ -161,9 +162,10 @@ void AppSelectionGui::constructAppSelection(void)
     lv_obj_clear_flag(ui_AppGroup, LV_OBJ_FLAG_SCROLLABLE);     /// Flags
     lv_obj_add_event_cb(ui_AppGroup, [](lv_event_t * e) {
         if (e->code == LV_EVENT_CLICKED) {
-            switchToCommunicationSelectionScreen();
+            auto self = static_cast<AppSelectionGui *>(lv_event_get_user_data(e));
+            self->router.showCommunicationSelectionScreen();
         }
-    }, LV_EVENT_ALL, nullptr);
+    }, LV_EVENT_ALL, this);
 
     ui_AppImage = lv_img_create(ui_AppGroup);
     lv_img_set_src(ui_AppImage, &ui_img_visensors_png);

@@ -3,13 +3,14 @@
 
 #include "lvgl.h"
 
-#include "gui_callbacks.hpp"
+#include "gui_router.hpp"
 #include "../managers/device_browser_state.hpp"
 
 class LibraryEditorGui
 {
 private:
     DeviceBrowserState &browserState;
+    GuiRouter &router;
     bool initialized = false;
 
     lv_obj_t *ui_Widget = nullptr;
@@ -20,7 +21,7 @@ private:
     void refresh();
 
 public:
-    explicit LibraryEditorGui(DeviceBrowserState &browserState);
+    explicit LibraryEditorGui(DeviceBrowserState &browserState, GuiRouter &router);
     ~LibraryEditorGui() = default;
 
     void init();

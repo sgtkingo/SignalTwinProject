@@ -18,7 +18,7 @@
 #include <string>
 #include <vector>
 
-#include "gui_callbacks.hpp"
+#include "gui_router.hpp"
 #include "signals_chart_panel.hpp"
 #include "signals_feedback_panel.hpp"
 #include "signals_list_panel.hpp"
@@ -42,6 +42,7 @@
 class SignalsVisualizationGui
 {
 private:
+    GuiRouter &router;
     DeviceManager &deviceManager;        ///< Reference to the device manager instance
     DeviceVisualizationSession &visualizationSession; ///< Active visualization session of selected devices
     DataBundleManager &dataBundleManager;///< Reference to the databundle manager instance
@@ -216,7 +217,7 @@ public:
      * @brief Constructor
      * @param deviceManager Reference to the device manager instance
      */
-    SignalsVisualizationGui(DeviceManager &deviceManager, DeviceVisualizationSession &visualizationSession, DataBundleManager &dataBundleManager);
+    SignalsVisualizationGui(GuiRouter &router, DeviceManager &deviceManager, DeviceVisualizationSession &visualizationSession, DataBundleManager &dataBundleManager);
 
     /**
      * @brief Destructor

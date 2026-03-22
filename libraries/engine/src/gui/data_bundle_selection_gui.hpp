@@ -16,7 +16,7 @@
 #include <array>
 #include <map>
 
-#include "gui_callbacks.hpp"
+#include "gui_router.hpp"
 #include "../managers/device_manager.hpp"
 #include "../managers/data_bundle_manager.hpp"
 #include "../exceptions/data_exceptions.hpp"
@@ -33,6 +33,7 @@
 class DataBundleSelectionGui
 {
 private:
+    GuiRouter &router;
     DataBundleManager &dataBundleManager;///< Reference to the databundle manager instance
 
     bool initialized = false; ///< Initialization state flag
@@ -125,7 +126,7 @@ public:
     /**
      * @brief Constructor
      */
-    DataBundleSelectionGui(DataBundleManager &dataBundleManager);
+    DataBundleSelectionGui(GuiRouter &router, DataBundleManager &dataBundleManager);
 
     /**
      * @brief Destructor

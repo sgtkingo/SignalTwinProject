@@ -1,7 +1,7 @@
 #include "library_gui.hpp"
 
-LibraryGui::LibraryGui(DeviceCatalog &deviceCatalog, DeviceBrowserState &browserState)
-    : catalogBrowser(deviceCatalog), browserState(browserState)
+LibraryGui::LibraryGui(DeviceCatalog &deviceCatalog, DeviceBrowserState &browserState, GuiRouter &router)
+    : catalogBrowser(deviceCatalog), browserState(browserState), router(router)
 {
 }
 
@@ -22,24 +22,27 @@ void LibraryGui::build()
     lv_obj_set_size(back, 90, 36);
     lv_obj_add_event_cb(back, [](lv_event_t *e) {
         if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-            switchToMainMenu();
+            auto *self = static_cast<LibraryGui *>(lv_event_get_user_data(e));
+            self->router.showMainMenu();
         }
-    }, LV_EVENT_ALL, nullptr);
+    }, LV_EVENT_ALL, this);
 
     lv_obj_t *edit = DeviceCatalogBrowserLayoutFactory::createFooterButton(ui_Widget, "Edit Entity", LV_ALIGN_BOTTOM_RIGHT, -140, -14);
     lv_obj_add_event_cb(edit, [](lv_event_t *e) {
         if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-            switchToLibraryEditor();
+            auto *self = static_cast<LibraryGui *>(lv_event_get_user_data(e));
+            self->router.showLibraryEditor();
         }
-    }, LV_EVENT_ALL, nullptr);
+    }, LV_EVENT_ALL, this);
 
     lv_obj_t *create = DeviceCatalogBrowserLayoutFactory::createFooterButton(ui_Widget, "New Entity", LV_ALIGN_BOTTOM_RIGHT, -12, -14);
     lv_obj_add_event_cb(create, [](lv_event_t *e) {
         if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-            prepareNewLibraryEntity();
-            switchToLibraryEditor();
+            auto *self = static_cast<LibraryGui *>(lv_event_get_user_data(e));
+            self->router.prepareNewLibraryEntity();
+            self->router.showLibraryEditor();
         }
-    }, LV_EVENT_ALL, nullptr);
+    }, LV_EVENT_ALL, this);
 }
 
 void LibraryGui::populateDeviceList()

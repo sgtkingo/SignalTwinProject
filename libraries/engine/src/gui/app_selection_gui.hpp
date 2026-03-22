@@ -12,8 +12,7 @@
 
 #include "lvgl.h"
 
-#include "gui_callbacks.hpp"
-#include "../managers/device_manager.hpp"
+#include "gui_router.hpp"
 #include "../exceptions/data_exceptions.hpp"
 
 /**
@@ -27,6 +26,7 @@
 class AppSelectionGui
 {
 private:
+    GuiRouter &router;
     bool initialized = false; ///< Initialization state flag
 
     lv_obj_t * ui_Widget;
@@ -49,7 +49,7 @@ public:
     /**
      * @brief Constructor
      */
-    AppSelectionGui();
+    explicit AppSelectionGui(GuiRouter &router);
     /**
      * @brief Destructor
      */

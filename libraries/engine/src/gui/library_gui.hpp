@@ -4,7 +4,7 @@
 #include "lvgl.h"
 
 #include "device_catalog_browser.hpp"
-#include "gui_callbacks.hpp"
+#include "gui_router.hpp"
 #include "../managers/device_browser_state.hpp"
 #include "../managers/device_catalog.hpp"
 
@@ -13,6 +13,7 @@ class LibraryGui
 private:
     DeviceCatalogBrowserModel catalogBrowser;
     DeviceBrowserState &browserState;
+    GuiRouter &router;
     bool initialized = false;
 
     lv_obj_t *ui_Widget = nullptr;
@@ -25,7 +26,7 @@ private:
     void updateDetail();
 
 public:
-    explicit LibraryGui(DeviceCatalog &deviceCatalog, DeviceBrowserState &browserState);
+    explicit LibraryGui(DeviceCatalog &deviceCatalog, DeviceBrowserState &browserState, GuiRouter &router);
     ~LibraryGui() = default;
 
     void init();

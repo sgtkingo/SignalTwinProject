@@ -20,18 +20,8 @@ GuiManager::GuiManager(DeviceCatalog &catalog, DeviceBrowserState &browserState,
       deviceManager(manager),
       visualizationSession(visualizationSession),
       dataBundleManager(dataBundleManager),
-      mainMenuGui(),
-      connectionGui(browserState, manager),
-      vizGui(manager, visualizationSession, dataBundleManager),
-      dataBundleSelectionGui(dataBundleManager),
-      selectionGui(catalog, browserState, manager, visualizationSession),
-      libraryGui(catalog, browserState),
-      libraryEditorGui(browserState),
-      settingsGui(),
-      crashGui(),
-      creditsGui(),
-      appSelectionGui(),
-      communicationSelectionGui(),
+      runtimePolicy(deviceManager),
+      screenRegistry(deviceCatalog, deviceBrowserState, *this, deviceManager, visualizationSession, dataBundleManager),
       currentState(GuiState::NONE),
       initialized(false)
 {
@@ -44,15 +34,15 @@ bool GuiManager::init(std::string configFile)
     logMessage("Initializing GUI Manager...\n");
 
     try {
-        crashGui.init();
+        screenRegistry.getCrashGui().init();
 
         if (!dataBundleManager.init()) {
-            crashGui.showCrash("SD card missing or not readable.\nInsert SD card and restart the device.", "SD ERROR", LV_SYMBOL_SD_CARD);
+            screenRegistry.getCrashGui().showCrash("SD card missing or not readable.\nInsert SD card and restart the device.", "SD ERROR", LV_SYMBOL_SD_CARD);
             return false;
         }
 
         if (!deviceCatalog.init(configFile)) {
-            crashGui.showCrash("DeviceCatalog initialization failed!");
+            screenRegistry.getCrashGui().showCrash("DeviceCatalog initialization failed!");
             return false;
         }
 
@@ -60,18 +50,11 @@ bool GuiManager::init(std::string configFile)
         visualizationSession.clear();
 
         if (!deviceManager.init()) {
-            crashGui.showCrash("DeviceManager initialization failed!");
+            screenRegistry.getCrashGui().showCrash("DeviceManager initialization failed!");
             return false;
         }
 
-        mainMenuGui.init();
-        connectionGui.init();
-        vizGui.init();
-        dataBundleSelectionGui.init();
-        selectionGui.init();
-        libraryGui.init();
-        libraryEditorGui.init();
-        settingsGui.init();
+        screenRegistry.initializeCoreScreens();
     } catch (const Exception &e) {
         showCrashScreen(e.flush());
         return false;
@@ -96,22 +79,7 @@ bool GuiManager::init()
 
 void GuiManager::hideAllComponents()
 {
-    if (!initialized) {
-        return;
-    }
-
-    mainMenuGui.hideMainMenu();
-    connectionGui.hideConnection();
-    vizGui.hideVisualization();
-    dataBundleSelectionGui.hideDataBundles();
-    selectionGui.hideSelection();
-    libraryGui.hideLibrary();
-    libraryEditorGui.hideEditor();
-    settingsGui.hideSettings();
-    crashGui.hideCrash();
-    creditsGui.hideCredits();
-    communicationSelectionGui.hideCommunicationSelection();
-    appSelectionGui.hideAppSelection();
+    screenRegistry.hideAll();
 }
 
 void GuiManager::showMainMenu()
@@ -196,13 +164,13 @@ void GuiManager::showCrashScreen(const std::string &reason)
     if (!initialized) {
         deviceManager.setRunning(false);
         hideAllComponents();
-        crashGui.showCrash(reason);
+        screenRegistry.getCrashGui().showCrash(reason);
         currentState = GuiState::CRASH;
         return;
     }
 
     navigateTo(GuiState::CRASH);
-    crashGui.showCrash(reason);
+    screenRegistry.getCrashGui().showCrash(reason);
 }
 
 void GuiManager::showCreditsScreen()
@@ -234,8 +202,7 @@ void GuiManager::showCommunicationSelectionScreen()
 
 void GuiManager::applyRuntimePolicy(GuiState targetState)
 {
-    const bool shouldRunRuntime = targetState == GuiState::VISUALIZATION;
-    deviceManager.setRunning(shouldRunRuntime);
+    runtimePolicy.apply(targetState);
 }
 
 void GuiManager::renderState(GuiState targetState)
@@ -244,51 +211,7 @@ void GuiManager::renderState(GuiState targetState)
         return;
     }
 
-    hideAllComponents();
-
-    switch (targetState) {
-    case GuiState::MAIN_MENU:
-        mainMenuGui.showMainMenu();
-        break;
-    case GuiState::CONNECTION:
-        connectionGui.showConnection();
-        break;
-    case GuiState::VISUALIZATION:
-        vizGui.showVisualization();
-        vizGui.drawCurrentDevice();
-        break;
-    case GuiState::DATA_BUNDLE_SELECTION:
-        dataBundleSelectionGui.showDataBundles();
-        break;
-    case GuiState::SELECTION:
-        selectionGui.showSelection();
-        break;
-    case GuiState::LIBRARY:
-        libraryGui.showLibrary();
-        break;
-    case GuiState::LIBRARY_EDITOR:
-        libraryEditorGui.showEditor();
-        break;
-    case GuiState::SETTINGS:
-        settingsGui.showSettings();
-        break;
-    case GuiState::READY:
-        break;
-    case GuiState::CRASH:
-        break;
-    case GuiState::CREDITS:
-        creditsGui.showCredits();
-        break;
-    case GuiState::APP_SELECTION:
-        appSelectionGui.init();
-        break;
-    case GuiState::COMMUNICATION_SELECTION:
-        communicationSelectionGui.init();
-        break;
-    default:
-        splashMessage("Unknown target GUI state %d, nothing to display...\n", static_cast<int>(targetState));
-        break;
-    }
+    screenRegistry.render(targetState);
 }
 
 GuiState GuiManager::resolveBackTarget(GuiState fromState) const
@@ -399,8 +322,8 @@ void GuiManager::redraw()
 
     switch (currentState) {
     case GuiState::VISUALIZATION:
-        if (vizGui.isInitialized()) {
-            vizGui.drawCurrentDevice();
+        if (screenRegistry.getVisualizationGui().isInitialized()) {
+            screenRegistry.getVisualizationGui().drawCurrentDevice();
         }
         break;
     default:

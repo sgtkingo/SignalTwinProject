@@ -3,11 +3,12 @@
 
 #include "lvgl.h"
 
-#include "gui_callbacks.hpp"
+#include "gui_router.hpp"
 
 class MainMenuGui
 {
 private:
+    GuiRouter &router;
     bool initialized = false;
 
     lv_obj_t *ui_Widget = nullptr;
@@ -21,7 +22,7 @@ private:
     lv_obj_t *createMenuButton(lv_obj_t *parent, const char *text, lv_align_t align, lv_coord_t x_ofs, lv_coord_t y_ofs);
 
 public:
-    MainMenuGui() = default;
+    explicit MainMenuGui(GuiRouter &router);
     ~MainMenuGui() = default;
 
     void init();

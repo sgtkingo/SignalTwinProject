@@ -1,0 +1,22 @@
+#ifndef GUI_STATE_HPP
+#define GUI_STATE_HPP
+
+enum class GuiState
+{
+    MAIN_MENU,
+    CONNECTION,
+    VISUALIZATION,
+    DATA_BUNDLE_SELECTION,
+    SELECTION,
+    LIBRARY,
+    LIBRARY_EDITOR,
+    SETTINGS,
+    READY,
+    CRASH,
+    CREDITS,
+    APP_SELECTION,
+    COMMUNICATION_SELECTION,
+    NONE
+};
+
+#endif // GUI_STATE_HPP

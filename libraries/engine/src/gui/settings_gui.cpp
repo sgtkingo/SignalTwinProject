@@ -2,6 +2,10 @@
 
 #include <string>
 
+SettingsGui::SettingsGui(GuiRouter &router) : router(router)
+{
+}
+
 void SettingsGui::addModeButton(const char *text, DefaultCommunicationMode mode, lv_coord_t y)
 {
     lv_obj_t *button = lv_btn_create(ui_Widget);
@@ -14,7 +18,7 @@ void SettingsGui::addModeButton(const char *text, DefaultCommunicationMode mode,
 
         auto *self = static_cast<SettingsGui *>(lv_event_get_user_data(e));
         auto mode = static_cast<DefaultCommunicationMode>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_target(e))));
-        setDefaultCommunicationMode(mode);
+        self->router.setDefaultCommunicationMode(mode);
         self->showSettings();
     }, LV_EVENT_ALL, this);
     lv_obj_set_user_data(button, reinterpret_cast<void *>(static_cast<intptr_t>(mode)));
@@ -55,9 +59,10 @@ void SettingsGui::build()
     lv_obj_align(back, LV_ALIGN_BOTTOM_LEFT, 16, -14);
     lv_obj_add_event_cb(back, [](lv_event_t *e) {
         if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-            switchToMainMenu();
+            auto *self = static_cast<SettingsGui *>(lv_event_get_user_data(e));
+            self->router.showMainMenu();
         }
-    }, LV_EVENT_ALL, nullptr);
+    }, LV_EVENT_ALL, this);
     lv_obj_t *backLabel = lv_label_create(back);
     lv_label_set_text(backLabel, "Back");
     lv_obj_center(backLabel);
@@ -70,7 +75,7 @@ void SettingsGui::refresh()
     }
 
     const char *modeText = "Ask every time";
-    switch (getDefaultCommunicationMode()) {
+    switch (router.getDefaultCommunicationMode()) {
     case DefaultCommunicationMode::CABLE:
         modeText = "Cable (UART)";
         break;

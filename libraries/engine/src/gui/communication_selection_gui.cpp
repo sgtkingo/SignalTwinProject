@@ -2,7 +2,7 @@
 
 #include "../helpers.hpp"
 
-CommunicationSelectionGui::CommunicationSelectionGui()
+CommunicationSelectionGui::CommunicationSelectionGui(GuiRouter &router) : router(router)
 {
 }
 
@@ -16,9 +16,10 @@ void CommunicationSelectionGui::createOptionButton(const char *text, lv_coord_t 
             return;
         }
 
+        auto *self = static_cast<CommunicationSelectionGui *>(lv_event_get_user_data(e));
         DefaultCommunicationMode mode = static_cast<DefaultCommunicationMode>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_target(e))));
-        completeCommunicationSelection(mode);
-    }, LV_EVENT_ALL, nullptr);
+        self->router.completeCommunicationSelection(mode);
+    }, LV_EVENT_ALL, this);
     lv_obj_set_user_data(button, reinterpret_cast<void *>(static_cast<intptr_t>(mode)));
 
     lv_obj_t *label = lv_label_create(button);
@@ -70,9 +71,10 @@ void CommunicationSelectionGui::constructCommunicationSelection(void)
     lv_obj_align(back, LV_ALIGN_BOTTOM_LEFT, 16, -14);
     lv_obj_add_event_cb(back, [](lv_event_t *e) {
         if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-            switchToMainMenu();
+            auto *self = static_cast<CommunicationSelectionGui *>(lv_event_get_user_data(e));
+            self->router.showMainMenu();
         }
-    }, LV_EVENT_ALL, nullptr);
+    }, LV_EVENT_ALL, this);
     lv_obj_t *backLabel = lv_label_create(back);
     lv_label_set_text(backLabel, "Back");
     lv_obj_center(backLabel);

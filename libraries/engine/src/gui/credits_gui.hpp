@@ -14,7 +14,7 @@
 
 #include "lvgl.h"
 
-#include "gui_callbacks.hpp"
+#include "gui_router.hpp"
 
 /**
  * @class CreditsGui
@@ -28,6 +28,7 @@
 class CreditsGui
 {
 private:
+    GuiRouter &router;
     bool initialized = false;                       ///< Initialization state flag
     lv_obj_t *ui_CreditsScreen = nullptr;           ///< Main screen/container widget
     lv_obj_t *ui_btnBackGroup = nullptr;            ///< Group container for back button
@@ -124,14 +125,14 @@ private:
     void handleBackButtonClick()
     {
         hideCredits();
-        switchToVisualization();
+        router.showVisualization();
     }
 
 public:
     /**
      * @brief Constructor
      */
-    CreditsGui() = default;
+    explicit CreditsGui(GuiRouter &router) : router(router) {}
 
     /**
      * @brief Destructor
