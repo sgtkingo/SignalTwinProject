@@ -21,6 +21,7 @@
 #include "gui_callbacks.hpp"
 #include "signals_chart_panel.hpp"
 #include "signals_list_panel.hpp"
+#include "signals_settings_panel.hpp"
 #include "signals_toolbar_panel.hpp"
 #include "../managers/device_manager.hpp"
 #include "../managers/device_visualization_session.hpp"
@@ -66,26 +67,10 @@ private:
 
     SignalsListPanel signalListPanel; ///< Scrollable panel for live values and editable controls
     SignalsChartPanel chartPanel;     ///< Chart panel for numeric signal history
+    SignalsSettingsPanel settingsPanel; ///< Settings overlay panel for databundle and credits actions
     SignalsToolbarPanel toolbarPanel; ///< Bottom navigation and recording toolbar
 
     // --- NAVIGATION AND CONTROL MEMBERS ---
-    lv_obj_t *ui_SettingsOverlay;                        ///< Click blocking overlay
-    lv_obj_t *ui_SettingsBridgeGroup;                    ///< Bridge group container that will remain under record and settings button
-    lv_obj_t *ui_SettingsBridge;                         ///< Decorative bridge element
-    lv_obj_t *ui_SettingsBridgeFill;                     ///< Decorative bridge fill
-    lv_obj_t *ui_SettingsGroup;                          ///< Main container for the settings panel
-    lv_obj_t *ui_SettingsOutlay;                         ///< Main background panel
-    lv_obj_t *ui_SettingsHeaderLine;                     ///< Header separator line
-    lv_obj_t *ui_SettingsHeaderLabel;                    ///< Header text
-    lv_obj_t *ui_SettingsDataBundleLabel;                ///< Data bundle label
-    lv_obj_t *ui_SettingsDataBundleCountLabel;           ///< Data bundle count label
-    lv_obj_t *ui_SettingsDataBundleShowButton;           ///< Show bundle button
-    lv_obj_t *ui_SettingsDataBundleShowButtonLabel;      ///< Show bundle button text
-    lv_obj_t *ui_SettingsDataBundleDeleteAllButton;      ///< Delete button
-    lv_obj_t *ui_SettingsDataBundleDeleteAllButtonLabel; ///< Delete button text
-    lv_obj_t *ui_SettingsCreditsLabel;                   ///< Credits label
-    lv_obj_t *ui_SettingsCreditsButton;                  ///< Credits button
-    lv_obj_t *ui_SettingsCreditsButtonLabel;             ///< Credits button label
     lv_obj_t *ui_LogoGroup;                              ///< Logo panel widget
     lv_obj_t *ui_LogoCornerBottomLeft;                   ///< Decorative corner for logo panel
     lv_obj_t *ui_LogoCornerFillBottomLeft;               ///< Decorative fill for logo
