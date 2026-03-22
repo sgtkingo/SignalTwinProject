@@ -14,7 +14,7 @@
  *      DENITION
  *********************/
 
-GuiManager::GuiManager(SensorManager &manager)
+GuiManager::GuiManager(DeviceManager &manager)
     : ui_MenuWidget(nullptr), ui_btnStart(nullptr), ui_ButtonStartLabel(nullptr), sensorManager(manager)
 {
 }
@@ -34,7 +34,7 @@ void GuiManager::init()
     logMessage("GUI initialized!\n");
 }
 
-SensorManager &GuiManager::getSensorManager()   
+DeviceManager &GuiManager::getDeviceManager()   
 {
     return sensorManager;
 }
@@ -68,7 +68,7 @@ static void startPoolingButtonCallback(lv_event_t *e, GuiManager *instance)
     if (!instance || instance == nullptr)
         return;
 
-    auto sensorManager = instance->getSensorManager();
+    auto sensorManager = instance->getDeviceManager();
     sensorManager.setRunning(false); // stop manager to allow pin assignment
 
     auto &pinMap = sensorManager.getPinMap();
@@ -101,7 +101,7 @@ static void startPoolingButtonCallback(lv_event_t *e, GuiManager *instance)
 
 static void pinToSelection(int index)
 {
-    SensorManager &manager = SensorManager::getInstance();
+    DeviceManager &manager = DeviceManager::getInstance();
     manager.setActivePin(index);
     GuiManager &GuiManager = GuiManager::getInstance();
     GuiManager.hideMenu();
@@ -200,7 +200,7 @@ void GuiManager::buildMenu()
 
 void GuiManager::updatePinLabelText()
 {
-    SensorManager &manager = SensorManager::getInstance();
+    DeviceManager &manager = DeviceManager::getInstance();
     auto &pinMap = manager.getPinMap();
     for (int i = 0; i < 6; ++i)
     {
@@ -222,13 +222,13 @@ void GuiManager::updatePinLabelText()
 
 static void nextSensor(bool isVisualisation)
 {
-    SensorManager &manager = SensorManager::getInstance();
+    DeviceManager &manager = DeviceManager::getInstance();
     auto &currentIndex = manager.getCurrentIndex();
     GuiManager &GuiManager = GuiManager::getInstance();
 
     if (!isVisualisation)
     {
-        auto &sensors = manager.getSensors();
+        auto &sensors = manager.getDevices();
         if (sensors.empty())
             return;
         currentIndex = (currentIndex + 1) % sensors.size();
@@ -255,13 +255,13 @@ static void nextSensor(bool isVisualisation)
 
 static void prevSensor(bool isVisualisation)
 {
-    SensorManager &manager = SensorManager::getInstance();
+    DeviceManager &manager = DeviceManager::getInstance();
     auto &currentIndex = manager.getCurrentIndex();
     GuiManager &GuiManager = GuiManager::getInstance();
 
     if (!isVisualisation)
     {
-        auto &sensors = manager.getSensors();
+        auto &sensors = manager.getDevices();
         if (sensors.empty())
             return;
         currentIndex = (currentIndex + sensors.size() - 1) % sensors.size();
@@ -291,10 +291,10 @@ static void prevSensor(bool isVisualisation)
 // Free function
 static void goBackToMenu()
 {
-    SensorManager &manager = SensorManager::getInstance();
+    DeviceManager &manager = DeviceManager::getInstance();
     manager.setRunning(false);
 
-    auto &Sensors = manager.getSensors();
+    auto &Sensors = manager.getDevices();
     auto &PinMap = manager.getPinMap();
     auto &currentIndex = manager.getCurrentIndex();
     GuiManager &GuiManager = GuiManager::getInstance();
@@ -310,12 +310,12 @@ static void goBackToMenu()
 // Free function
 static void confirmSensor()
 {
-    SensorManager &manager = SensorManager::getInstance();
-    auto &Sensors = manager.getSensors();
+    DeviceManager &manager = DeviceManager::getInstance();
+    auto &Sensors = manager.getDevices();
     auto &currentIndex = manager.getCurrentIndex();
 
     GuiManager &GuiManager = GuiManager::getInstance();
-    manager.assignSensorToPin(Sensors[currentIndex]);
+    manager.assignDeviceToPin(Sensors[currentIndex]);
     GuiManager.updatePinLabelText();
     GuiManager.hideSensorWiki();
 
@@ -533,7 +533,7 @@ void GuiManager::constructWiki()
         addBackButtonToWidget(ui_SensorWidgetWiki);
     }
 
-    auto *sensorCurrent = sensorManager.getCurrentSensor();
+    auto *sensorCurrent = sensorManager.getCurrentDevice();
     if (!sensorCurrent)
         return;
 
@@ -866,10 +866,10 @@ void GuiManager::construct(/*bool hasTwoUnits*/)
         lv_obj_set_style_text_opa(ui_Chart, 255, LV_PART_TICKS | LV_STATE_DEFAULT);
     }
 
-    SensorManager &manager = SensorManager::getInstance();
+    DeviceManager &manager = DeviceManager::getInstance();
     // TEMP
     logMessage("getting ready to take sensorCurrent!");
-    auto *sensorCurrent = manager.getAssignedSensor(manager.getCurrentIndex());
+    auto *sensorCurrent = manager.getAssignedDevice(manager.getCurrentIndex());
     // TEMP
     logMessage("sensorCurrent got taken from manager!");
     lv_label_set_text(ui_SensorLabel, sensorCurrent->Type.c_str());
@@ -881,9 +881,9 @@ void GuiManager::construct(/*bool hasTwoUnits*/)
 }
 
 // Only one sensor will be drawn at a Time
-void GuiManager::drawCurrentSensor()
+void GuiManager::drawCurrentDevice()
 {
-    auto *sensorCurrent = sensorManager.getCurrentSensor();
+    auto *sensorCurrent = sensorManager.getCurrentDevice();
     if (!sensorCurrent)
         return;
     // TEMP
@@ -945,7 +945,7 @@ void GuiManager::goToFirstSensor(bool isVisualisation)
 
     if (!isVisualisation)
     {
-        auto &sensors = sensorManager.getSensors();
+        auto &sensors = sensorManager.getDevices();
         if (sensors.empty())
             return;
 

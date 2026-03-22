@@ -1,14 +1,14 @@
 /**
- * @file manager.hpp
+ * @file device_manager.hpp
  * @brief Declaration of the manager
  *
- * This header defines the manager class for managing sensors.
+ * This header defines the manager class for managing devices.
  *
  * @copyright 2025 MTA
  * @author Ing. Jiri Konecny, Ondřej Wrubel
  */
-#ifndef MANAGER_HPP
-#define MANAGER_HPP
+#ifndef DEVICE_MANAGER_HPP
+#define DEVICE_MANAGER_HPP
 
 #define NUM_PINS 18
 
@@ -18,7 +18,7 @@
 #include <array>
 #include "expt.hpp"
 
-#include "../sensors/base_sensor.hpp"
+#include "../devices/base_device.hpp"
 #include "pin_structure.hpp"
 
 /**
@@ -39,21 +39,21 @@ enum class ManagerStatus
 
 
 /**
- * @class SensorManager
- * @brief Class for managing sensors and their pin assignments.
+ * @class DeviceManager
+ * @brief Class for managing devices and their pin assignments.
  *
- * Provides methods for adding, accessing, synchronizing, and assigning sensors to pins.
- * Maintains a list of sensors and a mapping of sensors to hardware pins.
+ * Provides methods for adding, accessing, synchronizing, and assigning devices to pins.
+ * Maintains a catalog of devices and a mapping of devices to hardware pins.
  */
-class SensorManager {
+class DeviceManager {
 private:
-    std::array<VirtualPin, NUM_PINS> PinMap; ///< Mapping of pins to sensors
-    std::vector<BaseSensor*> Sensors;         ///< List of all managed sensors
-    std::vector<BaseSensor*> SelectedSensors; ///< List of fixed sensors (from config file)
+    std::array<VirtualPin, NUM_PINS> PinMap;     ///< Mapping of pins to devices.
+    std::vector<BaseDevice*> Devices;            ///< Complete runtime device catalog.
+    std::vector<BaseDevice*> SelectedDevices;    ///< Devices selected for the current visualization session.
 
-    size_t currentIndex = 0;                      ///< Index of the current sensor
-    BaseSensor* currentWikiSensor = nullptr;    ///< Pointer to the current chosen selection sensor
-    BaseSensor* currentLibrarySensor = nullptr; ///< Pointer to the current library sensor
+    size_t currentIndex = 0;                         ///< Index of the current visualized device.
+    BaseDevice* currentSelectionDevice = nullptr;    ///< Device currently highlighted in Selection.
+    BaseDevice* currentLibraryDevice = nullptr;      ///< Device currently highlighted in Library.
 
     bool initialized = false;                 ///< Initialization state flag
     ManagerStatus Status = ManagerStatus::STOPPED; ///< Current status of the manager
@@ -67,12 +67,12 @@ public:
     /**
      * @brief Private constructor for singleton pattern
      */
-    SensorManager();
+    DeviceManager();
 
     /**
      * @brief Destructor
      */
-    ~SensorManager();
+    ~DeviceManager();
 
     /**
      * @brief Load configuration file
@@ -106,12 +106,12 @@ public:
     void setRunning(bool running) { Status = running ? ManagerStatus::RUNNING : ManagerStatus::STOPPED; }
 
     /**
-     * @brief Check if any sensor requires a redraw
-     * @return True if any sensor has redrawPending flag set, false otherwise
+     * @brief Check if any device requires a redraw.
+     * @return True if any device has `redrawPending` flag set, false otherwise.
      */
     bool isRedrawPending() const {
-        for (const auto* sensor : Sensors) {
-            if (sensor && sensor->getRedrawPending()) {
+        for (const auto* device : Devices) {
+            if (device && device->getRedrawPending()) {
                 return true;
             }
         }
@@ -119,42 +119,42 @@ public:
     }
 
     /**
-     * @brief Get a sensor by its unique ID
+     * @brief Get a device by its unique ID.
      * @param uid Unique identifier string
-     * @return Pointer to the sensor, or nullptr if not found
+     * @return Pointer to the device, or `nullptr` if not found.
      */
-    BaseSensor* getSensor(std::string uid);
+    BaseDevice* getDevice(std::string uid);
 
     /**
-     * @brief Add a sensor to the manager
-     * @param sensor Pointer to the sensor to add
+     * @brief Add a device to the manager.
+     * @param device Pointer to the device to add.
      */
-    void addSensor(BaseSensor* sensor);
+    void addDevice(BaseDevice* device);
 
     /**
-     * @brief Reset the pin map, unassigning all sensors from pins
+     * @brief Reset the pin map, unassigning all devices from pins.
      */
     void resetPinMap();
 
     /**
-     * @brief Synchronize a sensor by ID
+     * @brief Synchronize a device by ID.
      * @param id Unique identifier string
      */
     bool sync(std::string id);
 
     /**
-     * @brief Print information about a sensor by UID
+     * @brief Print information about a device by UID.
      * @param uid Unique identifier string
      */
     void print(std::string uid);
 
     /**
-     * @brief Print information about all sensors
+     * @brief Print information about the current device.
      */
     void print();
 
     /**
-     * @brief Resynchronize all sensors
+     * @brief Resynchronize the currently visualized device.
      */
     bool resync();
 
@@ -165,41 +165,41 @@ public:
     bool ensureProtocolInitialized();
 
     /**
-     * @brief Connect sensors to pins (bulk operation)
+     * @brief Connect assigned devices to pins (bulk operation).
      */
     bool connect();
 
     /**
-     * @brief Erase all sensors and pin assignments
+     * @brief Erase all devices and pin assignments.
      */
     void erase();
 
     // --- Pin mapping ---
 
     /**
-     * @brief Assign a sensor to the currently active pin
-     * @param sensor Pointer to the sensor to assign
+     * @brief Assign a device to the currently active pin.
+     * @param device Pointer to the device to assign.
      */
-    bool assignSensorToPin(BaseSensor* sensor, int activePin);
+    bool assignDeviceToPin(BaseDevice* device, int activePin);
 
     /**
-     * @brief Unassign the sensor from the currently active pin
+     * @brief Unassign the device from the currently active pin.
      */
-    bool unassignSensorFromPin(int activePin);
+    bool unassignDeviceFromPin(int activePin);
 
     /**
-     * @brief Unassign all pins used by a sensor in the current session
-     * @param sensor Pointer to the sensor to unassign
+     * @brief Unassign all pins used by a device in the current session.
+     * @param device Pointer to the device to unassign.
      * @return True if at least one pin was unassigned
      */
-    bool unassignAllPinsForSensor(BaseSensor *sensor);
+    bool unassignAllPinsForDevice(BaseDevice *device);
 
     /**
-     * @brief Get the sensor assigned to a specific pin
+     * @brief Get the device assigned to a specific pin.
      * @param pinIndex Index of the pin (0-based)
-     * @return Pointer to the assigned sensor, or nullptr if none
+     * @return Pointer to the assigned device, or `nullptr` if none.
      */
-    BaseSensor* getAssignedSensor(size_t pinIndex) const;
+    BaseDevice* getAssignedDevice(size_t pinIndex) const;
 
     /**
      * @brief Get the GPIO pin number for a specific pin index
@@ -223,16 +223,16 @@ public:
     bool isPinLocked(size_t pinIndex) const;
 
     /**
-     * @brief Check if any sensor is assigned to any pin
-     * @return True if there is at least one assigned sensor
+     * @brief Check if any device is assigned to any pin.
+     * @return True if there is at least one assigned device.
      */
-    bool hasAssignedSensors() const;
+    bool hasAssignedDevices() const;
 
     /**
-     * @brief Get read-only access to the list of sensors
-     * @return Const reference to the vector of sensor pointers
+     * @brief Get read-only access to the device catalog.
+     * @return Const reference to the vector of device pointers.
      */
-    const std::vector<BaseSensor*>& getSensors() const { return Sensors; }
+    const std::vector<BaseDevice*>& getDevices() const { return Devices; }
 
     /**
      * @brief Get read-only access to the pin map
@@ -240,65 +240,65 @@ public:
      */
     const std::array<VirtualPin, NUM_PINS>& getPinMap() const { return PinMap; }
 
-    // --- Sensors mapping ---
+    // --- Visualization session mapping ---
     
     /**
-     * @brief Select sensors that are assigned to pins into the SelectedSensors list
+     * @brief Select assigned devices into the current visualization session list.
      */
-    void selectSensorsFromPinMap(); 
+    void selectDevicesFromPinMap(); 
 
     /**
-     * @brief Get the currently selected sensor
-     * @return Pointer to the current sensor
+     * @brief Get the currently visualized device.
+     * @return Pointer to the current device.
      */
-    BaseSensor* getCurrentSensor();
+    BaseDevice* getCurrentDevice();
 
     /**
-     * @brief Get the currently chosen sensor used in wiki for menu sensor assignment
-     * @return Pointer to the current chosen sensor
+     * @brief Get the currently highlighted Selection device.
+     * @return Pointer to the current selection device.
      */
-    BaseSensor* getCurrentWikiSensor();
+    BaseDevice* getCurrentSelectionDevice();
 
     /**
-     * @brief Set the currently chosen sensor used in wiki for menu sensor assignment
-     * @param sensor Pointer to the sensor to set as current chosen
+     * @brief Set the currently highlighted Selection device.
+     * @param device Pointer to the device to set as current selection.
      */
-    void setCurrentWikiSensor(BaseSensor* sensor);
+    void setCurrentSelectionDevice(BaseDevice* device);
 
     /**
-     * @brief Get the current library sensor
-     * @return Pointer to the current library sensor
+     * @brief Get the current Library device.
+     * @return Pointer to the current library device.
      */
-    BaseSensor* getCurrentLibrarySensor();
+    BaseDevice* getCurrentLibraryDevice();
 
     /**
-     * @brief Set current library sensor
-     * @param sensor Pointer to the sensor or nullptr for new entity flow
+     * @brief Set the current Library device.
+     * @param device Pointer to the device or `nullptr` for new-entity flow.
      */
-    void setCurrentLibrarySensor(BaseSensor *sensor);
+    void setCurrentLibraryDevice(BaseDevice *device);
 
     /**
-     * @brief Get access to the current sensor index
-     * @return Reference to the current index
+     * @brief Get access to the current device index.
+     * @return Reference to the current index.
      */
     size_t& getCurrentIndex() { return currentIndex; }
 
     /**
-     * @brief Reset the current sensor index to zero
+     * @brief Reset the current device index to zero.
      */
     void resetCurrentIndex() { currentIndex = 0; }
 
     /**
-     * @brief Move to the next sensor in the list (wraps around)
-     * @return Reference to the updated current index
+     * @brief Move to the next device in the session list (wraps around).
+     * @return Pointer to the new current device.
      */
-    BaseSensor* nextSensor();
+    BaseDevice* nextDevice();
 
     /**
-     * @brief Move to the previous sensor in the list (wraps around)
-     * @return Reference to the updated current index
+     * @brief Move to the previous device in the session list (wraps around).
+     * @return Pointer to the new current device.
      */
-    BaseSensor* previousSensor();
+    BaseDevice* previousDevice();
 };
 
-#endif // MANAGER_HPP 
+#endif // DEVICE_MANAGER_HPP 

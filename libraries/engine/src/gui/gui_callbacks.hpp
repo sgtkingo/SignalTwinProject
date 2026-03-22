@@ -40,8 +40,13 @@ extern void switchToVisualization();
 
 /**
  * @brief Switch to selection screen
- * 
+ *
  * This function switches the GUI to device selection mode.
+ */
+extern void switchToSelection();
+
+/**
+ * @brief Backward-compatible alias for Selection screen navigation.
  */
 extern void switchToWiki();
 

@@ -16,13 +16,13 @@
 #include <array>
 #include <map>
 
-#include "../managers/manager.hpp"
-#include "../sensors/base_sensor.hpp"
+#include "../managers/device_manager.hpp"
+#include "../devices/base_device.hpp"
 
 class GuiManager
 {
 private:
-    SensorManager &sensorManager;  ///< Reference to the SensorManager instance
+    DeviceManager &sensorManager;  ///< Reference to the DeviceManager instance
     bool initialized = false;  ///< Initialization state flag
 
     // --- MENU GUI MEMBERS ---
@@ -105,7 +105,7 @@ private:
      * @param history The history array to store the history.
      */
     template <typename T>
-    void buildSensorHistory(BaseSensor *sensor, const std::string &key, lv_coord_t *history) {
+    void buildSensorHistory(BaseDevice *sensor, const std::string &key, lv_coord_t *history) {
         if (!history || !sensor) return;
 
         auto it = sensor->getValues().find(key);
@@ -126,7 +126,7 @@ private:
             curr = convertStringToType<T>(s);
         }
         catch (const std::exception &e) {
-            throw InvalidDataTypeException("BaseSensor::getValue", e.what());
+            throw InvalidDataTypeException("BaseDevice::getValue", e.what());
         }
     
         if (!inited) {
@@ -151,7 +151,7 @@ private:
                 history[i] = buf[i];
             }
             catch (const std::exception &e) {
-                throw InvalidDataTypeException("BaseSensor::getValue", e.what());
+                throw InvalidDataTypeException("BaseDevice::getValue", e.what());
             }
         }
     }
@@ -160,13 +160,13 @@ public:
     /**
      * @brief Private constructor for singleton pattern
      */
-    GuiManager(SensorManager &manager);
+    GuiManager(DeviceManager &manager);
     ~GuiManager() = default;
     
     /**
-     * @brief Get the SensorManager instance
+     * @brief Get the DeviceManager instance
      */
-    SensorManager &getSensorManager();
+    DeviceManager &getDeviceManager();
 
     /**
      * @brief Initialize the GUI manager and sensors
@@ -197,7 +197,7 @@ public:
     /**
      * @brief Draw the currently selected sensor's GUI
      */
-    void drawCurrentSensor();
+    void drawCurrentDevice();
 
     /**
      * @brief Construct the main menu and sensor widgets

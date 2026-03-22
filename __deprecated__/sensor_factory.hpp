@@ -22,7 +22,7 @@
  * @param uid The unique sensor identifier.
  * @return The sensor object.
  */
-BaseSensor* createSensorByType(std::string type, std::string uid);
+BaseDevice* createSensorByType(std::string type, std::string uid);
 
 /**
  * @brief Deprecated fixed catalog of sensors.
@@ -32,7 +32,7 @@ BaseSensor* createSensorByType(std::string type, std::string uid);
  * 
  * @param memory The list of sensors.
  */
-void createSensorList(std::vector<BaseSensor*> &memory);
+void createSensorList(std::vector<BaseDevice*> &memory);
 
 /**
  * @brief Deprecated string-based sensor catalog factory.
@@ -43,6 +43,6 @@ void createSensorList(std::vector<BaseSensor*> &memory);
  * @param memory The list of sensors.
  * @param stringSource The string source.
  */
-void createSensorList(std::vector<BaseSensor*> &memory, std::string stringSource);
+void createSensorList(std::vector<BaseDevice*> &memory, std::string stringSource);
 
 #endif // SENSOR_FACTORY_HPP

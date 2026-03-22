@@ -1,16 +1,16 @@
 /**
- * @file sensor_visualization_gui.hpp
- * @brief Declaration of the SensorVisualizationGui widget
+ * @file signals_visualization_gui.hpp
+ * @brief Declaration of the SignalsVisualizationGui widget
  *
- * This header defines the SensorVisualizationGui class which handles
+ * This header defines the SignalsVisualizationGui class which handles
  * active sensor visualization, data display, synchronization, and navigation.
  *
  * @copyright 2025 MTA
  * @author Ing. Jiri Konecny, Ondřej Wrubel
  */
 
-#ifndef SENSOR_VISUALIZATION_GUI_HPP
-#define SENSOR_VISUALIZATION_GUI_HPP
+#ifndef SIGNALS_VISUALIZATION_GUI_HPP
+#define SIGNALS_VISUALIZATION_GUI_HPP
 
 #include "lvgl.h"
 #include <array>
@@ -19,12 +19,12 @@
 #include <vector>
 
 #include "gui_callbacks.hpp"
-#include "../managers/manager.hpp"
+#include "../managers/device_manager.hpp"
 #include "../managers/data_bundle_manager.hpp"
 #include "../exceptions/data_exceptions.hpp"
 
 /**
- * @class SensorVisualizationGui
+ * @class SignalsVisualizationGui
  * @brief Handles active sensor visualization, data display, and navigation.
  *
  * This class is responsible for:
@@ -33,7 +33,7 @@
  * - Managing sensor synchronization operations
  * - Handling sensor-specific events and interactions
  */
-class SensorVisualizationGui
+class SignalsVisualizationGui
 {
 private:
     struct SignalCard
@@ -55,12 +55,13 @@ private:
         lv_obj_t *editor = nullptr;
         bool usesDropdown = false;
         bool usesSlider = false;
+        bool isValueControl = false;
         std::string key;
     };
 
-    SensorManager &sensorManager;        ///< Reference to the sensor manager instance
+    DeviceManager &sensorManager;        ///< Reference to the sensor manager instance
     DataBundleManager &dataBundleManager;///< Reference to the databundle manager instance
-    BaseSensor *currentSensor = nullptr; ///< Currently visualized sensor
+    BaseDevice *currentSensor = nullptr; ///< Currently visualized sensor
 
     /// Static buffers for chart data
     std::map<std::string, std::array<lv_coord_t, HISTORY_CAP>> bufMap;
@@ -182,7 +183,7 @@ private:
      * @param history The history array to store the history
      */
     template <typename T>
-    void buildSensorHistory(BaseSensor *sensor, const std::string &key, lv_coord_t *history)
+    void buildSensorHistory(BaseDevice *sensor, const std::string &key, lv_coord_t *history)
     {
         if (!history || !sensor)
             return;
@@ -208,7 +209,7 @@ private:
         }
         catch (const std::exception &e)
         {
-            throw InvalidDataTypeException("SensorVisualizationGui::buildSensorHistory", e.what());
+            throw InvalidDataTypeException("SignalsVisualizationGui::buildSensorHistory", e.what());
         }
 
         if (!inited)
@@ -240,7 +241,7 @@ private:
             }
             catch (const std::exception &e)
             {
-                throw InvalidDataTypeException("SensorVisualizationGui::buildSensorHistory", e.what());
+                throw InvalidDataTypeException("SignalsVisualizationGui::buildSensorHistory", e.what());
             }
         }
     }
@@ -257,7 +258,7 @@ private:
     /**
      * @brief Update sensor data display
      */
-    void updateSensorDataDisplay();
+    void updateDeviceDataDisplay();
 
     /**
      * @brief Update chart with current sensor data
@@ -272,14 +273,14 @@ private:
     std::vector<std::string> getChartableValueKeys() const;
     bool currentDeviceSupportsRecording() const;
     void updateActionButtonsState();
-    bool applyConfigValue(const std::string &key, const std::string &value);
+    bool applyEditableValue(bool isValueControl, const std::string &key, const std::string &value);
     void handleDropdownConfigChanged(size_t controlIndex);
     void handleSliderConfigChanged(size_t controlIndex);
     void handleTextConfigSubmitted(size_t controlIndex);
     static uint32_t getSignalAccentColor(size_t index);
-    static bool isNumericType(SensorDataType dtype);
-    static bool hasSelectableOptions(const SensorParam &param);
-    static bool supportsSliderInput(const SensorParam &param);
+    static bool isNumericType(DeviceDataType dtype);
+    static bool hasSelectableOptions(const DeviceParam &param);
+    static bool supportsSliderInput(const DeviceParam &param);
     static std::string buildUnitText(const std::string &unit, const char *fallbackText);
 
 public:
@@ -287,12 +288,12 @@ public:
      * @brief Constructor
      * @param sensorManager Reference to the sensor manager instance
      */
-    SensorVisualizationGui(SensorManager &sensorManager, DataBundleManager &dataBundleManager);
+    SignalsVisualizationGui(DeviceManager &sensorManager, DataBundleManager &dataBundleManager);
 
     /**
      * @brief Destructor
      */
-    ~SensorVisualizationGui() = default;
+    ~SignalsVisualizationGui() = default;
 
     /**
      * @brief Initialize the sensor visualization GUI
@@ -318,22 +319,22 @@ public:
     /**
      * @brief Draw/update the currently selected sensor's visualization
      */
-    void drawCurrentSensor();
+    void drawCurrentDevice();
 
     /**
      * @brief Go to the previous sensor in the list
      */
-    void goToPreviousSensor();
+    void goToPreviousDevice();
 
     /**
      * @brief Go to the next sensor in the list
      */
-    void goToNextSensor();
+    void goToNextDevice();
 
     /**
      * @brief Go to the first sensor in the list
      */
-    void goToFirstSensor();
+    void goToFirstDevice();
 
     /**
      * @brief Handle back button click event
@@ -397,7 +398,7 @@ public:
      * @brief Synchronize the current sensor data
      * @return True if synchronization was successful, false otherwise
      */
-    bool syncCurrentSensor();
+    bool syncCurrentDevice();
 
     /**
      * @brief Show shadow overlay
@@ -437,4 +438,4 @@ public:
     void hideAlert();
 };
 
-#endif // SENSOR_VISUALIZATION_GUI_HPP
+#endif // SIGNALS_VISUALIZATION_GUI_HPP

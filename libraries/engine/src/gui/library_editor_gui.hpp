@@ -4,12 +4,12 @@
 #include "lvgl.h"
 
 #include "gui_callbacks.hpp"
-#include "../managers/manager.hpp"
+#include "../managers/device_manager.hpp"
 
 class LibraryEditorGui
 {
 private:
-    SensorManager &sensorManager;
+    DeviceManager &sensorManager;
     bool initialized = false;
 
     lv_obj_t *ui_Widget = nullptr;
@@ -20,7 +20,7 @@ private:
     void refresh();
 
 public:
-    explicit LibraryEditorGui(SensorManager &sensorManager);
+    explicit LibraryEditorGui(DeviceManager &sensorManager);
     ~LibraryEditorGui() = default;
 
     void init();

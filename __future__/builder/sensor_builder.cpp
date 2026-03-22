@@ -7,7 +7,7 @@
  */
 
 #include "sensor_builder.hpp"
-#include "../exceptions/sensors_exceptions.hpp"
+#include "../exceptions/devices_exceptions.hpp"
 #include "../exceptions/files_exceptions.hpp"
 #include "../helpers.hpp"
 #include <fstream>
@@ -22,8 +22,8 @@ DataType parseDataType(const std::string& dtypeStr) {
     throw InvalidDataTypeException("parseDataType", "Unknown data type: " + dtypeStr);
 }
 
-SensorRestrictions parseRestrictions(JsonObject restrictionsJson) {
-    SensorRestrictions restrictions;
+DeviceRestrictions parseRestrictions(JsonObject restrictionsJson) {
+    DeviceRestrictions restrictions;
     
     if (restrictionsJson.containsKey("min")) {
         restrictions.Min = restrictionsJson["min"].as<std::string>();
@@ -41,8 +41,8 @@ SensorRestrictions parseRestrictions(JsonObject restrictionsJson) {
     return restrictions;
 }
 
-SensorParam parseParameter(JsonObject paramJson) {
-    SensorParam param;
+DeviceParam parseParameter(JsonObject paramJson) {
+    DeviceParam param;
     
     // Parse value
     if (paramJson.containsKey("value")) {
@@ -99,7 +99,7 @@ bool validateSensorJson(JsonObject sensorJson, const std::string& sensorId) {
     return true;
 }
 
-BaseSensor* buildSensorFromJson(const std::string& jsonString, const std::string& sensorId) {
+BaseDevice* buildSensorFromJson(const std::string& jsonString, const std::string& sensorId) {
     try {
         // Parse JSON
         DynamicJsonDocument doc(4096);
@@ -133,12 +133,12 @@ BaseSensor* buildSensorFromJson(const std::string& jsonString, const std::string
         }
         
         // Create sensor using VirtualSensor base class
-        JsonConfiguredSensor* sensor = new JsonConfiguredSensor(sensorJson["uid"].as<std::string>());
+        JsonConfiguredDevice* sensor = new JsonConfiguredDevice(sensorJson["uid"].as<std::string>());
         
         // Set basic properties
         sensor->Type = sensorJson["type"].as<std::string>();
         sensor->Description = sensorJson["description"].as<std::string>();
-        sensor->Status = SensorStatus::OK;
+        sensor->Status = DeviceStatus::OK;
         
         // Parse values
         JsonObject values = sensorJson["values"];
@@ -147,7 +147,7 @@ BaseSensor* buildSensorFromJson(const std::string& jsonString, const std::string
             JsonObject valueObj = valuePair.value();
             
             try {
-                SensorParam param = parseParameter(valueObj);
+                DeviceParam param = parseParameter(valueObj);
                 sensor->addValueParameter(key, param);
             } catch (const Exception& e) {
                 // Continue with other parameters if one fails
@@ -161,7 +161,7 @@ BaseSensor* buildSensorFromJson(const std::string& jsonString, const std::string
             JsonObject configObj = configPair.value();
             
             try {
-                SensorParam param = parseParameter(configObj);
+                DeviceParam param = parseParameter(configObj);
                 sensor->addConfigParameter(key, param);
             } catch (const Exception& e) {
                 // Continue with other parameters if one fails
@@ -178,7 +178,7 @@ BaseSensor* buildSensorFromJson(const std::string& jsonString, const std::string
     }
 }
 
-BaseSensor* buildSensorFromJsonFile(const std::string& filePath, const std::string& sensorId) {
+BaseDevice* buildSensorFromJsonFile(const std::string& filePath, const std::string& sensorId) {
     try {
         // Read file
         std::ifstream file(filePath);
@@ -266,8 +266,8 @@ std::vector<std::string> getAvailableSensorIdsFromFile(const std::string& filePa
     }
 }
 
-std::vector<BaseSensor*> buildAllSensorsFromJson(const std::string& jsonString) {
-    std::vector<BaseSensor*> sensors;
+std::vector<BaseDevice*> buildAllSensorsFromJson(const std::string& jsonString) {
+    std::vector<BaseDevice*> sensors;
     
     try {
         // Get all available sensor IDs
@@ -276,7 +276,7 @@ std::vector<BaseSensor*> buildAllSensorsFromJson(const std::string& jsonString) 
         // Build each sensor
         for (const std::string& sensorId : sensorIds) {
             try {
-                BaseSensor* sensor = buildSensorFromJson(jsonString, sensorId);
+                BaseDevice* sensor = buildSensorFromJson(jsonString, sensorId);
                 if (sensor) {
                     sensors.push_back(sensor);
                 }
@@ -288,7 +288,7 @@ std::vector<BaseSensor*> buildAllSensorsFromJson(const std::string& jsonString) 
         
     } catch (const Exception& e) {
         // Clean up any successfully created sensors
-        for (BaseSensor* sensor : sensors) {
+        for (BaseDevice* sensor : sensors) {
             delete sensor;
         }
         sensors.clear();
@@ -298,7 +298,7 @@ std::vector<BaseSensor*> buildAllSensorsFromJson(const std::string& jsonString) 
     return sensors;
 }
 
-std::vector<BaseSensor*> buildAllSensorsFromJsonFile(const std::string& filePath) {
+std::vector<BaseDevice*> buildAllSensorsFromJsonFile(const std::string& filePath) {
     try {
         // Read file
         std::ifstream file(filePath);

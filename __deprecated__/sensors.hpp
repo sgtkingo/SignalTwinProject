@@ -2,7 +2,7 @@
  * @file sensors.hpp
  * @brief Declaration and implementation of sensor classes for sensor management using built-in exceptions.
  *
- * These sensors are derived from the BaseSensor class and provide specific implementations for ADC, Joystick, DHT11, LinearHallAndDigital, PhotoResistor, and LinearHall sensors.
+ * These sensors are derived from the BaseDevice class and provide specific implementations for ADC, Joystick, DHT11, LinearHallAndDigital, PhotoResistor, and LinearHall sensors.
  *
  * @copyright 2025 MTA
  * @author Ing. Jiri Konecny
@@ -13,7 +13,7 @@
 /*********************
  *      INCLUDES
  *********************/
-#include "base_sensor.hpp" ///< BaseSensor class.
+#include "base_device.hpp" ///< BaseDevice class.
 
 /**************************************************************************/
 // EMULATED SENSORS
@@ -22,7 +22,7 @@
 /* Microphone Sensor 
 Emulated microphone sensor returning dBFS and peak values.
 */
-class MicrophoneSensor : public BaseSensor
+class MicrophoneSensor : public BaseDevice
 {
 public:
     /**
@@ -32,7 +32,7 @@ public:
      *
      * @param uid The unique sensor identifier.
      */
-    MicrophoneSensor(std::string uid) : BaseSensor(uid) { init(); }
+    MicrophoneSensor(std::string uid) : BaseDevice(uid) { init(); }
 
     /**
      * @brief Virtual destructor.
@@ -57,8 +57,8 @@ public:
         try
         {
             // Default values
-            addValueParameter("dBFS", {"0.0", "dBm", SensorDataType::FLOAT});
-            addValueParameter("peak", {"0.0", "dBm", SensorDataType::FLOAT});
+            addValueParameter("dBFS", {"0.0", "dBm", DeviceDataType::FLOAT});
+            addValueParameter("peak", {"0.0", "dBm", DeviceDataType::FLOAT});
         }
         catch (const std::exception &e)
         {
@@ -71,7 +71,7 @@ public:
 /* Camera Sensor
 Emulated camera sensor returning estimated lux value.
 */
-class CameraSensor : public BaseSensor
+class CameraSensor : public BaseDevice
 {
 public:
     /**
@@ -81,7 +81,7 @@ public:
      *
      * @param uid The unique sensor identifier.
      */
-    CameraSensor(std::string uid) : BaseSensor(uid) { init(); }
+    CameraSensor(std::string uid) : BaseDevice(uid) { init(); }
 
     /**
      * @brief Virtual destructor.
@@ -106,7 +106,7 @@ public:
         try
         {
             // Default values
-            addValueParameter("lux_est", {"0.0", "lux", SensorDataType::FLOAT});
+            addValueParameter("lux_est", {"0.0", "lux", DeviceDataType::FLOAT});
         }
         catch (const std::exception &e)
         {
@@ -118,7 +118,7 @@ public:
 /* CPU Temperature Sensor
 Emulated CPU temperature sensor returning real temperature value.
 */
-class CpuTempSensor : public BaseSensor
+class CpuTempSensor : public BaseDevice
 {
 public:
     /**
@@ -128,7 +128,7 @@ public:
      *
      * @param uid The unique sensor identifier.
      */
-    CpuTempSensor(std::string uid) : BaseSensor(uid) { init(); }
+    CpuTempSensor(std::string uid) : BaseDevice(uid) { init(); }
 
     /**
      * @brief Virtual destructor.
@@ -153,7 +153,7 @@ public:
         try
         {
             // Default values
-            addValueParameter("temp", {"0.0", "C", SensorDataType::FLOAT});
+            addValueParameter("temp", {"0.0", "C", DeviceDataType::FLOAT});
         }
         catch (const std::exception &e)
         {
@@ -168,12 +168,12 @@ public:
 
 /**
  * @class ADC
- * @brief ADC sensor class derived from BaseSensor.
+ * @brief ADC sensor class derived from BaseDevice.
  *
  * Represents an Analog-to-Digital Converter (ADC) sensor. Implements initialization, configuration,
  * updating, and printing specific to ADC sensors.
  */
-class ADC : public BaseSensor
+class ADC : public BaseDevice
 {
 public:
     /**
@@ -183,7 +183,7 @@ public:
      *
      * @param uid The unique sensor identifier.
      */
-    ADC(std::string uid) : BaseSensor(uid) { init(); }
+    ADC(std::string uid) : BaseDevice(uid) { init(); }
 
     /**
      * @brief Virtual destructor.
@@ -208,9 +208,9 @@ public:
         try
         {
             // Default configs
-            addConfigParameter("resolution", {"12", "bits", SensorDataType::INT, 0});
+            addConfigParameter("resolution", {"12", "bits", DeviceDataType::INT, 0});
             // Default values
-            addValueParameter("value", {"0", "", SensorDataType::INT, 0});
+            addValueParameter("value", {"0", "", DeviceDataType::INT, 0});
         }
         catch (const std::exception &e)
         {
@@ -225,15 +225,15 @@ public:
 
 /**
  * @class Joystick
- * @brief Joystick sensor class derived from BaseSensor.
+ * @brief Joystick sensor class derived from BaseDevice.
  *
  * Represents a Joystick as a peripheral constructed as sensor. Implements initialization, configuration,
  * updating, and printing specific to Joystick sensors.
  */
-class Joystick : public BaseSensor
+class Joystick : public BaseDevice
 {
 public:
-    Joystick(std::string uid) : BaseSensor(uid) { init(); }
+    Joystick(std::string uid) : BaseDevice(uid) { init(); }
     virtual ~Joystick() {}
     virtual void init() override
     {
@@ -242,9 +242,9 @@ public:
         
         try
         {
-            addValueParameter("XCoordination", {"50", "%", SensorDataType::INT, 0});
-            addValueParameter("YCoordination", {"50", "%", SensorDataType::INT, 0});
-            addValueParameter("Button", {"0", "ON/OFF", SensorDataType::INT, 0});
+            addValueParameter("XCoordination", {"50", "%", DeviceDataType::INT, 0});
+            addValueParameter("YCoordination", {"50", "%", DeviceDataType::INT, 0});
+            addValueParameter("Button", {"0", "ON/OFF", DeviceDataType::INT, 0});
         }
         catch (const std::exception &e)
         {
@@ -257,15 +257,15 @@ public:
 
 /**
  * @class DHT11
- * @brief DHT11 sensor class derived from BaseSensor.
+ * @brief DHT11 sensor class derived from BaseDevice.
  *
  * Represents a DHT11 as a temperature and humidity sensor. Implements initialization, configuration,
  * updating, and printing specific to DHT11 sensors.
  */
-class DHT11 : public BaseSensor
+class DHT11 : public BaseDevice
 {
 public:
-    DHT11(std::string uid) : BaseSensor(uid) { init(); }
+    DHT11(std::string uid) : BaseDevice(uid) { init(); }
     virtual ~DHT11() {}
 
     virtual void init() override
@@ -274,9 +274,9 @@ public:
         Description = "DHT11 Temperature & Humidity sensor";
         
 
-        addConfigParameter("Unit", {"", "", SensorDataType::STRING, 0});
-        addValueParameter("temp", {"0", "°C", SensorDataType::INT, 0});
-        addValueParameter("humi", {"0", "%", SensorDataType::INT, 0});
+        addConfigParameter("Unit", {"", "", DeviceDataType::STRING, 0});
+        addValueParameter("temp", {"0", "°C", DeviceDataType::INT, 0});
+        addValueParameter("humi", {"0", "%", DeviceDataType::INT, 0});
     }
 };
 
@@ -284,12 +284,12 @@ public:
 
 /**
  * @class LinearHallAndDigital
- * @brief LinearHallAndDigital sensor class derived from BaseSensor.
+ * @brief LinearHallAndDigital sensor class derived from BaseDevice.
  *
  * Represents a Linear Hall sensor, which returns strenght of a magnet in milliTesla. Implements initialization, configuration,
  * updating, and printing specific to LinearHallAndDigital sensors.
  */
-class LinearHallAndDigital : public BaseSensor
+class LinearHallAndDigital : public BaseDevice
 {
 public:
     /**
@@ -299,7 +299,7 @@ public:
      *
      * @param uid The unique sensor identifier.
      */
-    LinearHallAndDigital(std::string uid) : BaseSensor(uid)
+    LinearHallAndDigital(std::string uid) : BaseDevice(uid)
     {
         init();
     }
@@ -325,10 +325,10 @@ public:
         try
         {
             // Default configs
-            addConfigParameter("precision", {"2", "decimals", SensorDataType::INT, 0});
+            addConfigParameter("precision", {"2", "decimals", DeviceDataType::INT, 0});
             // Default values
-            addValueParameter("milliTesla Meter", {"0", "milliTesla", SensorDataType::FLOAT, 0});
-            addValueParameter("Magnet Detector", {"0", "", SensorDataType::INT, 0});
+            addValueParameter("milliTesla Meter", {"0", "milliTesla", DeviceDataType::FLOAT, 0});
+            addValueParameter("Magnet Detector", {"0", "", DeviceDataType::INT, 0});
         }
         catch (const std::exception &e)
         {
@@ -341,12 +341,12 @@ public:
 
 /**
  * @class PhotoResistor
- * @brief PhotoResistor sensor class derived from BaseSensor.
+ * @brief PhotoResistor sensor class derived from BaseDevice.
  *
  * Represents a PhotoResistor which measures lux in users environment. Implements initialization, configuration,
  * updating, and printing specific to PhotoResistor sensors.
  */
-class PhotoResistor : public BaseSensor
+class PhotoResistor : public BaseDevice
 {
 public:
     /**
@@ -356,7 +356,7 @@ public:
      *
      * @param uid The unique sensor identifier.
      */
-    PhotoResistor(std::string uid) : BaseSensor(uid)
+    PhotoResistor(std::string uid) : BaseDevice(uid)
     {
         init();
     }
@@ -382,9 +382,9 @@ public:
         try
         {
             // Default configs
-            addConfigParameter("Res", {"5", "digits", SensorDataType::INT, 0});
+            addConfigParameter("Res", {"5", "digits", DeviceDataType::INT, 0});
             // Default values
-            addValueParameter("intensity", {"0", "Lux", SensorDataType::INT, 0});
+            addValueParameter("intensity", {"0", "Lux", DeviceDataType::INT, 0});
         }
         catch (const std::exception &e)
         {
@@ -397,12 +397,12 @@ public:
 
 /**
  * @class LinearHall
- * @brief LinearHall sensor class derived from BaseSensor.
+ * @brief LinearHall sensor class derived from BaseDevice.
  *
  * Represents a Linear Hall sensor, which returns strenght of a magnet in gauss. Implements initialization, configuration,
  * updating, and printing specific to LinearHall sensors.
  */
-class LinearHall : public BaseSensor
+class LinearHall : public BaseDevice
 {
 public:
     /**
@@ -412,7 +412,7 @@ public:
      *
      * @param uid The unique sensor identifier.
      */
-    LinearHall(std::string uid) : BaseSensor(uid)
+    LinearHall(std::string uid) : BaseDevice(uid)
     {
         init();
     }
@@ -439,9 +439,9 @@ public:
         try
         {
             // Default configs
-            addConfigParameter("precision", {"2", "decimals", SensorDataType::INT, 0});
+            addConfigParameter("precision", {"2", "decimals", DeviceDataType::INT, 0});
             // Default values
-            addValueParameter("milliTesla", {"0", "milliTesla", SensorDataType::FLOAT, 0});
+            addValueParameter("milliTesla", {"0", "milliTesla", DeviceDataType::FLOAT, 0});
         }
         catch (const std::exception &e)
         {
@@ -454,12 +454,12 @@ public:
 
 /**
  * @class DigitalTemperature
- * @brief DigitalTemperature sensor class derived from BaseSensor.
+ * @brief DigitalTemperature sensor class derived from BaseDevice.
  *
  * Represents a Temperature sensor, which returns °C and ON/OFF if the temperature goes past hardware-configured value. Implements initialization, configuration,
  * updating, and printing specific to DigitalTemperature sensors.
  */
-class DigitalTemperature : public BaseSensor
+class DigitalTemperature : public BaseDevice
 {
 public:
     /**
@@ -469,7 +469,7 @@ public:
      *
      * @param uid The unique sensor identifier.
      */
-    DigitalTemperature(std::string uid) : BaseSensor(uid)
+    DigitalTemperature(std::string uid) : BaseDevice(uid)
     {
         init();
     }
@@ -495,10 +495,10 @@ public:
         try
         {
             // Default configs
-            addConfigParameter("Res", {"2", "decimals", SensorDataType::INT, 0});
+            addConfigParameter("Res", {"2", "decimals", DeviceDataType::INT, 0});
             // Default values
-            addValueParameter("temp", {"0", "°C", SensorDataType::FLOAT, 0});
-            addValueParameter("alarm", {"0", "", SensorDataType::STRING, 0});
+            addValueParameter("temp", {"0", "°C", DeviceDataType::FLOAT, 0});
+            addValueParameter("alarm", {"0", "", DeviceDataType::STRING, 0});
         }
         catch (const std::exception &e)
         {
@@ -511,12 +511,12 @@ public:
 
 /**
  * @class AnalogTemperature
- * @brief AnalogTemperature sensor class derived from BaseSensor.
+ * @brief AnalogTemperature sensor class derived from BaseDevice.
  *
  * Represents a Temperature sensor, which returns °C. Implements initialization, configuration,
  * updating, and printing specific to AnalogTemperature sensors.
  */
-class AnalogTemperature : public BaseSensor
+class AnalogTemperature : public BaseDevice
 {
 public:
     /**
@@ -526,7 +526,7 @@ public:
      *
      * @param uid The unique sensor identifier.
      */
-    AnalogTemperature(std::string uid) : BaseSensor(uid)
+    AnalogTemperature(std::string uid) : BaseDevice(uid)
     {
         init();
     }
@@ -552,9 +552,9 @@ public:
         try
         {
             // Default configs
-            addConfigParameter("precision", {"2", "decimals", SensorDataType::INT, 0});
+            addConfigParameter("precision", {"2", "decimals", DeviceDataType::INT, 0});
             // Default values
-            addValueParameter("Temperature", {"0", "°C", SensorDataType::FLOAT, 0});
+            addValueParameter("Temperature", {"0", "°C", DeviceDataType::FLOAT, 0});
         }
         catch (const std::exception &e)
         {
@@ -567,12 +567,12 @@ public:
 
 /**
  * @class TH
- * @brief Temperature/Huminidy sensor class derived from BaseSensor.
+ * @brief Temperature/Huminidy sensor class derived from BaseDevice.
  *
  * Represents a Temperature/Huminidy sensor. Implements initialization, configuration, updating, and printing
  * specific to Temperature/Huminidy sensors.
  */
-class TH : public BaseSensor
+class TH : public BaseDevice
 {
 public:
     /**
@@ -582,7 +582,7 @@ public:
      *
      * @param uid The unique sensor identifier.
      */
-    TH(std::string uid) : BaseSensor(uid)
+    TH(std::string uid) : BaseDevice(uid)
     {
         init();
     }
@@ -609,10 +609,10 @@ public:
         try
         {
             // Default configs
-            addConfigParameter("precision", {"2", "decimals", SensorDataType::INT, 0});
+            addConfigParameter("precision", {"2", "decimals", DeviceDataType::INT, 0});
             // Default values
-            addValueParameter("temperature", {"0", "Celsia", SensorDataType::FLOAT, 0});
-            addValueParameter("humidity", {"0", "%", SensorDataType::INT, 0});
+            addValueParameter("temperature", {"0", "Celsia", DeviceDataType::FLOAT, 0});
+            addValueParameter("humidity", {"0", "%", DeviceDataType::INT, 0});
         }
         catch (const std::exception &e)
         {
@@ -627,12 +627,12 @@ public:
 
 /**
  * @class DigitalHall
- * @brief DigitalHall sensor class derived from BaseSensor.
+ * @brief DigitalHall sensor class derived from BaseDevice.
  *
  * Represents a Linear Hall sensor, which returns 1 if it in a presence of a magnet. Implements initialization, configuration,
  * updating, and printing specific to DigitalHall sensors.
  */
-class DigitalHall : public BaseSensor
+class DigitalHall : public BaseDevice
 {
 public:
     /**
@@ -642,7 +642,7 @@ public:
      *
      * @param uid The unique sensor identifier.
      */
-    DigitalHall(std::string uid) : BaseSensor(uid)
+    DigitalHall(std::string uid) : BaseDevice(uid)
     {
         init();
     }
@@ -669,9 +669,9 @@ public:
         try
         {
             // Default configs
-            addConfigParameter("resolution", {"1", "bits", SensorDataType::INT, 0});
+            addConfigParameter("resolution", {"1", "bits", DeviceDataType::INT, 0});
             // Default values
-            addValueParameter("Magnet Detector", {"0", "", SensorDataType::INT, 0});
+            addValueParameter("Magnet Detector", {"0", "", DeviceDataType::INT, 0});
         }
         catch (const std::exception &e)
         {
@@ -684,12 +684,12 @@ public:
 
 /**
  * @class PhotoInterrupter
- * @brief PhotoInterrupter sensor class derived from BaseSensor.
+ * @brief PhotoInterrupter sensor class derived from BaseDevice.
  *
  * Represents a PhotoInterrupter, which returns 1 if something breaks line between IR light. Implements initialization, configuration,
  * updating, and printing specific to PhotoInterrupter sensors.
  */
-class PhotoInterrupter : public BaseSensor
+class PhotoInterrupter : public BaseDevice
 {
 public:
     /**
@@ -699,7 +699,7 @@ public:
      *
      * @param uid The unique sensor identifier.
      */
-    PhotoInterrupter(std::string uid) : BaseSensor(uid)
+    PhotoInterrupter(std::string uid) : BaseDevice(uid)
     {
         init();
     }
@@ -726,7 +726,7 @@ public:
         try
         {
             // Default values
-            addValueParameter("Motion Detector", {"0", "", SensorDataType::INT, 0});
+            addValueParameter("Motion Detector", {"0", "", DeviceDataType::INT, 0});
         }
         catch (const std::exception &e)
         {
@@ -740,13 +740,13 @@ public:
 /**************************************************************************/
 /**
  * @class TP
- * @brief Temperature/Pressure sensor class derived from BaseSensor.
+ * @brief Temperature/Pressure sensor class derived from BaseDevice.
  *
  * Represents a Temperature/Pressure sensor. Implements initialization, configuration, updating, and printing
  * specific to Temperature/Pressure sensors.
  */
 
-class TP : public BaseSensor
+class TP : public BaseDevice
 {
 public:
     /**
@@ -756,7 +756,7 @@ public:
      *
      * @param uid The unique sensor identifier.
      */
-    TP(std::string uid) : BaseSensor(uid)
+    TP(std::string uid) : BaseDevice(uid)
     {
         init();
     }
@@ -782,10 +782,10 @@ public:
         try
         {
             // Default configs
-            addConfigParameter("Precision", {"2", "decimals", SensorDataType::INT, 0});
+            addConfigParameter("Precision", {"2", "decimals", DeviceDataType::INT, 0});
             // Default values
-            addValueParameter("Temperature", {"0", "°C", SensorDataType::FLOAT, 0});
-            addValueParameter("Pressure", {"0", "hPa", SensorDataType::FLOAT, 0});
+            addValueParameter("Temperature", {"0", "°C", DeviceDataType::FLOAT, 0});
+            addValueParameter("Pressure", {"0", "hPa", DeviceDataType::FLOAT, 0});
         }
         catch (const std::exception &e)
         {
@@ -797,13 +797,13 @@ public:
 /**************************************************************************/
 /**
  * @class GAT
- * @brief Gyroscope/Accelerometr/Temperature sensor class derived from BaseSensor.
+ * @brief Gyroscope/Accelerometr/Temperature sensor class derived from BaseDevice.
  *
  * Represents a Gyroscope/Accelerometr/Temperature sensor. Implements initialization, configuration, updating, and printing
  * specific to Gyroscope/Accelerometr/Temperature sensors.
  */
 
-class GAT : public BaseSensor
+class GAT : public BaseDevice
 {
 public:
     /**
@@ -813,7 +813,7 @@ public:
      *
      * @param uid The unique sensor identifier.
      */
-    GAT(std::string uid) : BaseSensor(uid)
+    GAT(std::string uid) : BaseDevice(uid)
     {
         init();
     }
@@ -840,15 +840,15 @@ public:
         try
         {
             // Default configs
-            addConfigParameter("Precision", {"2", "decimals", SensorDataType::INT, 0});
+            addConfigParameter("Precision", {"2", "decimals", DeviceDataType::INT, 0});
             // Default values
-            addValueParameter("Temperature", {"0", "°C", SensorDataType::FLOAT, 0});
-            addValueParameter("acm_x", {"0", "g", SensorDataType::FLOAT, 0});
-            addValueParameter("acm_y", {"0", "g", SensorDataType::FLOAT, 0});
-            addValueParameter("acm_z", {"0", "g", SensorDataType::FLOAT, 0});
-            addValueParameter("gyr_x", {"0", "°/s", SensorDataType::FLOAT, 0});
-            addValueParameter("gyr_y", {"0", "°/s", SensorDataType::FLOAT, 0});
-            addValueParameter("gyr_z", {"0", "°/s", SensorDataType::FLOAT, 0});
+            addValueParameter("Temperature", {"0", "°C", DeviceDataType::FLOAT, 0});
+            addValueParameter("acm_x", {"0", "g", DeviceDataType::FLOAT, 0});
+            addValueParameter("acm_y", {"0", "g", DeviceDataType::FLOAT, 0});
+            addValueParameter("acm_z", {"0", "g", DeviceDataType::FLOAT, 0});
+            addValueParameter("gyr_x", {"0", "°/s", DeviceDataType::FLOAT, 0});
+            addValueParameter("gyr_y", {"0", "°/s", DeviceDataType::FLOAT, 0});
+            addValueParameter("gyr_z", {"0", "°/s", DeviceDataType::FLOAT, 0});
         }
         catch (const std::exception &e)
         {
@@ -860,13 +860,13 @@ public:
 /**************************************************************************/
 /**
  * @class TOF
- * @brief Time of flight sensor class derived from BaseSensor.
+ * @brief Time of flight sensor class derived from BaseDevice.
  *
  * Represents a Time of flight sensor. Implements initialization, configuration, updating, and printing
  * specific to Time of flight sensors.
  */
 
-class TOF : public BaseSensor
+class TOF : public BaseDevice
 {
 public:
     /**
@@ -876,7 +876,7 @@ public:
      *
      * @param uid The unique sensor identifier.
      */
-    TOF(std::string uid) : BaseSensor(uid)
+    TOF(std::string uid) : BaseDevice(uid)
     {
         init();
     }
@@ -903,9 +903,9 @@ public:
         try
         {
             // Default configs
-            addConfigParameter("Precision", {"2", "decimals", SensorDataType::INT, 0});
+            addConfigParameter("Precision", {"2", "decimals", DeviceDataType::INT, 0});
             // Default values
-            addValueParameter("dist", {"0", "mm", SensorDataType::INT, 0});
+            addValueParameter("dist", {"0", "mm", DeviceDataType::INT, 0});
         }
         catch (const std::exception &e)
         {

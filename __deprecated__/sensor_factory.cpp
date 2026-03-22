@@ -10,9 +10,9 @@
 
 #include "sensor_factory.hpp"
 
-void createSensorList(std::vector<BaseSensor*> &memory)
+void createSensorList(std::vector<BaseDevice*> &memory)
 {
-    logMessage("Deprecated sensor factory path used. Move catalog changes to /data/sensor_db.json on SD.\n");
+    logMessage("Deprecated sensor factory path used. Move catalog changes to /data/device_db.json on SD.\n");
     memory.clear();
     //Add sensors here
     memory.push_back(new MicrophoneSensor("mic_001"));
@@ -23,16 +23,16 @@ void createSensorList(std::vector<BaseSensor*> &memory)
     memory.push_back(new PhotoResistor("S15"));
 }
 
-void createSensorList(std::vector<BaseSensor*> &memory, std::string stringSource)
+void createSensorList(std::vector<BaseDevice*> &memory, std::string stringSource)
 {
-    logMessage("Deprecated string sensor factory path used. Move catalog changes to /data/sensor_db.json on SD.\n");
+    logMessage("Deprecated string sensor factory path used. Move catalog changes to /data/device_db.json on SD.\n");
     memory.clear();
     //Expected format: ?0:ADC&1:ADC&2:TH
     std::vector<std::string> sensorList = splitString(stringSource, '&');
     logMessage("\t(i)Found %d sensors...\n", sensorList.size());
     std::string id;
     std::string type;
-    BaseSensor* sensor;
+    BaseDevice* sensor;
 
     for (std::string sensorStr: sensorList)
     {
@@ -52,7 +52,7 @@ void createSensorList(std::vector<BaseSensor*> &memory, std::string stringSource
     }
 }
 
-BaseSensor* createSensorByType(std::string type, std::string uid)
+BaseDevice* createSensorByType(std::string type, std::string uid)
 {
     return nullptr;
 }

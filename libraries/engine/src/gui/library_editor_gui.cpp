@@ -2,7 +2,7 @@
 
 #include "../helpers.hpp"
 
-LibraryEditorGui::LibraryEditorGui(SensorManager &sensorManager) : sensorManager(sensorManager)
+LibraryEditorGui::LibraryEditorGui(DeviceManager &sensorManager) : sensorManager(sensorManager)
 {
 }
 
@@ -54,7 +54,7 @@ void LibraryEditorGui::build()
 
 void LibraryEditorGui::refresh()
 {
-    BaseSensor *sensor = sensorManager.getCurrentLibrarySensor();
+    BaseDevice *sensor = sensorManager.getCurrentLibraryDevice();
     if (!sensor) {
         lv_label_set_text(ui_Title, "New Entity");
         lv_textarea_set_text(ui_Text, "Name:\n\nDescription:\n\nValues:\n\nConfigs:\n");

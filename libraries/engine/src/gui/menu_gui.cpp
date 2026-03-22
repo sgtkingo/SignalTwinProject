@@ -2,7 +2,7 @@
 
 #include "../helpers.hpp"
 
-MenuGui::MenuGui(SensorManager &sensorManager) : sensorManager(sensorManager), activePinIndex(-1)
+MenuGui::MenuGui(DeviceManager &sensorManager) : sensorManager(sensorManager), activePinIndex(-1)
 {
     pinContainers.fill(nullptr);
     pinLabels.fill(nullptr);
@@ -44,7 +44,7 @@ void MenuGui::buildMenu()
     lv_obj_align(ui_btnBack, LV_ALIGN_TOP_LEFT, 12, 10);
     lv_obj_add_event_cb(ui_btnBack, [](lv_event_t *e) {
         if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-            switchToWiki();
+            switchToSelection();
         }
     }, LV_EVENT_ALL, nullptr);
     lv_obj_t *backLabel = lv_label_create(ui_btnBack);
@@ -98,40 +98,40 @@ void MenuGui::buildMenu()
 
 void MenuGui::updateHeader()
 {
-    BaseSensor *sensor = sensorManager.getCurrentWikiSensor();
-    if (!sensor) {
+    BaseDevice *device = sensorManager.getCurrentSelectionDevice();
+    if (!device) {
         lv_label_set_text(ui_Subtitle, "Select a device in Selection first.");
         return;
     }
 
-    std::string subtitle = sensor->getTypeName() + " | Green=assign, Yellow=unassign, Red=used elsewhere, Gray=locked";
+    std::string subtitle = device->getTypeName() + " | Green=assign, Yellow=unassign, Red=used elsewhere, Gray=locked";
     lv_label_set_text(ui_Subtitle, subtitle.c_str());
 }
 
-bool MenuGui::isPinAllowedForCurrentSensor(int pinIndex) const
+bool MenuGui::isPinAllowedForCurrentDevice(int pinIndex) const
 {
-    BaseSensor *sensor = sensorManager.getCurrentWikiSensor();
-    if (!sensor) {
+    BaseDevice *device = sensorManager.getCurrentSelectionDevice();
+    if (!device) {
         return false;
     }
 
-    return sensor->isPinAllowed(sensorManager.getPinNumber(pinIndex));
+    return device->isPinAllowed(sensorManager.getPinNumber(pinIndex));
 }
 
 uint32_t MenuGui::getPinStateColor(int pinIndex) const
 {
-    BaseSensor *selectedSensor = sensorManager.getCurrentWikiSensor();
-    BaseSensor *assignedSensor = sensorManager.getAssignedSensor(pinIndex);
+    BaseDevice *selectedDevice = sensorManager.getCurrentSelectionDevice();
+    BaseDevice *assignedDevice = sensorManager.getAssignedDevice(pinIndex);
 
-    if (sensorManager.isPinLocked(pinIndex) || !isPinAllowedForCurrentSensor(pinIndex)) {
+    if (sensorManager.isPinLocked(pinIndex) || !isPinAllowedForCurrentDevice(pinIndex)) {
         return 0x9E9E9E;
     }
 
-    if (assignedSensor == nullptr) {
+    if (assignedDevice == nullptr) {
         return 0x00B050;
     }
 
-    if (assignedSensor == selectedSensor) {
+    if (assignedDevice == selectedDevice) {
         return 0xF2C94C;
     }
 
@@ -160,7 +160,7 @@ void MenuGui::hideMenu()
 
 void MenuGui::updatePinLabels()
 {
-    BaseSensor *selectedSensor = sensorManager.getCurrentWikiSensor();
+    BaseDevice *selectedDevice = sensorManager.getCurrentSelectionDevice();
 
     for (int i = 0; i < NUM_PINS; i++) {
         if (!pinLabels[i]) {
@@ -168,17 +168,17 @@ void MenuGui::updatePinLabels()
         }
 
         int gpioNumber = sensorManager.getPinNumber(i);
-        BaseSensor *assignedSensor = sensorManager.getAssignedSensor(i);
+        BaseDevice *assignedDevice = sensorManager.getAssignedDevice(i);
         std::string labelText = "Pin " + std::to_string(gpioNumber) + "\n";
 
-        if (sensorManager.isPinLocked(i) || !isPinAllowedForCurrentSensor(i)) {
+        if (sensorManager.isPinLocked(i) || !isPinAllowedForCurrentDevice(i)) {
             labelText += "Locked";
-        } else if (assignedSensor == nullptr) {
+        } else if (assignedDevice == nullptr) {
             labelText += "Available";
-        } else if (assignedSensor == selectedSensor) {
-            labelText += selectedSensor->getTypeName();
+        } else if (assignedDevice == selectedDevice) {
+            labelText += selectedDevice->getTypeName();
         } else {
-            labelText += assignedSensor->getTypeName();
+            labelText += assignedDevice->getTypeName();
         }
 
         lv_label_set_text(pinLabels[i], labelText.c_str());
@@ -215,13 +215,13 @@ void MenuGui::setActivePin(int pinIndex)
 
 void MenuGui::handleConnectButtonClick()
 {
-    BaseSensor *sensor = sensorManager.getCurrentWikiSensor();
-    if (!sensor) {
+    BaseDevice *device = sensorManager.getCurrentSelectionDevice();
+    if (!device) {
         splashMessage("No device selected.");
         return;
     }
 
-    if (sensor->getPins().empty()) {
+    if (device->getPins().empty()) {
         splashMessage("Assign at least one pin first.");
         return;
     }
@@ -231,29 +231,29 @@ void MenuGui::handleConnectButtonClick()
         return;
     }
 
-    switchToWiki();
+    switchToSelection();
 }
 
 void MenuGui::handlePinClick(int pinIndex)
 {
-    BaseSensor *sensor = sensorManager.getCurrentWikiSensor();
-    if (!sensor || pinIndex < 0) {
+    BaseDevice *device = sensorManager.getCurrentSelectionDevice();
+    if (!device || pinIndex < 0) {
         splashMessage("No device selected.");
         return;
     }
 
     setActivePin(pinIndex);
 
-    if (sensorManager.isPinLocked(pinIndex) || !isPinAllowedForCurrentSensor(pinIndex)) {
+    if (sensorManager.isPinLocked(pinIndex) || !isPinAllowedForCurrentDevice(pinIndex)) {
         splashMessage("This pin cannot be used by the selected device.");
         return;
     }
 
-    BaseSensor *assignedSensor = sensorManager.getAssignedSensor(pinIndex);
-    if (assignedSensor == sensor) {
-        sensorManager.unassignSensorFromPin(pinIndex);
-    } else if (assignedSensor == nullptr) {
-        sensorManager.assignSensorToPin(sensor, pinIndex);
+    BaseDevice *assignedDevice = sensorManager.getAssignedDevice(pinIndex);
+    if (assignedDevice == device) {
+        sensorManager.unassignDeviceFromPin(pinIndex);
+    } else if (assignedDevice == nullptr) {
+        sensorManager.assignDeviceToPin(device, pinIndex);
     } else {
         splashMessage("This pin is used by another device.");
     }

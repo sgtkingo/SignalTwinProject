@@ -1,8 +1,8 @@
-#include "json_sensor_builder.hpp"
+#include "json_device_builder.hpp"
 
 #include "../exceptions/data_exceptions.hpp"
 #include "../exceptions/files_exceptions.hpp"
-#include "../exceptions/sensors_exceptions.hpp"
+#include "../exceptions/devices_exceptions.hpp"
 
 #include <ArduinoJson.h>
 #include <SD.h>
@@ -14,10 +14,10 @@
 
 namespace
 {
-class JsonConfiguredSensor : public BaseSensor
+class JsonConfiguredDevice : public BaseDevice
 {
 public:
-    explicit JsonConfiguredSensor(const std::string &uid) : BaseSensor(uid) {}
+    explicit JsonConfiguredDevice(const std::string &uid) : BaseDevice(uid) {}
 
     void init() override {}
 
@@ -84,23 +84,23 @@ std::string jsonVariantToCsv(JsonVariantConst value)
     return jsonVariantToString(value);
 }
 
-SensorDataType parseSensorDataType(const std::string &dtype)
+DeviceDataType parseDeviceDataType(const std::string &dtype)
 {
     const std::string normalized = toLowerCopy(dtype);
     if (normalized == "int") {
-        return SensorDataType::INT;
+        return DeviceDataType::INT;
     }
     if (normalized == "float") {
-        return SensorDataType::FLOAT;
+        return DeviceDataType::FLOAT;
     }
     if (normalized == "double") {
-        return SensorDataType::DOUBLE;
+        return DeviceDataType::DOUBLE;
     }
     if (normalized == "string") {
-        return SensorDataType::STRING;
+        return DeviceDataType::STRING;
     }
 
-    throw InvalidDataTypeException("parseSensorDataType", "Unknown dtype: " + dtype);
+    throw InvalidDataTypeException("parseDeviceDataType", "Unknown dtype: " + dtype);
 }
 
 DeviceRole parseDeviceRole(const std::string &role)
@@ -119,9 +119,9 @@ DeviceRole parseDeviceRole(const std::string &role)
     throw InvalidDataFormatException("parseDeviceRole", "Unknown device role: " + role);
 }
 
-SensorRestrictions parseRestrictions(JsonObjectConst restrictionsJson)
+DeviceRestrictions parseRestrictions(JsonObjectConst restrictionsJson)
 {
-    SensorRestrictions restrictions;
+    DeviceRestrictions restrictions;
 
     if (!restrictionsJson["min"].isNull()) {
         restrictions.Min = jsonVariantToString(restrictionsJson["min"]);
@@ -139,12 +139,12 @@ SensorRestrictions parseRestrictions(JsonObjectConst restrictionsJson)
     return restrictions;
 }
 
-SensorParam parseParameter(JsonObjectConst paramJson, JsonVariantConst defaultValue)
+DeviceParam parseParameter(JsonObjectConst paramJson, JsonVariantConst defaultValue)
 {
-    SensorParam param {};
+    DeviceParam param {};
     param.Value = "0";
     param.Unit = "";
-    param.DType = SensorDataType::STRING;
+    param.DType = DeviceDataType::STRING;
     param.lastHistoryIndex = 0;
 
     if (!paramJson["value"].isNull()) {
@@ -157,7 +157,7 @@ SensorParam parseParameter(JsonObjectConst paramJson, JsonVariantConst defaultVa
         param.Unit = jsonVariantToString(paramJson["unit"]);
     }
     if (!paramJson["dtype"].isNull()) {
-        param.DType = parseSensorDataType(jsonVariantToString(paramJson["dtype"]));
+        param.DType = parseDeviceDataType(jsonVariantToString(paramJson["dtype"]));
     }
     if (paramJson["restrictions"].is<JsonObjectConst>()) {
         param.Restrictions = parseRestrictions(paramJson["restrictions"].as<JsonObjectConst>());
@@ -170,7 +170,7 @@ SensorParam parseParameter(JsonObjectConst paramJson, JsonVariantConst defaultVa
     return param;
 }
 
-void populateValueParameters(JsonConfiguredSensor &sensor, JsonObjectConst paramsJson, JsonObjectConst defaultsJson)
+void populateValueParameters(JsonConfiguredDevice &sensor, JsonObjectConst paramsJson, JsonObjectConst defaultsJson)
 {
     for (JsonPairConst pair : paramsJson) {
         if (!pair.value().is<JsonObjectConst>()) {
@@ -183,7 +183,7 @@ void populateValueParameters(JsonConfiguredSensor &sensor, JsonObjectConst param
     }
 }
 
-void populateConfigParameters(JsonConfiguredSensor &sensor, JsonObjectConst paramsJson, JsonObjectConst defaultsJson)
+void populateConfigParameters(JsonConfiguredDevice &sensor, JsonObjectConst paramsJson, JsonObjectConst defaultsJson)
 {
     for (JsonPairConst pair : paramsJson) {
         if (!pair.value().is<JsonObjectConst>()) {
@@ -196,25 +196,25 @@ void populateConfigParameters(JsonConfiguredSensor &sensor, JsonObjectConst para
     }
 }
 
-JsonConfiguredSensor *buildConfiguredSensor(JsonObjectConst sensorJson, const std::string &sensorKey)
+JsonConfiguredDevice *buildConfiguredDevice(JsonObjectConst sensorJson, const std::string &sensorKey)
 {
     const std::string uid = !sensorJson["uid"].isNull()
         ? jsonVariantToString(sensorJson["uid"])
         : sensorKey;
 
     if (uid.empty()) {
-        throw SensorInitializationFailException("buildConfiguredSensor", "Sensor uid is missing.");
+        throw DeviceInitializationFailException("buildConfiguredDevice", "Device uid is missing.");
     }
 
     if (sensorJson["type"].isNull()) {
-        throw SensorInitializationFailException("buildConfiguredSensor", "Sensor type is missing for " + uid + ".");
+        throw DeviceInitializationFailException("buildConfiguredDevice", "Device type is missing for " + uid + ".");
     }
 
     if (!sensorJson["values"].is<JsonObjectConst>() && !sensorJson["configs"].is<JsonObjectConst>()) {
-        throw SensorInitializationFailException("buildConfiguredSensor", "Sensor " + uid + " has neither values nor configs.");
+        throw DeviceInitializationFailException("buildConfiguredDevice", "Device " + uid + " has neither values nor configs.");
     }
 
-    JsonConfiguredSensor *sensor = new JsonConfiguredSensor(uid);
+    JsonConfiguredDevice *sensor = new JsonConfiguredDevice(uid);
     try {
         sensor->Type = jsonVariantToString(sensorJson["type"]);
         sensor->Description = !sensorJson["description"].isNull()
@@ -269,36 +269,35 @@ JsonConfiguredSensor *buildConfiguredSensor(JsonObjectConst sensorJson, const st
 }
 }
 
-SensorCatalog buildSensorCatalogFromSdFile(const std::string &filePath)
+DeviceCatalog buildDeviceCatalogFromSdFile(const std::string &filePath)
 {
     if (filePath.empty()) {
-        throw FileNotFoundException("buildSensorCatalogFromSdFile", "Empty JSON path.");
+        throw FileNotFoundException("buildDeviceCatalogFromSdFile", "Empty JSON path.");
     }
 
     if (!SD.exists(filePath.c_str())) {
-        throw FileNotFoundException("buildSensorCatalogFromSdFile", "Sensor DB not found on SD: " + filePath);
+        throw FileNotFoundException("buildDeviceCatalogFromSdFile", "Device DB not found on SD: " + filePath);
     }
 
     File file = SD.open(filePath.c_str(), FILE_READ);
     if (!file) {
-        throw FileReadException("buildSensorCatalogFromSdFile", "Cannot open sensor DB on SD: " + filePath);
+        throw FileReadException("buildDeviceCatalogFromSdFile", "Cannot open device DB on SD: " + filePath);
     }
 
-    const size_t documentCapacity = std::max<size_t>(8192, static_cast<size_t>(file.size()) * 4 + 1024);
-    DynamicJsonDocument doc(documentCapacity);
+    JsonDocument doc;
 
     const DeserializationError error = deserializeJson(doc, file);
     file.close();
 
     if (error) {
-        throw InvalidDataFormatException("buildSensorCatalogFromSdFile", "JSON parsing failed: " + std::string(error.c_str()));
+        throw InvalidDataFormatException("buildDeviceCatalogFromSdFile", "JSON parsing failed: " + std::string(error.c_str()));
     }
 
-    if (!doc["sensors"].is<JsonObjectConst>()) {
-        throw InvalidDataFormatException("buildSensorCatalogFromSdFile", "Sensor DB is missing top-level 'sensors' object.");
+    if (!doc["devices"].is<JsonObjectConst>()) {
+        throw InvalidDataFormatException("buildDeviceCatalogFromSdFile", "Device DB is missing top-level 'devices' object.");
     }
 
-    SensorCatalog catalog;
+    DeviceCatalog catalog;
     if (!doc["version"].isNull()) {
         catalog.version = jsonVariantToString(doc["version"]);
     }
@@ -307,24 +306,24 @@ SensorCatalog buildSensorCatalogFromSdFile(const std::string &filePath)
     }
 
     try {
-        JsonObjectConst sensorsJson = doc["sensors"].as<JsonObjectConst>();
-        for (JsonPairConst pair : sensorsJson) {
+        JsonObjectConst devicesJson = doc["devices"].as<JsonObjectConst>();
+        for (JsonPairConst pair : devicesJson) {
             if (!pair.value().is<JsonObjectConst>()) {
                 continue;
             }
 
-            catalog.sensors.push_back(buildConfiguredSensor(pair.value().as<JsonObjectConst>(), pair.key().c_str()));
+            catalog.devices.push_back(buildConfiguredDevice(pair.value().as<JsonObjectConst>(), pair.key().c_str()));
         }
     } catch (...) {
-        for (BaseSensor *sensor : catalog.sensors) {
-            delete sensor;
+        for (BaseDevice *device : catalog.devices) {
+            delete device;
         }
-        catalog.sensors.clear();
+        catalog.devices.clear();
         throw;
     }
 
-    if (catalog.sensors.empty()) {
-        throw SensorInitializationFailException("buildSensorCatalogFromSdFile", "Sensor DB does not contain any buildable sensor.");
+    if (catalog.devices.empty()) {
+        throw DeviceInitializationFailException("buildDeviceCatalogFromSdFile", "Device DB does not contain any buildable device.");
     }
 
     return catalog;

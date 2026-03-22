@@ -1,6 +1,6 @@
 #include "library_gui.hpp"
 
-LibraryGui::LibraryGui(SensorManager &sensorManager) : sensorManager(sensorManager)
+LibraryGui::LibraryGui(DeviceManager &sensorManager) : sensorManager(sensorManager)
 {
 }
 
@@ -58,9 +58,9 @@ void LibraryGui::build()
     lv_label_set_text(createLabel, "New Entity");
     lv_obj_center(createLabel);
 
-    ui_SensorList = lv_list_create(ui_Widget);
-    lv_obj_set_size(ui_SensorList, 250, 320);
-    lv_obj_align(ui_SensorList, LV_ALIGN_LEFT_MID, 15, 18);
+    ui_DeviceList = lv_list_create(ui_Widget);
+    lv_obj_set_size(ui_DeviceList, 250, 320);
+    lv_obj_align(ui_DeviceList, LV_ALIGN_LEFT_MID, 15, 18);
 
     ui_Detail = lv_obj_create(ui_Widget);
     lv_obj_set_size(ui_Detail, 450, 320);
@@ -72,21 +72,21 @@ void LibraryGui::build()
     lv_obj_align(ui_DetailLabel, LV_ALIGN_TOP_LEFT, 10, 10);
 }
 
-void LibraryGui::populateSensorList()
+void LibraryGui::populateDeviceList()
 {
-    if (!ui_SensorList) {
+    if (!ui_DeviceList) {
         return;
     }
 
-    lv_obj_clean(ui_SensorList);
+    lv_obj_clean(ui_DeviceList);
 
-    const auto &sensors = sensorManager.getSensors();
+    const auto &sensors = sensorManager.getDevices();
     for (size_t i = 0; i < sensors.size(); ++i) {
-        BaseSensor *sensor = sensors[i];
+        BaseDevice *sensor = sensors[i];
         const std::string label = sensor
             ? sensor->getName() + " [" + sensor->getRoleLabel() + "]"
             : "Unknown";
-        lv_obj_t *button = lv_list_add_btn(ui_SensorList, nullptr, label.c_str());
+        lv_obj_t *button = lv_list_add_btn(ui_DeviceList, nullptr, label.c_str());
         lv_obj_add_event_cb(button, [](lv_event_t *e) {
             if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
                 return;
@@ -94,7 +94,7 @@ void LibraryGui::populateSensorList()
 
             auto *self = static_cast<LibraryGui *>(lv_event_get_user_data(e));
             int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_target(e))));
-            self->setSelectedSensor(index);
+            self->setSelectedDevice(index);
         }, LV_EVENT_ALL, this);
         lv_obj_set_user_data(button, reinterpret_cast<void *>(static_cast<intptr_t>(i)));
     }
@@ -106,14 +106,14 @@ void LibraryGui::updateDetail()
         return;
     }
 
-    const auto &sensors = sensorManager.getSensors();
-    if (sensors.empty() || selectedSensorIndex < 0 || selectedSensorIndex >= static_cast<int>(sensors.size())) {
+    const auto &sensors = sensorManager.getDevices();
+    if (sensors.empty() || selectedDeviceIndex < 0 || selectedDeviceIndex >= static_cast<int>(sensors.size())) {
         lv_label_set_text(ui_DetailLabel, "No entity selected.");
         return;
     }
 
-    BaseSensor *sensor = sensors[selectedSensorIndex];
-    sensorManager.setCurrentLibrarySensor(sensor);
+    BaseDevice *sensor = sensors[selectedDeviceIndex];
+    sensorManager.setCurrentLibraryDevice(sensor);
 
     std::string detail = "Entity\n";
     detail += sensor->getName() + "\n\n";
@@ -147,7 +147,7 @@ void LibraryGui::showLibrary()
         return;
     }
 
-    populateSensorList();
+    populateDeviceList();
     updateDetail();
     lv_obj_clear_flag(ui_Widget, LV_OBJ_FLAG_HIDDEN);
 }
@@ -161,8 +161,8 @@ void LibraryGui::hideLibrary()
     lv_obj_add_flag(ui_Widget, LV_OBJ_FLAG_HIDDEN);
 }
 
-void LibraryGui::setSelectedSensor(int index)
+void LibraryGui::setSelectedDevice(int index)
 {
-    selectedSensorIndex = index;
+    selectedDeviceIndex = index;
     updateDetail();
 }

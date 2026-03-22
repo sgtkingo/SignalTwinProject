@@ -17,13 +17,13 @@
 /**
  * @brief JSON-configured implementation of VirtualSensor
  */
-class JsonConfiguredSensor : public VirtualSensor {
+class JsonConfiguredDevice : public VirtualSensor {
 public:
-    JsonConfiguredSensor(std::string uid) : VirtualSensor() {
+    JsonConfiguredDevice(std::string uid) : VirtualSensor() {
         this->UID = uid;
     }
     
-    virtual ~JsonConfiguredSensor() {}
+    virtual ~JsonConfiguredDevice() {}
 };
 
 /**
@@ -36,16 +36,16 @@ DataType parseDataType(const std::string& dtypeStr);
 /**
  * @brief Parse restrictions from JSON object
  * @param restrictionsJson JSON object containing restrictions
- * @return SensorRestrictions struct
+ * @return DeviceRestrictions struct
  */
-SensorRestrictions parseRestrictions(JsonObject restrictionsJson);
+DeviceRestrictions parseRestrictions(JsonObject restrictionsJson);
 
 /**
  * @brief Parse sensor parameter from JSON
  * @param paramJson JSON object containing parameter data
- * @return SensorParam struct
+ * @return DeviceParam struct
  */
-SensorParam parseParameter(JsonObject paramJson);
+DeviceParam parseParameter(JsonObject paramJson);
 
 /**
  * @brief Validate JSON structure for required fields
@@ -59,19 +59,19 @@ bool validateSensorJson(JsonObject sensorJson, const std::string& sensorId);
  * @brief Build a sensor from JSON configuration
  * @param jsonString JSON string containing sensor configuration
  * @param sensorId ID of the sensor to build from the JSON
- * @return Pointer to created BaseSensor, nullptr on failure
+ * @return Pointer to created BaseDevice, nullptr on failure
  * @throws Exception if JSON parsing or sensor creation fails
  */
-BaseSensor* buildSensorFromJson(const std::string& jsonString, const std::string& sensorId);
+BaseDevice* buildSensorFromJson(const std::string& jsonString, const std::string& sensorId);
 
 /**
  * @brief Build a sensor from JSON file
  * @param filePath Path to JSON file containing sensor configuration
  * @param sensorId ID of the sensor to build from the JSON
- * @return Pointer to created BaseSensor, nullptr on failure
+ * @return Pointer to created BaseDevice, nullptr on failure
  * @throws Exception if file reading, JSON parsing or sensor creation fails
  */
-BaseSensor* buildSensorFromJsonFile(const std::string& filePath, const std::string& sensorId);
+BaseDevice* buildSensorFromJsonFile(const std::string& filePath, const std::string& sensorId);
 
 /**
  * @brief Get list of all sensor IDs available in JSON string
@@ -92,17 +92,17 @@ std::vector<std::string> getAvailableSensorIdsFromFile(const std::string& filePa
 /**
  * @brief Build all sensors from JSON configuration
  * @param jsonString JSON string containing sensor configuration
- * @return Vector of pointers to created BaseSensors
+ * @return Vector of pointers to created BaseDevices
  * @throws Exception if JSON parsing or sensor creation fails
  */
-std::vector<BaseSensor*> buildAllSensorsFromJson(const std::string& jsonString);
+std::vector<BaseDevice*> buildAllSensorsFromJson(const std::string& jsonString);
 
 /**
  * @brief Build all sensors from JSON file
  * @param filePath Path to JSON file containing sensor configuration
- * @return Vector of pointers to created BaseSensors
+ * @return Vector of pointers to created BaseDevices
  * @throws Exception if file reading, JSON parsing or sensor creation fails
  */
-std::vector<BaseSensor*> buildAllSensorsFromJsonFile(const std::string& filePath);
+std::vector<BaseDevice*> buildAllSensorsFromJsonFile(const std::string& filePath);
 
 #endif // SENSOR_BUILDER_HPP

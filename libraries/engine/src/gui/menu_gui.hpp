@@ -6,12 +6,12 @@
 #include "lvgl.h"
 
 #include "gui_callbacks.hpp"
-#include "../managers/manager.hpp"
+#include "../managers/device_manager.hpp"
 
 class MenuGui
 {
 private:
-    SensorManager &sensorManager;
+    DeviceManager &sensorManager;
     bool initialized = false;
     int activePinIndex = -1;
 
@@ -29,10 +29,10 @@ private:
     void updateHeader();
     void handleConnectButtonClick();
     void handlePinClick(int pinIndex);
-    bool isPinAllowedForCurrentSensor(int pinIndex) const;
+    bool isPinAllowedForCurrentDevice(int pinIndex) const;
 
 public:
-    explicit MenuGui(SensorManager &sensorManager);
+    explicit MenuGui(DeviceManager &sensorManager);
     ~MenuGui() = default;
 
     void init();

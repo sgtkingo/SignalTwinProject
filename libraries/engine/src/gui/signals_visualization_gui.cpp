@@ -1,15 +1,15 @@
 /**
- * @file sensor_visualization_gui.cpp
- * @brief Implementation of the SensorVisualizationGui class
+ * @file signals_visualization_gui.cpp
+ * @brief Implementation of the SignalsVisualizationGui class
  *
- * This source file implements the SensorVisualizationGui functionality for
+ * This source file implements the SignalsVisualizationGui functionality for
  * active sensor visualization, data display, and navigation.
  *
  * @copyright 2025 MTA
  * @author Ing. Jiri Konecny, Ondřej Wrubel
  */
 
-#include "sensor_visualization_gui.hpp"
+#include "signals_visualization_gui.hpp"
 #include "../helpers.hpp"
 #include "./images/ui_images.h"
 #include <cstdint>
@@ -38,7 +38,7 @@ std::vector<std::string> splitOptionsCsv(const std::string &options)
 }
 }
 
-SensorVisualizationGui::SensorVisualizationGui(SensorManager &sensorManager, DataBundleManager &dataBundleManager) 
+SignalsVisualizationGui::SignalsVisualizationGui(DeviceManager &sensorManager, DataBundleManager &dataBundleManager) 
                                               : sensorManager(sensorManager), dataBundleManager(dataBundleManager)
 {
     // Initialize all GUI pointers to nullptr
@@ -114,26 +114,26 @@ SensorVisualizationGui::SensorVisualizationGui(SensorManager &sensorManager, Dat
     ui_AlertLabel = nullptr;
 }
 
-void SensorVisualizationGui::init()
+void SignalsVisualizationGui::init()
 {
     if (initialized)
         return;
 
     try
     {
-        // // logMessage("Initializing SensorVisualizationGui...\n");
+        // // logMessage("Initializing SignalsVisualizationGui...\n");
         constructVisualization();
         initialized = true;
-        // // logMessage("SensorVisualizationGui initialization completed!\n");
+        // // logMessage("SignalsVisualizationGui initialization completed!\n");
     }
     catch (const std::exception &e)
     {
-        // // logMessage("SensorVisualizationGui initialization failed: %s\n", e.what());
+        // // logMessage("SignalsVisualizationGui initialization failed: %s\n", e.what());
         initialized = false;
     }
 }
 
-void SensorVisualizationGui::constructVisualization()
+void SignalsVisualizationGui::constructVisualization()
 {
     // // logMessage("\t>constructing sensor visualization...\n");
 
@@ -383,7 +383,7 @@ void SensorVisualizationGui::constructVisualization()
     // // logMessage("\t>sensor visualization constructed!\n");
 }
 
-void SensorVisualizationGui::addNavButtonsToWidget(lv_obj_t *parentWidget)
+void SignalsVisualizationGui::addNavButtonsToWidget(lv_obj_t *parentWidget)
 {
     if (!parentWidget)
         return;
@@ -397,8 +397,8 @@ void SensorVisualizationGui::addNavButtonsToWidget(lv_obj_t *parentWidget)
     lv_obj_set_align(ui_btnPrev, LV_ALIGN_BOTTOM_LEFT);
     lv_obj_add_event_cb(ui_btnPrev, [](lv_event_t *e)
                         {
-        auto self = static_cast<SensorVisualizationGui*>(lv_event_get_user_data(e));
-        self->goToPreviousSensor(); }, LV_EVENT_CLICKED, this);
+        auto self = static_cast<SignalsVisualizationGui*>(lv_event_get_user_data(e));
+        self->goToPreviousDevice(); }, LV_EVENT_CLICKED, this);
 
     ui_btnPrevLabel = lv_label_create(ui_btnPrev);
     lv_label_set_text(ui_btnPrevLabel, "Prev");
@@ -414,8 +414,8 @@ void SensorVisualizationGui::addNavButtonsToWidget(lv_obj_t *parentWidget)
     lv_obj_set_align(ui_btnNext, LV_ALIGN_BOTTOM_LEFT);
     lv_obj_add_event_cb(ui_btnNext, [](lv_event_t *e)
                         {
-        auto self = static_cast<SensorVisualizationGui*>(lv_event_get_user_data(e));
-        self->goToNextSensor(); }, LV_EVENT_CLICKED, this);
+        auto self = static_cast<SignalsVisualizationGui*>(lv_event_get_user_data(e));
+        self->goToNextDevice(); }, LV_EVENT_CLICKED, this);
 
     ui_btnNextLabel = lv_label_create(ui_btnNext);
     lv_label_set_text(ui_btnNextLabel, "Next");
@@ -425,7 +425,7 @@ void SensorVisualizationGui::addNavButtonsToWidget(lv_obj_t *parentWidget)
     // // logMessage("Navigation buttons added to widget\n");
 }
 
-void SensorVisualizationGui::addControlButtonsToWidget(lv_obj_t *parentWidget)
+void SignalsVisualizationGui::addControlButtonsToWidget(lv_obj_t *parentWidget)
 {
     if (!parentWidget)
         return;
@@ -463,7 +463,7 @@ void SensorVisualizationGui::addControlButtonsToWidget(lv_obj_t *parentWidget)
     lv_obj_set_align(ui_btnBack, LV_ALIGN_CENTER);
     lv_obj_add_event_cb(ui_btnBack, [](lv_event_t *e)
                         {
-        auto self = static_cast<SensorVisualizationGui*>(lv_event_get_user_data(e));
+        auto self = static_cast<SignalsVisualizationGui*>(lv_event_get_user_data(e));
         // // logMessage("Back button pressed - returning to menu\n");
         self->handleBackButtonClick(); }, LV_EVENT_CLICKED, this);
 
@@ -475,7 +475,7 @@ void SensorVisualizationGui::addControlButtonsToWidget(lv_obj_t *parentWidget)
     // // logMessage("Control buttons added to widget\n");
 }
 
-void SensorVisualizationGui::addRecordPanelToWidget(lv_obj_t *parentWidget)
+void SignalsVisualizationGui::addRecordPanelToWidget(lv_obj_t *parentWidget)
 {
     if (!parentWidget)
         return;
@@ -570,7 +570,7 @@ void SensorVisualizationGui::addRecordPanelToWidget(lv_obj_t *parentWidget)
     lv_obj_set_style_radius(ui_btnPause, 7, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_add_event_cb(ui_btnPause, [](lv_event_t *e)
                         {
-        auto self = static_cast<SensorVisualizationGui*>(lv_event_get_user_data(e));
+        auto self = static_cast<SignalsVisualizationGui*>(lv_event_get_user_data(e));
         self->handlePauseButtonClick(); }, LV_EVENT_CLICKED, this);
 
     ui_pauseImage = lv_img_create(ui_btnPause);
@@ -600,7 +600,7 @@ void SensorVisualizationGui::addRecordPanelToWidget(lv_obj_t *parentWidget)
     lv_obj_clear_flag(ui_btnSync, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(ui_btnSync, [](lv_event_t *e)
                         {
-        auto self = static_cast<SensorVisualizationGui*>(lv_event_get_user_data(e));
+        auto self = static_cast<SignalsVisualizationGui*>(lv_event_get_user_data(e));
         self->handleSyncButtonClick(); }, LV_EVENT_CLICKED, this);
 
     ui_syncImage = lv_img_create(ui_btnSync);
@@ -627,7 +627,7 @@ void SensorVisualizationGui::addRecordPanelToWidget(lv_obj_t *parentWidget)
     lv_obj_set_style_radius(ui_btnRecord, 7, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_add_event_cb(ui_btnRecord, [](lv_event_t *e)
                         {
-        auto self = static_cast<SensorVisualizationGui*>(lv_event_get_user_data(e));
+        auto self = static_cast<SignalsVisualizationGui*>(lv_event_get_user_data(e));
         self->handleRecordButtonClick(nullptr); }, LV_EVENT_CLICKED, this);
 
     ui_recordImage = lv_img_create(ui_btnRecord);
@@ -654,7 +654,7 @@ void SensorVisualizationGui::addRecordPanelToWidget(lv_obj_t *parentWidget)
     lv_obj_set_style_radius(ui_btnClear, 7, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_add_event_cb(ui_btnClear, [](lv_event_t *e)
                         {
-        auto self = static_cast<SensorVisualizationGui*>(lv_event_get_user_data(e));
+        auto self = static_cast<SignalsVisualizationGui*>(lv_event_get_user_data(e));
         self->handleClearButtonClick(); }, LV_EVENT_CLICKED, this);
 
     ui_clearImage = lv_img_create(ui_btnClear);
@@ -681,7 +681,7 @@ void SensorVisualizationGui::addRecordPanelToWidget(lv_obj_t *parentWidget)
     lv_obj_set_style_radius(ui_btnSettings, 20, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_add_event_cb(ui_btnSettings, [](lv_event_t *e)
                         {
-        auto self = static_cast<SensorVisualizationGui*>(lv_event_get_user_data(e));
+        auto self = static_cast<SignalsVisualizationGui*>(lv_event_get_user_data(e));
         self->handleSettingsButtonClick(self->ui_RecordGroup,self->ui_btnSettings,self->getParentWidget()); }, LV_EVENT_CLICKED, this);
 
     ui_settingsImage = lv_img_create(ui_btnSettings);
@@ -696,7 +696,7 @@ void SensorVisualizationGui::addRecordPanelToWidget(lv_obj_t *parentWidget)
     lv_img_set_zoom(ui_settingsImage, 119);
 }
 
-void SensorVisualizationGui::showShadowOverlay()
+void SignalsVisualizationGui::showShadowOverlay()
 {
     if (ui_ShadowOverlay)
     {
@@ -716,7 +716,7 @@ void SensorVisualizationGui::showShadowOverlay()
     lv_obj_set_style_border_width(ui_ShadowOverlay, 0, 0);
 }
 
-void SensorVisualizationGui::hideShadowOverlay()
+void SignalsVisualizationGui::hideShadowOverlay()
 {
     if (ui_ShadowOverlay)
     {
@@ -725,7 +725,7 @@ void SensorVisualizationGui::hideShadowOverlay()
     }
 }
 
-void SensorVisualizationGui::addLogoPanelToWidget(lv_obj_t *parentWidget)
+void SignalsVisualizationGui::addLogoPanelToWidget(lv_obj_t *parentWidget)
 {
     ui_LogoGroup = lv_obj_create(parentWidget);
     lv_obj_remove_style_all(ui_LogoGroup);
@@ -781,7 +781,7 @@ void SensorVisualizationGui::addLogoPanelToWidget(lv_obj_t *parentWidget)
     lv_img_set_zoom(ui_LogoImage, 70);
 }
 
-void SensorVisualizationGui::drawCurrentSensor()
+void SignalsVisualizationGui::drawCurrentDevice()
 {
     if (!currentSensor)
     {
@@ -800,33 +800,33 @@ void SensorVisualizationGui::drawCurrentSensor()
         return;
     }
 
-    updateSensorDataDisplay();
+    updateDeviceDataDisplay();
     updateChart();
 }
 
-uint32_t SensorVisualizationGui::getSignalAccentColor(size_t index)
+uint32_t SignalsVisualizationGui::getSignalAccentColor(size_t index)
 {
     return SIGNAL_CARD_COLORS[index % (sizeof(SIGNAL_CARD_COLORS) / sizeof(SIGNAL_CARD_COLORS[0]))];
 }
 
-bool SensorVisualizationGui::isNumericType(SensorDataType dtype)
+bool SignalsVisualizationGui::isNumericType(DeviceDataType dtype)
 {
-    return dtype == SensorDataType::INT || dtype == SensorDataType::FLOAT || dtype == SensorDataType::DOUBLE;
+    return dtype == DeviceDataType::INT || dtype == DeviceDataType::FLOAT || dtype == DeviceDataType::DOUBLE;
 }
 
-bool SensorVisualizationGui::hasSelectableOptions(const SensorParam &param)
+bool SignalsVisualizationGui::hasSelectableOptions(const DeviceParam &param)
 {
     return !param.Restrictions.Options.empty();
 }
 
-bool SensorVisualizationGui::supportsSliderInput(const SensorParam &param)
+bool SignalsVisualizationGui::supportsSliderInput(const DeviceParam &param)
 {
-    return param.DType == SensorDataType::INT &&
+    return param.DType == DeviceDataType::INT &&
            !param.Restrictions.Min.empty() &&
            !param.Restrictions.Max.empty();
 }
 
-std::string SensorVisualizationGui::buildUnitText(const std::string &unit, const char *fallbackText)
+std::string SignalsVisualizationGui::buildUnitText(const std::string &unit, const char *fallbackText)
 {
     if (unit.empty()) {
         return fallbackText ? std::string(fallbackText) : std::string();
@@ -835,12 +835,14 @@ std::string SensorVisualizationGui::buildUnitText(const std::string &unit, const
     return "[" + unit + "]";
 }
 
-bool SensorVisualizationGui::currentDeviceSupportsRecording() const
+bool SignalsVisualizationGui::currentDeviceSupportsRecording() const
 {
-    return currentSensor && !getChartableValueKeys().empty();
+    return currentSensor &&
+           currentSensor->getRole() != DeviceRole::ACTUATOR &&
+           !getChartableValueKeys().empty();
 }
 
-void SensorVisualizationGui::ensureSignalCards(size_t count)
+void SignalsVisualizationGui::ensureSignalCards(size_t count)
 {
     if (!ui_SignalScrollContainer) {
         return;
@@ -888,7 +890,7 @@ void SensorVisualizationGui::ensureSignalCards(size_t count)
     }
 }
 
-void SensorVisualizationGui::clearUnusedSignalCards(size_t usedCount)
+void SignalsVisualizationGui::clearUnusedSignalCards(size_t usedCount)
 {
     for (size_t i = 0; i < signalCards.size(); ++i) {
         if (!signalCards[i].container) {
@@ -903,7 +905,7 @@ void SensorVisualizationGui::clearUnusedSignalCards(size_t usedCount)
     }
 }
 
-void SensorVisualizationGui::ensureConfigControls(size_t count)
+void SignalsVisualizationGui::ensureConfigControls(size_t count)
 {
     if (!ui_SignalScrollContainer) {
         return;
@@ -963,7 +965,7 @@ void SensorVisualizationGui::ensureConfigControls(size_t count)
                 return;
             }
 
-            auto *self = static_cast<SensorVisualizationGui *>(lv_event_get_user_data(e));
+            auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
             const int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_target(e))));
             self->handleTextConfigSubmitted(static_cast<size_t>(index));
         }, LV_EVENT_ALL, this);
@@ -972,7 +974,7 @@ void SensorVisualizationGui::ensureConfigControls(size_t count)
     }
 }
 
-void SensorVisualizationGui::clearUnusedConfigControls(size_t usedCount)
+void SignalsVisualizationGui::clearUnusedConfigControls(size_t usedCount)
 {
     for (size_t i = 0; i < configControls.size(); ++i) {
         if (!configControls[i].container) {
@@ -987,7 +989,7 @@ void SensorVisualizationGui::clearUnusedConfigControls(size_t usedCount)
     }
 }
 
-bool SensorVisualizationGui::buildNumericHistoryForKey(const std::string &key, lv_coord_t *history)
+bool SignalsVisualizationGui::buildNumericHistoryForKey(const std::string &key, lv_coord_t *history)
 {
     if (!currentSensor || !history) {
         return false;
@@ -1001,13 +1003,13 @@ bool SensorVisualizationGui::buildNumericHistoryForKey(const std::string &key, l
 
     switch (it->second.DType)
     {
-    case SensorDataType::INT:
+    case DeviceDataType::INT:
         buildSensorHistory<int>(currentSensor, key, history);
         return true;
-    case SensorDataType::FLOAT:
+    case DeviceDataType::FLOAT:
         buildSensorHistory<float>(currentSensor, key, history);
         return true;
-    case SensorDataType::DOUBLE:
+    case DeviceDataType::DOUBLE:
         buildSensorHistory<double>(currentSensor, key, history);
         return true;
     default:
@@ -1015,10 +1017,14 @@ bool SensorVisualizationGui::buildNumericHistoryForKey(const std::string &key, l
     }
 }
 
-std::vector<std::string> SensorVisualizationGui::getChartableValueKeys() const
+std::vector<std::string> SignalsVisualizationGui::getChartableValueKeys() const
 {
     std::vector<std::string> chartKeys;
     if (!currentSensor) {
+        return chartKeys;
+    }
+
+    if (currentSensor->getRole() == DeviceRole::ACTUATOR) {
         return chartKeys;
     }
 
@@ -1041,7 +1047,7 @@ std::vector<std::string> SensorVisualizationGui::getChartableValueKeys() const
     return chartKeys;
 }
 
-void SensorVisualizationGui::updateSensorDataDisplay()
+void SignalsVisualizationGui::updateDeviceDataDisplay()
 {
     if (!currentSensor || !ui_SignalScrollContainer)
         return;
@@ -1056,46 +1062,56 @@ void SensorVisualizationGui::updateSensorDataDisplay()
     const auto valueKeys = currentSensor->getValuesKeys();
     const auto configs = currentSensor->getConfigs();
     const auto configKeys = currentSensor->getConfigsKeys();
+    const bool useValueControls = currentSensor->getRole() == DeviceRole::ACTUATOR;
 
-    ensureSignalCards(valueKeys.size());
-    ensureConfigControls(configKeys.size());
+    ensureSignalCards(useValueControls ? 0 : valueKeys.size());
+    ensureConfigControls(useValueControls ? valueKeys.size() : configKeys.size());
 
-    for (size_t i = 0; i < valueKeys.size(); ++i) {
-        const auto &key = valueKeys[i];
-        auto it = values.find(key);
-        if (it == values.end() || i >= signalCards.size()) {
-            continue;
+    if (!useValueControls) {
+        for (size_t i = 0; i < valueKeys.size(); ++i) {
+            const auto &key = valueKeys[i];
+            auto it = values.find(key);
+            if (it == values.end() || i >= signalCards.size()) {
+                continue;
+            }
+
+            const uint32_t accentColor = getSignalAccentColor(i);
+            lv_obj_set_style_bg_color(signalCards[i].accent, lv_color_hex(accentColor), LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_label_set_text(signalCards[i].nameLabel, key.c_str());
+            lv_label_set_text(signalCards[i].valueLabel, it->second.Value.c_str());
+            const std::string units = buildUnitText(currentSensor->getValueUnits(key), "Live value");
+            lv_label_set_text(signalCards[i].unitLabel, units.c_str());
         }
-
-        const uint32_t accentColor = getSignalAccentColor(i);
-        lv_obj_set_style_bg_color(signalCards[i].accent, lv_color_hex(accentColor), LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_label_set_text(signalCards[i].nameLabel, key.c_str());
-        lv_label_set_text(signalCards[i].valueLabel, it->second.Value.c_str());
-        const std::string units = buildUnitText(currentSensor->getValueUnits(key), "Live value");
-        lv_label_set_text(signalCards[i].unitLabel, units.c_str());
     }
 
-    clearUnusedSignalCards(valueKeys.size());
+    clearUnusedSignalCards(useValueControls ? 0 : valueKeys.size());
 
-    for (size_t i = 0; i < configKeys.size(); ++i) {
-        const auto &key = configKeys[i];
-        auto it = configs.find(key);
-        if (it == configs.end() || i >= configControls.size()) {
+    const auto &editableKeys = useValueControls ? valueKeys : configKeys;
+    for (size_t i = 0; i < editableKeys.size(); ++i) {
+        const auto &key = editableKeys[i];
+        const auto editableIt = useValueControls ? values.find(key) : configs.find(key);
+        if (editableIt == (useValueControls ? values.end() : configs.end()) || i >= configControls.size()) {
             continue;
         }
 
+        const DeviceParam &param = editableIt->second;
         ConfigControl &control = configControls[i];
         control.key = key;
         control.usesDropdown = false;
         control.usesSlider = false;
+        control.isValueControl = useValueControls;
 
-        const uint32_t accentColor = getSignalAccentColor(i + valueKeys.size());
+        const uint32_t accentColor = getSignalAccentColor(i + (useValueControls ? 0 : valueKeys.size()));
         lv_obj_set_style_bg_color(control.accent, lv_color_hex(accentColor), LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_label_set_text(control.nameLabel, key.c_str());
-        lv_label_set_text(control.valueLabel, it->second.Value.c_str());
-        lv_label_set_text(control.unitLabel, buildUnitText(currentSensor->getConfigUnits(key), "Queued via CONFIG").c_str());
+        lv_label_set_text(control.valueLabel, param.Value.c_str());
+        lv_label_set_text(
+            control.unitLabel,
+            buildUnitText(
+                useValueControls ? currentSensor->getValueUnits(key) : currentSensor->getConfigUnits(key),
+                useValueControls ? "Queued via CONTROL" : "Queued via CONFIG").c_str());
 
-        if (hasSelectableOptions(it->second)) {
+        if (hasSelectableOptions(param)) {
             if (control.editor) {
                 lv_obj_del(control.editor);
             }
@@ -1110,11 +1126,11 @@ void SensorVisualizationGui::updateSensorDataDisplay()
                     return;
                 }
 
-                auto *self = static_cast<SensorVisualizationGui *>(lv_event_get_user_data(e));
+                auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
                 const int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_target(e))));
                 self->handleDropdownConfigChanged(static_cast<size_t>(index));
             }, LV_EVENT_ALL, this);
-        } else if (supportsSliderInput(it->second)) {
+        } else if (supportsSliderInput(param)) {
             if (control.editor) {
                 lv_obj_del(control.editor);
             }
@@ -1129,7 +1145,7 @@ void SensorVisualizationGui::updateSensorDataDisplay()
                     return;
                 }
 
-                auto *self = static_cast<SensorVisualizationGui *>(lv_event_get_user_data(e));
+                auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
                 const int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_target(e))));
                 self->handleSliderConfigChanged(static_cast<size_t>(index));
             }, LV_EVENT_ALL, this);
@@ -1149,7 +1165,7 @@ void SensorVisualizationGui::updateSensorDataDisplay()
                     return;
                 }
 
-                auto *self = static_cast<SensorVisualizationGui *>(lv_event_get_user_data(e));
+                auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
                 const int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_target(e))));
                 self->handleTextConfigSubmitted(static_cast<size_t>(index));
             }, LV_EVENT_ALL, this);
@@ -1159,12 +1175,12 @@ void SensorVisualizationGui::updateSensorDataDisplay()
             std::string optionsText;
             int selectedIndex = 0;
             int currentIndex = 0;
-            for (const auto &option : splitOptionsCsv(it->second.Restrictions.Options)) {
+            for (const auto &option : splitOptionsCsv(param.Restrictions.Options)) {
                 if (!optionsText.empty()) {
                     optionsText += "\n";
                 }
                 optionsText += option;
-                if (option == it->second.Value) {
+                if (option == param.Value) {
                     selectedIndex = currentIndex;
                 }
                 ++currentIndex;
@@ -1172,20 +1188,20 @@ void SensorVisualizationGui::updateSensorDataDisplay()
             lv_dropdown_set_options(control.editor, optionsText.c_str());
             lv_dropdown_set_selected(control.editor, selectedIndex);
         } else if (control.usesSlider) {
-            const int minValue = convertStringToType<int>(it->second.Restrictions.Min);
-            const int maxValue = convertStringToType<int>(it->second.Restrictions.Max);
+            const int minValue = convertStringToType<int>(param.Restrictions.Min);
+            const int maxValue = convertStringToType<int>(param.Restrictions.Max);
             lv_slider_set_range(control.editor, minValue, maxValue);
-            lv_slider_set_value(control.editor, convertStringToType<int>(it->second.Value), LV_ANIM_OFF);
+            lv_slider_set_value(control.editor, convertStringToType<int>(param.Value), LV_ANIM_OFF);
         } else {
-            lv_textarea_set_text(control.editor, it->second.Value.c_str());
+            lv_textarea_set_text(control.editor, param.Value.c_str());
         }
     }
 
-    clearUnusedConfigControls(configKeys.size());
+    clearUnusedConfigControls(editableKeys.size());
     updateActionButtonsState();
 }
 
-void SensorVisualizationGui::updateChart()
+void SignalsVisualizationGui::updateChart()
 {
     if (!currentSensor || !ui_Chart || !ui_Chart_series_V1 || !ui_Chart_series_V2)
         return;
@@ -1285,7 +1301,7 @@ void SensorVisualizationGui::updateChart()
     }
 }
 
-void SensorVisualizationGui::updateActionButtonsState()
+void SignalsVisualizationGui::updateActionButtonsState()
 {
     const bool canRecord = currentDeviceSupportsRecording();
     const lv_color_t enabledColor = lv_color_hex(0x009BFF);
@@ -1310,22 +1326,26 @@ void SensorVisualizationGui::updateActionButtonsState()
     }
 }
 
-bool SensorVisualizationGui::applyConfigValue(const std::string &key, const std::string &value)
+bool SignalsVisualizationGui::applyEditableValue(bool isValueControl, const std::string &key, const std::string &value)
 {
     if (!currentSensor || key.empty()) {
         return false;
     }
 
     try {
-        currentSensor->setConfig(key, value);
+        if (isValueControl) {
+            currentSensor->setValue(key, value);
+        } else {
+            currentSensor->setConfig(key, value);
+        }
         return true;
     } catch (...) {
-        showAlert("Failed to queue config value");
+        showAlert(isValueControl ? "Failed to queue control value" : "Failed to queue config value");
         return false;
     }
 }
 
-void SensorVisualizationGui::handleDropdownConfigChanged(size_t controlIndex)
+void SignalsVisualizationGui::handleDropdownConfigChanged(size_t controlIndex)
 {
     if (controlIndex >= configControls.size()) {
         return;
@@ -1338,12 +1358,12 @@ void SensorVisualizationGui::handleDropdownConfigChanged(size_t controlIndex)
 
     char selected[64] = {0};
     lv_dropdown_get_selected_str(control.editor, selected, sizeof(selected));
-    if (applyConfigValue(control.key, selected) && control.valueLabel) {
+    if (applyEditableValue(control.isValueControl, control.key, selected) && control.valueLabel) {
         lv_label_set_text(control.valueLabel, selected);
     }
 }
 
-void SensorVisualizationGui::handleSliderConfigChanged(size_t controlIndex)
+void SignalsVisualizationGui::handleSliderConfigChanged(size_t controlIndex)
 {
     if (controlIndex >= configControls.size()) {
         return;
@@ -1355,12 +1375,12 @@ void SensorVisualizationGui::handleSliderConfigChanged(size_t controlIndex)
     }
 
     const std::string value = std::to_string(lv_slider_get_value(control.editor));
-    if (applyConfigValue(control.key, value) && control.valueLabel) {
+    if (applyEditableValue(control.isValueControl, control.key, value) && control.valueLabel) {
         lv_label_set_text(control.valueLabel, value.c_str());
     }
 }
 
-void SensorVisualizationGui::handleTextConfigSubmitted(size_t controlIndex)
+void SignalsVisualizationGui::handleTextConfigSubmitted(size_t controlIndex)
 {
     if (controlIndex >= configControls.size()) {
         return;
@@ -1372,20 +1392,20 @@ void SensorVisualizationGui::handleTextConfigSubmitted(size_t controlIndex)
     }
 
     const char *value = lv_textarea_get_text(control.editor);
-    if (applyConfigValue(control.key, value) && control.valueLabel) {
+    if (applyEditableValue(control.isValueControl, control.key, value) && control.valueLabel) {
         lv_label_set_text(control.valueLabel, value);
     }
 }
 
-void SensorVisualizationGui::handleBackButtonClick(){
+void SignalsVisualizationGui::handleBackButtonClick(){
     if(recording){
         handleStillRecording();
         return;
     }
-    switchToWiki();
+    switchToSelection();
 }
 
-void SensorVisualizationGui::handlePauseButtonClick()
+void SignalsVisualizationGui::handlePauseButtonClick()
 {
     paused = !paused;
     sensorManager.setRunning(!paused);
@@ -1403,7 +1423,7 @@ void SensorVisualizationGui::handlePauseButtonClick()
     }
 }
 
-void SensorVisualizationGui::handleSyncButtonClick()
+void SignalsVisualizationGui::handleSyncButtonClick()
 {
     if (!currentSensor)
         return;
@@ -1411,11 +1431,11 @@ void SensorVisualizationGui::handleSyncButtonClick()
     if (!paused)
         return;
 
-    bool success = syncCurrentSensor();
+    bool success = syncCurrentDevice();
     //logMessage("Sync button clicked. Sync %s\n", success ? "succeeded" : "failed");
 }
 
-void SensorVisualizationGui::handleRecordButtonClick(const char *message)
+void SignalsVisualizationGui::handleRecordButtonClick(const char *message)
 {
     if (!currentSensor)
         return;
@@ -1456,7 +1476,7 @@ void SensorVisualizationGui::handleRecordButtonClick(const char *message)
     updateActionButtonsState();
 }
 
-void SensorVisualizationGui::handleClearButtonClick()
+void SignalsVisualizationGui::handleClearButtonClick()
 {
     if (!recording && !currentDeviceSupportsRecording())
     {
@@ -1482,7 +1502,7 @@ void SensorVisualizationGui::handleClearButtonClick()
     lv_obj_move_foreground(confirmDialog);
     lv_obj_add_event_cb(confirmDialog, [](lv_event_t *e)
                         {
-        auto self = static_cast<SensorVisualizationGui*>(lv_event_get_user_data(e));
+        auto self = static_cast<SignalsVisualizationGui*>(lv_event_get_user_data(e));
         lv_event_code_t code = lv_event_get_code(e);
 
         if (code == LV_EVENT_VALUE_CHANGED)
@@ -1510,7 +1530,7 @@ void SensorVisualizationGui::handleClearButtonClick()
         } }, LV_EVENT_ALL, this);
 }
 
-void SensorVisualizationGui::handleClearConfirmButtonClick()
+void SignalsVisualizationGui::handleClearConfirmButtonClick()
 {
     if (currentSensor)
     {
@@ -1538,7 +1558,7 @@ void SensorVisualizationGui::handleClearConfirmButtonClick()
     }
 }
 
-void SensorVisualizationGui::handleSettingsButtonClick(lv_obj_t *recordGroup, lv_obj_t *btnSettings,lv_obj_t *parentWidget)
+void SignalsVisualizationGui::handleSettingsButtonClick(lv_obj_t *recordGroup, lv_obj_t *btnSettings,lv_obj_t *parentWidget)
 {
     if (ui_SettingsOverlay != nullptr)
         return;
@@ -1551,7 +1571,7 @@ void SensorVisualizationGui::handleSettingsButtonClick(lv_obj_t *recordGroup, lv
     lv_obj_add_flag(ui_SettingsOverlay, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(ui_SettingsOverlay, [](lv_event_t *e)
                         {
-        auto * self = static_cast<SensorVisualizationGui*>(lv_event_get_user_data(e));
+        auto * self = static_cast<SignalsVisualizationGui*>(lv_event_get_user_data(e));
         self->hideSettingsPanel(); }, LV_EVENT_CLICKED, this);
 
     ui_SettingsBridgeGroup = lv_obj_create(parentWidget);
@@ -1667,7 +1687,7 @@ void SensorVisualizationGui::handleSettingsButtonClick(lv_obj_t *recordGroup, lv
     lv_obj_set_style_radius(ui_SettingsDataBundleShowButton, 5, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_add_event_cb(ui_SettingsDataBundleShowButton, [](lv_event_t *e)
                         {
-        auto * self = static_cast<SensorVisualizationGui*>(lv_event_get_user_data(e));
+        auto * self = static_cast<SignalsVisualizationGui*>(lv_event_get_user_data(e));
         self->handleDataBundleShowButtonClick(); }, LV_EVENT_CLICKED, this);
 
     ui_SettingsDataBundleShowButtonLabel = lv_label_create(ui_SettingsDataBundleShowButton);
@@ -1689,7 +1709,7 @@ void SensorVisualizationGui::handleSettingsButtonClick(lv_obj_t *recordGroup, lv
     lv_obj_set_style_bg_opa(ui_SettingsDataBundleDeleteAllButton, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_add_event_cb(ui_SettingsDataBundleDeleteAllButton, [](lv_event_t *e)
                         {
-        auto * self = static_cast<SensorVisualizationGui*>(lv_event_get_user_data(e));
+        auto * self = static_cast<SignalsVisualizationGui*>(lv_event_get_user_data(e));
         self->handleDataBundleDeleteAllButtonClick(); }, LV_EVENT_CLICKED, this);
 
     ui_SettingsDataBundleDeleteAllButtonLabel = lv_label_create(ui_SettingsDataBundleDeleteAllButton);
@@ -1715,7 +1735,7 @@ void SensorVisualizationGui::handleSettingsButtonClick(lv_obj_t *recordGroup, lv
     lv_obj_set_style_radius(ui_SettingsCreditsButton, 5, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_add_event_cb(ui_SettingsCreditsButton, [](lv_event_t *e)
                         {
-        auto * self = static_cast<SensorVisualizationGui*>(lv_event_get_user_data(e));
+        auto * self = static_cast<SignalsVisualizationGui*>(lv_event_get_user_data(e));
         self->handleCreditsButtonClick(); }, LV_EVENT_CLICKED, this);
 
     ui_SettingsCreditsButtonLabel = lv_label_create(ui_SettingsCreditsButton);
@@ -1725,7 +1745,7 @@ void SensorVisualizationGui::handleSettingsButtonClick(lv_obj_t *recordGroup, lv
     lv_label_set_text(ui_SettingsCreditsButtonLabel, "View About Icons");
 }
 
-void SensorVisualizationGui::handleDataBundleShowButtonClick(){
+void SignalsVisualizationGui::handleDataBundleShowButtonClick(){
     if(recording){
         handleStillRecording();
         return;
@@ -1735,7 +1755,7 @@ void SensorVisualizationGui::handleDataBundleShowButtonClick(){
     switchToDataBundleSelection();
 }
 
-void SensorVisualizationGui::handleDataBundleDeleteAllButtonClick(){
+void SignalsVisualizationGui::handleDataBundleDeleteAllButtonClick(){
     static const char *btns[] = {"Yes", ""};
     showShadowOverlay();
     // Clear button has different behavior based on recording state
@@ -1748,7 +1768,7 @@ void SensorVisualizationGui::handleDataBundleDeleteAllButtonClick(){
     lv_obj_move_foreground(confirmDialog);
     lv_obj_add_event_cb(confirmDialog, [](lv_event_t *e)
                         {
-        auto self = static_cast<SensorVisualizationGui*>(lv_event_get_user_data(e));
+        auto self = static_cast<SignalsVisualizationGui*>(lv_event_get_user_data(e));
         lv_event_code_t code = lv_event_get_code(e);
 
         if (code == LV_EVENT_VALUE_CHANGED)
@@ -1774,7 +1794,7 @@ void SensorVisualizationGui::handleDataBundleDeleteAllButtonClick(){
         } }, LV_EVENT_ALL, this);
 }
 
-void SensorVisualizationGui::handleCreditsButtonClick(){
+void SignalsVisualizationGui::handleCreditsButtonClick(){
     if(recording){
         handleStillRecording();
         return;
@@ -1783,7 +1803,7 @@ void SensorVisualizationGui::handleCreditsButtonClick(){
     switchToCreditsScreen();
 }
 
-void SensorVisualizationGui::handleStillRecording(){
+void SignalsVisualizationGui::handleStillRecording(){
     if(!recording) return;
 
         static const char *btns[] = {"Save", "Discard", ""};
@@ -1798,7 +1818,7 @@ void SensorVisualizationGui::handleStillRecording(){
     lv_obj_move_foreground(confirmDialog);
     lv_obj_add_event_cb(confirmDialog, [](lv_event_t *e)
                         {
-        auto self = static_cast<SensorVisualizationGui*>(lv_event_get_user_data(e));
+        auto self = static_cast<SignalsVisualizationGui*>(lv_event_get_user_data(e));
         lv_event_code_t code = lv_event_get_code(e);
 
         if (code == LV_EVENT_VALUE_CHANGED)
@@ -1826,7 +1846,7 @@ void SensorVisualizationGui::handleStillRecording(){
         } }, LV_EVENT_ALL, this);
 }
 
-void SensorVisualizationGui::hideSettingsPanel()
+void SignalsVisualizationGui::hideSettingsPanel()
 {
     if (ui_SettingsOverlay != nullptr)
     {
@@ -1841,14 +1861,14 @@ void SensorVisualizationGui::hideSettingsPanel()
     }
 }
 
-void SensorVisualizationGui::goToPreviousSensor()
+void SignalsVisualizationGui::goToPreviousDevice()
 {
     if (recording)
         return;
 
     const bool wasRunning = sensorManager.isRunning();
     sensorManager.setRunning(false); // Pause any ongoing sensor updates
-    currentSensor = sensorManager.previousSensor();
+    currentSensor = sensorManager.previousDevice();
     if (currentSensor) {
         currentSensor->setRedrawPending(true);
     }
@@ -1856,14 +1876,14 @@ void SensorVisualizationGui::goToPreviousSensor()
     sensorManager.setRunning(wasRunning); // Resume previous state
 }
 
-void SensorVisualizationGui::goToNextSensor()
+void SignalsVisualizationGui::goToNextDevice()
 {
     if (recording)
         return;
 
     const bool wasRunning = sensorManager.isRunning();
     sensorManager.setRunning(false); // Pause any ongoing sensor updates
-    currentSensor = sensorManager.nextSensor();
+    currentSensor = sensorManager.nextDevice();
     if (currentSensor) {
         currentSensor->setRedrawPending(true);
     }
@@ -1871,12 +1891,12 @@ void SensorVisualizationGui::goToNextSensor()
     sensorManager.setRunning(wasRunning); // Resume previous state
 }
 
-void SensorVisualizationGui::goToFirstSensor()
+void SignalsVisualizationGui::goToFirstDevice()
 {
     const bool wasRunning = sensorManager.isRunning();
     sensorManager.setRunning(false); // Pause any ongoing sensor updates
     sensorManager.resetCurrentIndex();
-    currentSensor = sensorManager.getCurrentSensor();
+    currentSensor = sensorManager.getCurrentDevice();
     if (currentSensor) {
         currentSensor->setRedrawPending(true);
     }
@@ -1884,7 +1904,7 @@ void SensorVisualizationGui::goToFirstSensor()
     sensorManager.setRunning(wasRunning); // Resume previous state
 }
 
-bool SensorVisualizationGui::syncCurrentSensor()
+bool SignalsVisualizationGui::syncCurrentDevice()
 {
     if (!currentSensor)
     {
@@ -1896,19 +1916,19 @@ bool SensorVisualizationGui::syncCurrentSensor()
         return false;
     }
 
-    const bool success = syncSensor(currentSensor);
+    const bool success = syncDevice(currentSensor);
     if (!success) {
         showAlert(currentSensor->getError().empty() ? "Sync failed" : currentSensor->getError().c_str());
         return false;
     }
 
     currentSensor->setRedrawPending(true);
-    updateSensorDataDisplay();
+    updateDeviceDataDisplay();
     updateChart();
     return true;
 }
 
-void SensorVisualizationGui::showVisualization()
+void SignalsVisualizationGui::showVisualization()
 {
     if (!initialized || !ui_SensorWidget)
         return;
@@ -1916,12 +1936,12 @@ void SensorVisualizationGui::showVisualization()
     lv_obj_clear_flag(ui_SensorWidget, LV_OBJ_FLAG_HIDDEN);
 
     // Refresh the display with current sensor data
-    goToFirstSensor();
-    drawCurrentSensor();
+    goToFirstDevice();
+    drawCurrentDevice();
     // logMessage("Showing sensor visualization\n");
 }
 
-void SensorVisualizationGui::hideVisualization()
+void SignalsVisualizationGui::hideVisualization()
 {
     if (!initialized || !ui_SensorWidget)
         return;
@@ -1930,7 +1950,7 @@ void SensorVisualizationGui::hideVisualization()
     // logMessage("Hiding sensor visualization\n");
 }
 
-void SensorVisualizationGui::showAlert(const char *message){
+void SignalsVisualizationGui::showAlert(const char *message){
     if(message == nullptr || !initialized || !ui_SensorWidget) 
         return;
     
@@ -1946,7 +1966,7 @@ void SensorVisualizationGui::showAlert(const char *message){
     lv_obj_set_style_bg_color(ui_Alert, lv_color_hex(0x4C9ED3), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_Alert, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_add_event_cb(ui_Alert, [](lv_event_t *e){
-        auto * self = static_cast<SensorVisualizationGui*>(lv_event_get_user_data(e));
+        auto * self = static_cast<SignalsVisualizationGui*>(lv_event_get_user_data(e));
         self->hideAlert(); }, LV_EVENT_CLICKED, this);
 
     ui_AlertLabel = lv_label_create(ui_Alert);
@@ -1960,7 +1980,7 @@ void SensorVisualizationGui::showAlert(const char *message){
     lv_obj_del_delayed(ui_Alert, 3000); // Auto hide after 3 seconds
 }
 
-void SensorVisualizationGui::hideAlert(){
+void SignalsVisualizationGui::hideAlert(){
     if(ui_Alert == nullptr) 
         return;
 

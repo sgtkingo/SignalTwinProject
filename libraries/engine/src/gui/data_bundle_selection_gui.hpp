@@ -17,7 +17,7 @@
 #include <map>
 
 #include "gui_callbacks.hpp"
-#include "../managers/manager.hpp"
+#include "../managers/device_manager.hpp"
 #include "../managers/data_bundle_manager.hpp"
 #include "../exceptions/data_exceptions.hpp"
 

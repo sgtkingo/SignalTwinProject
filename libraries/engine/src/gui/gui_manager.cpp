@@ -14,14 +14,14 @@ const int CYCLE_SYNC_MS = 100;
 const int LOOP_SYNC_TH = CYCLE_SYNC_MS / CYCLE_DRAW_MS;
 int LOOP_SYNC_COUNTER = LOOP_SYNC_TH;
 
-GuiManager::GuiManager(SensorManager &manager, DataBundleManager &dataBundleManager)
+GuiManager::GuiManager(DeviceManager &manager, DataBundleManager &dataBundleManager)
     : sensorManager(manager),
       dataBundleManager(dataBundleManager),
       mainMenuGui(),
       menuGui(manager),
       vizGui(manager, dataBundleManager),
       dataBundleSelectionGui(dataBundleManager),
-      wikiGui(manager),
+      selectionGui(manager),
       libraryGui(manager),
       libraryEditorGui(manager),
       settingsGui(),
@@ -49,7 +49,7 @@ bool GuiManager::init(std::string configFile)
         }
 
         if (!sensorManager.init(configFile)) {
-            crashGui.showCrash("SensorManager initialization failed!");
+            crashGui.showCrash("DeviceManager initialization failed!");
             return false;
         }
 
@@ -57,7 +57,7 @@ bool GuiManager::init(std::string configFile)
         menuGui.init();
         vizGui.init();
         dataBundleSelectionGui.init();
-        wikiGui.init();
+        selectionGui.init();
         libraryGui.init();
         libraryEditorGui.init();
         settingsGui.init();
@@ -93,7 +93,7 @@ void GuiManager::hideAllComponents()
     menuGui.hideMenu();
     vizGui.hideVisualization();
     dataBundleSelectionGui.hideDataBundles();
-    wikiGui.hideWiki();
+    selectionGui.hideSelection();
     libraryGui.hideLibrary();
     libraryEditorGui.hideEditor();
     settingsGui.hideSettings();
@@ -138,7 +138,7 @@ void GuiManager::showVisualization()
     vizGui.showVisualization();
     sensorManager.setRunning(true);
 
-    vizGui.drawCurrentSensor();
+    vizGui.drawCurrentDevice();
     currentState = GuiState::VISUALIZATION;
 }
 
@@ -154,7 +154,7 @@ void GuiManager::showDataBundleSelection()
     currentState = GuiState::DATA_BUNDLE_SELECTION;
 }
 
-void GuiManager::showWiki()
+void GuiManager::showSelection()
 {
     if (!initialized) {
         return;
@@ -162,7 +162,7 @@ void GuiManager::showWiki()
 
     sensorManager.setRunning(false);
     hideAllComponents();
-    wikiGui.showWiki(menuGui.getActivePin());
+    selectionGui.showSelection(menuGui.getActivePin());
     currentState = GuiState::SELECTION;
 }
 
@@ -270,7 +270,7 @@ void GuiManager::switchContent(GuiState targetState)
         showDataBundleSelection();
         break;
     case GuiState::SELECTION:
-        showWiki();
+        showSelection();
         break;
     case GuiState::LIBRARY:
         showLibrary();
@@ -364,7 +364,7 @@ void GuiManager::redraw()
     switch (currentState) {
     case GuiState::VISUALIZATION:
         if (vizGui.isInitialized()) {
-            vizGui.drawCurrentSensor();
+            vizGui.drawCurrentDevice();
         }
         break;
     default:

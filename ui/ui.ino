@@ -15,7 +15,7 @@
 
 
 enum BoardConstants { TFT_BL=2, LVGL_BUFFER_RATIO=6 };
-static constexpr const char *SENSOR_DB_SD_PATH = "/data/sensor_db.json";
+static constexpr const char *DEVICE_DB_SD_PATH = "/data/device_db.json";
 
 
 class LGFX : public lgfx::LGFX_Device
@@ -149,9 +149,9 @@ void my_touchpad_read (lv_indev_drv_t * indev_driver, lv_indev_data_t * data)
 }
 
 
-SensorManager sensorManager;  // Create SensorManager instance
+DeviceManager deviceManager;  // Create DeviceManager instance
 DataBundleManager dataBundleManager; // Create DataBundleManager instance
-GuiManager guiManager(sensorManager, dataBundleManager);  // Create GUI manager instance
+GuiManager guiManager(deviceManager, dataBundleManager);  // Create GUI manager instance
 
 // Global GUI screen switching functions for use by GUI components
 void switchToMenu() {
@@ -162,8 +162,12 @@ void switchToMainMenu() {
     guiManager.switchContent(GuiState::MAIN_MENU);
 }
 
-void switchToWiki() {
+void switchToSelection() {
     guiManager.switchContent(GuiState::SELECTION);
+}
+
+void switchToWiki() {
+    switchToSelection();
 }
 
 void switchToVisualization() {
@@ -203,7 +207,7 @@ void switchToLibraryEditor() {
 }
 
 void prepareNewLibraryEntity() {
-    sensorManager.setCurrentLibrarySensor(nullptr);
+    deviceManager.setCurrentLibraryDevice(nullptr);
 }
 
 void switchToSettings() {
@@ -279,7 +283,7 @@ void setup ()
     lv_timer_handler();
 
     // Initialize the GUI manager
-    if(!guiManager.init(SENSOR_DB_SD_PATH))
+    if(!guiManager.init(DEVICE_DB_SD_PATH))
     {
         return;
     }

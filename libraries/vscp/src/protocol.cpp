@@ -18,7 +18,7 @@
 #include <cctype> // For std::isspace
 
 // Static member definitions
-const std::string Protocol::API_VERSION = "1.2";
+const std::string Protocol::API_VERSION = "1.3";
 bool Protocol::initialized = false;
 
 // Helper function to trim whitespace and invisible characters from strings
@@ -302,6 +302,51 @@ ResponseStatus Protocol::config(const std::string& uid, const std::unordered_map
         response.status = ResponseStatusEnum::ERROR;
         response.error = responseParams.find("error") != responseParams.end() 
                             ? responseParams["error"] : "Connection failed - bad or missing status";
+        return response;
+    }
+
+    response.status = ResponseStatusEnum::OK;
+    response.error = "";
+    return response;
+}
+
+ResponseStatus Protocol::control(const std::string& uid, const std::unordered_map<std::string, std::string>& control) {
+    ResponseStatus response;
+    response.status = ResponseStatusEnum::ERROR;
+
+    if (!initialized) {
+        response.error = "Protocol not initialized";
+        return response;
+    }
+
+    if (uid.empty()) {
+        response.error = "UID cannot be empty";
+        return response;
+    }
+
+    std::string request = "?type=CONTROL";
+    request += "&id=" + uid;
+
+    for (const auto& controlParam : control) {
+        request += "&" + controlParam.first + "=" + controlParam.second;
+    }
+
+    sendMessage(request);
+    std::string responseMsg = receiveMessage(PROTOCOL_VERBOSE);
+
+    auto responseParams = parseMessage(responseMsg);
+
+    if (responseParams.find("id") == responseParams.end() || responseParams["id"] != uid) {
+        response.status = ResponseStatusEnum::ERROR;
+        response.error = "Response UID mismatch - expected: " + uid + ", received: " +
+                                (responseParams.find("id") != responseParams.end() ? responseParams["id"] : "none");
+        return response;
+    }
+
+    if (responseParams.find("status") == responseParams.end() || responseParams["status"] != "1") {
+        response.status = ResponseStatusEnum::ERROR;
+        response.error = responseParams.find("error") != responseParams.end()
+                            ? responseParams["error"] : "Control failed - bad or missing status";
         return response;
     }
 

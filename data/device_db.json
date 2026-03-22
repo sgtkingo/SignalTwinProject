@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "application": "board",
-  "sensors": {
+  "devices": {
     "mic_001": {
       "uid": "mic_001",
       "role": "sensor",

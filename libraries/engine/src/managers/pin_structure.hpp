@@ -12,7 +12,7 @@
 #ifndef PIN_STRUCTURE_HPP
 #define PIN_STRUCTURE_HPP
 
-#include "../sensors/base_sensor.hpp"
+#include "../devices/base_device.hpp"
 #include <string>
 
 /**
@@ -43,7 +43,7 @@ enum class PinLockReason {
 struct VirtualPin {
     int pinNumber;                    ///< Physical pin number (GPIO)
     PinState state;                   ///< Current pin state
-    BaseSensor* assignedSensor;       ///< Pointer to assigned sensor (nullptr if none)
+    BaseDevice* assignedSensor;       ///< Pointer to assigned sensor (nullptr if none)
     bool locked;                      ///< Whether pin is locked
     PinLockReason lockReason;         ///< Reason for locking
     std::string customName;           ///< Optional custom name for pin
@@ -102,7 +102,7 @@ struct VirtualPin {
      * @param sensor Pointer to sensor to assign
      * @return True if assignment successful
      */
-    bool assignSensor(BaseSensor* sensor) {
+    bool assignSensor(BaseDevice* sensor) {
         if (!isAvailable()) return false;
         if(!sensor) return false;
 

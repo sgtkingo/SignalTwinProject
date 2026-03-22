@@ -7,7 +7,7 @@
 #define GUI_MANAGER_HPP
 
 #include "../managers/data_bundle_manager.hpp"
-#include "../managers/manager.hpp"
+#include "../managers/device_manager.hpp"
 #include "app_selection_gui.hpp"
 #include "app_settings.hpp"
 #include "communication_selection_gui.hpp"
@@ -18,8 +18,8 @@
 #include "library_gui.hpp"
 #include "main_menu_gui.hpp"
 #include "menu_gui.hpp"
-#include "sensor_visualization_gui.hpp"
-#include "sensor_wiki_gui.hpp"
+#include "signals_visualization_gui.hpp"
+#include "device_selection_gui.hpp"
 #include "settings_gui.hpp"
 
 enum class GuiState
@@ -43,13 +43,13 @@ enum class GuiState
 class GuiManager
 {
 private:
-    SensorManager &sensorManager;
+    DeviceManager &sensorManager;
     DataBundleManager &dataBundleManager;
     MainMenuGui mainMenuGui;
     MenuGui menuGui;
-    SensorVisualizationGui vizGui;
+    SignalsVisualizationGui vizGui;
     DataBundleSelectionGui dataBundleSelectionGui;
-    SensorWikiGui wikiGui;
+    DeviceSelectionGui selectionGui;
     LibraryGui libraryGui;
     LibraryEditorGui libraryEditorGui;
     SettingsGui settingsGui;
@@ -68,7 +68,7 @@ private:
     void hideAllComponents();
 
 public:
-    explicit GuiManager(SensorManager &manager, DataBundleManager &dataBundleManager);
+    explicit GuiManager(DeviceManager &manager, DataBundleManager &dataBundleManager);
 
     bool init();
     bool init(std::string configFile);
@@ -80,7 +80,7 @@ public:
     void showMenu();
     void showVisualization();
     void showDataBundleSelection();
-    void showWiki();
+    void showSelection();
     void showLibrary();
     void showLibraryEditor();
     void showSettings();
@@ -103,11 +103,12 @@ public:
     void setDefaultCommunicationMode(DefaultCommunicationMode mode) { defaultCommunicationMode = mode; }
 
     MenuGui &getMenuGui() { return menuGui; }
-    SensorVisualizationGui &getVisualizationGui() { return vizGui; }
+    SignalsVisualizationGui &getVisualizationGui() { return vizGui; }
     DataBundleSelectionGui &getDataBundleSelectionGui() { return dataBundleSelectionGui; }
-    SensorWikiGui &getWikiGui() { return wikiGui; }
+    DeviceSelectionGui &getSelectionGui() { return selectionGui; }
+    DeviceSelectionGui &getWikiGui() { return selectionGui; }
     CreditsGui &getCreditsGui() { return creditsGui; }
-    SensorManager &getSensorManager() { return sensorManager; }
+    DeviceManager &getDeviceManager() { return sensorManager; }
     DataBundleManager &getDataBundleManager() { return dataBundleManager; }
     AppSelectionGui &getAppSelectionGui() { return appSelectionGui; }
     CommunicationSelectionGui &getCommunicationSelectionGui() { return communicationSelectionGui; }

@@ -1,10 +1,10 @@
 /**
- * @file base_sensor.hpp
+ * @file base_device.hpp
  * @brief Declaration and implementation of sensor classes for sensor management using built-in exceptions.
  *
- * This header defines the abstract BaseSensor class and its derived ADC and CustomSensor classes.
- * BaseSensor provides a helper method printBasicInfo() to output common sensor details.
- * Derived classes override printSensor() to print extra sensor-specific information.
+ * This header defines the abstract BaseDevice class and its derived ADC and CustomSensor classes.
+ * BaseDevice provides a helper method printBasicInfo() to output common sensor details.
+ * Derived classes override printDevice() to print extra sensor-specific information.
  * Factory functions are provided to create sensor instances.
  *
  * @copyright 2025 MTA
@@ -12,14 +12,14 @@
  *
  */
 
-#ifndef BASE_SENSOR_HPP
-#define BASE_SENSOR_HPP
+#ifndef BASE_DEVICE_HPP
+#define BASE_DEVICE_HPP
 
 /*********************
  *      INCLUDES
  *********************/
 #include "vscp.hpp"
-#include "../exceptions/sensors_exceptions.hpp" ///< Sensor related exceptions.
+#include "../exceptions/devices_exceptions.hpp" ///< Sensor related exceptions.
 #include "../helpers.hpp"    ///< Helper functions.
 
 #include <string>
@@ -32,14 +32,14 @@
 #define HISTORY_CAP 10 ///< History capacity.
 
 /**
- * @enum SensorStatus
+ * @enum DeviceStatus
  * @brief Enumeration representing possible sensor statuses.
  *
  * - OK: Sensor is operating normally.
  * - ERROR: Sensor has encountered an error.
  * - OFFLINE: Sensor is offline.
  */
-enum class SensorStatus
+enum class DeviceStatus
 {
     OK = 1,     ///< Sensor operating normally.
     ERROR = -1, ///< Sensor has an error.
@@ -47,7 +47,7 @@ enum class SensorStatus
 };
 
 /**
- * @enum SensorsCommandsEnum
+ * @enum DeviceCommandsEnum
  * @brief Enumeration representing possible sensor commands.
  *
  * - CONFIG: Configure sensor.
@@ -55,10 +55,11 @@ enum class SensorStatus
  * - INIT: Initialize sensor.
  * - RESET: Reset sensor.
  */
-enum class SensorsCommandsEnum
+enum class DeviceCommandsEnum
 {
     CONFIG,
     UPDATE,
+    CONTROL,
     INIT,
     RESET,
     CONNECT,
@@ -66,7 +67,7 @@ enum class SensorsCommandsEnum
 };
 
 /**
- * @enum enum class SensorDataType
+ * @enum enum class DeviceDataType
  * @brief Enumeration representing possible parametrs data types.
  *
  * - INT: int.
@@ -74,7 +75,7 @@ enum class SensorsCommandsEnum
  *  - FLOAT: float.
  * - STRING: string.
  */
-enum class SensorDataType
+enum class DeviceDataType
 {
     INT,
     DOUBLE,
@@ -95,13 +96,13 @@ enum class DeviceRole
 
 
 /**
- * @struct SensorRestrictions
+ * @struct DeviceRestrictions
  * @brief Structure for sensor parameter restrictions.
  *
  * This structure can be used to define restrictions for sensor parameters such as minimum,
  * maximum, step size, and options (for enum types).
  */
-struct SensorRestrictions
+struct DeviceRestrictions
 {
     std::string Min;
     std::string Max;
@@ -110,38 +111,39 @@ struct SensorRestrictions
 };
 
 /**
- * @struct SensorParam
+ * @struct DeviceParam
  * @brief Structure for sensor parameters.
  *
  * This structure can be used to store sensor parameters for configuration and updating.
  */
-struct SensorParam
+struct DeviceParam
 {
     std::string Value;                ///< Parameter value.
     std::string Unit;                 ///< Parameter unit.
-    SensorDataType DType;                   ///< Parameter data type.
+    DeviceDataType DType;                   ///< Parameter data type.
     int lastHistoryIndex;             ///< Last history index.
     std::string History[HISTORY_CAP]; ///< Parameter history.
-    SensorRestrictions Restrictions;  ///< Parameter restrictions.
+    DeviceRestrictions Restrictions;  ///< Parameter restrictions.
 };
 
 /**
- * @class BaseSensor
+ * @class BaseDevice
  * @brief Abstract base class for sensors.
  *
  * Defines common properties and virtual methods for sensor initialization, configuration,
  * updating, and printing. It also provides a helper method, printBasicInfo(), that prints
  * common sensor details.
  */
-class BaseSensor
+class BaseDevice
 {
 protected:
     bool redrawPending = true;  ///< Flag to indicate if sensor needs to be redrawn.
     bool isConfigsSync = false; ///< Flag to indicate if sensor congig is synchronized with real sensor.
     bool isValuesSync = false;  ///< Flag to indicate if sensor values is synchronized with real sensor.
+    bool isControlsSync = true; ///< Flag to indicate if control payload is synchronized with real device.
 
-    std::unordered_map<std::string, SensorParam> Values;            ///< Sensor values.
-    std::unordered_map<std::string, SensorParam> Configs;          ///< Sensor configurations.
+    std::unordered_map<std::string, DeviceParam> Values;            ///< Sensor values.
+    std::unordered_map<std::string, DeviceParam> Configs;          ///< Sensor configurations.
     std::vector<std::string> Pins;                                 ///< Sensor pins.
     std::string AllowedPins;                                       ///< Allowed sensor pins, enter as list of values separated by ",".
     DeviceRole Role = DeviceRole::SENSOR;                          ///< Runtime device role.
@@ -162,15 +164,15 @@ protected:
 
         if (status == "1")
         {
-            Status = SensorStatus::OK;
+            Status = DeviceStatus::OK;
         }
         else if (status == "-1")
         {
-            Status = SensorStatus::ERROR;
+            Status = DeviceStatus::ERROR;
         }
         else if (status == "0")
         {
-            Status = SensorStatus::OFFLINE;
+            Status = DeviceStatus::OFFLINE;
         }
     }
 
@@ -181,7 +183,7 @@ protected:
      *
      * @param status The status.
      */
-    void setStatus(SensorStatus status)
+    void setStatus(DeviceStatus status)
     {
         Status = status;
     }
@@ -206,7 +208,7 @@ protected:
         auto response = Protocol::config(UID, configMap);
         if (response.status == ResponseStatusEnum::ERROR)
         {
-            throw SensorSynchronizationFailException("BaseSensor::syncConfigs", response.error);
+            throw DeviceSynchronizationFailException("BaseDevice::syncConfigs", response.error);
         }
 
         isConfigsSync = response.status == ResponseStatusEnum::OK; // Set flag to indicate sensor is synchronized with real sensor.
@@ -228,7 +230,7 @@ protected:
             auto response = Protocol::update(UID);
             if (response.status == ResponseStatusEnum::ERROR)
             {
-                throw SensorSynchronizationFailException("BaseSensor::syncValues", response.error);
+                throw DeviceSynchronizationFailException("BaseDevice::syncValues", response.error);
             }
 
             update(response.params); // Update sensor values from response parameters
@@ -251,9 +253,9 @@ protected:
      * @param param The sensor parameter containing the restrictions.
      * @return true if the value meets the restrictions, false otherwise.
      */
-    bool checkRestrictions(std::string value, const SensorParam &param)
+    bool checkRestrictions(std::string value, const DeviceParam &param)
     {
-        SensorRestrictions restrictions = param.Restrictions;
+        DeviceRestrictions restrictions = param.Restrictions;
         try
         {
             if (!restrictions.Min.empty())
@@ -287,7 +289,7 @@ protected:
         }
         catch (const std::exception &e)
         {
-            throw InvalidDataTypeException("BaseSensor::checkRestrictions", e.what());
+            throw InvalidDataTypeException("BaseDevice::checkRestrictions", e.what());
         }
 
         return true;
@@ -295,7 +297,7 @@ protected:
 
 public:
     std::string UID;         ///< Unique sensor identifier.
-    SensorStatus Status;     ///< Sensor status.
+    DeviceStatus Status;     ///< Sensor status.
     std::string Type;        ///< Sensor type as text.
     std::string Description; ///< Description of the sensor.
     std::string LastError;   ///< Error message (if any).
@@ -307,7 +309,7 @@ public:
      * @param sensor The sensor to compare with.
      * @return true if the sensors have the same UID, false otherwise.
      */
-    bool operator==(const BaseSensor &sensor) const
+    bool operator==(const BaseDevice &sensor) const
     {
         return UID == sensor.UID;
     }
@@ -324,9 +326,9 @@ public:
     }
 
     /**
-     * @brief Constructs a new BaseSensor object.
+     * @brief Constructs a new BaseDevice object.
      */
-    BaseSensor() : UID("DummySensor"), Status(SensorStatus::OK)
+    BaseDevice() : UID("DummyDevice"), Status(DeviceStatus::OK)
     {
         LastError = "";
 
@@ -334,11 +336,11 @@ public:
     }
 
     /**
-     * @brief Constructs a new BaseSensor object.
+     * @brief Constructs a new BaseDevice object.
      *
      * @param uid The unique sensor identifier.
      */
-    BaseSensor(std::string uid) : UID(uid), Status(SensorStatus::OK)
+    BaseDevice(std::string uid) : UID(uid), Status(DeviceStatus::OK)
     {
         LastError = "";
 
@@ -348,11 +350,11 @@ public:
     /**
      * @brief Virtual destructor.
      */
-    virtual ~BaseSensor()
+    virtual ~BaseDevice()
     {
     }
 
-    std::unordered_map<std::string, SensorParam> getValues() const { return Values; }
+    std::unordered_map<std::string, DeviceParam> getValues() const { return Values; }
     std::vector<std::string> getValuesKeys() const
     {
         std::vector<std::string> keys;
@@ -362,7 +364,7 @@ public:
         }
         return keys;
     }
-    std::unordered_map<std::string, SensorParam> getConfigs() const { return Configs; }
+    std::unordered_map<std::string, DeviceParam> getConfigs() const { return Configs; }
     std::vector<std::string> getConfigsKeys() const
     {
         std::vector<std::string> keys;
@@ -414,6 +416,30 @@ public:
     }
 
     /**
+     * @brief Synchronize runtime control payload with the real device.
+     */
+    void syncControls()
+    {
+        isControlsSync = false;
+        redrawPending = false;
+
+        std::unordered_map<std::string, std::string> valueMap;
+        for (const auto &pair : Values)
+        {
+            valueMap[pair.first] = pair.second.Value;
+        }
+
+        auto response = Protocol::control(UID, valueMap);
+        if (response.status == ResponseStatusEnum::ERROR)
+        {
+            throw DeviceSynchronizationFailException("BaseDevice::syncControls", response.error);
+        }
+
+        isControlsSync = response.status == ResponseStatusEnum::OK;
+        redrawPending = isControlsSync;
+    }
+
+    /**
      * @brief Check whether the device exposes live values.
      *
      * @return true when at least one value exists.
@@ -445,6 +471,16 @@ public:
     bool usesUpdateChannel() const
     {
         return hasValues() && Role != DeviceRole::ACTUATOR;
+    }
+
+    /**
+     * @brief Check whether the device should use CONTROL channel for synchronization.
+     *
+     * @return true if CONTROL sync is meaningful for this device.
+     */
+    bool usesControlChannel() const
+    {
+        return hasValues() && Role != DeviceRole::SENSOR;
     }
 
     /**
@@ -487,7 +523,7 @@ public:
      *
      * @return The sensor status.
      */
-    SensorStatus getStatus() const { return Status; }
+    DeviceStatus getStatus() const { return Status; }
 
     /**
      * @brief Assign a pin to the sensor.
@@ -581,13 +617,13 @@ public:
     {
         std::string pins = getPins();
         if(pins.empty()) {
-            throw SensorPinAssignmentException("connectSensor", "No pins assigned to sensor.");
+            throw DevicePinAssignmentException("connectDevice", "No pins assigned to sensor.");
         }
 
         auto response = Protocol::connect(UID, pins);
         if (response.status == ResponseStatusEnum::ERROR)
         {
-            throw SensorConnectionFailException("BaseSensor::connect", response.error);
+            throw DeviceConnectionFailException("BaseDevice::connect", response.error);
         }
 
         return response.status == ResponseStatusEnum::OK;
@@ -602,7 +638,7 @@ public:
         auto response = Protocol::disconnect(UID);
         if (response.status == ResponseStatusEnum::ERROR)
         {
-            throw SensorConnectionFailException("BaseSensor::disconnect", response.error);
+            throw DeviceConnectionFailException("BaseDevice::disconnect", response.error);
         }
 
         if (response.status == ResponseStatusEnum::OK) {
@@ -630,7 +666,7 @@ public:
         }
         if (value.empty())
         {
-            throw ConfigurationNotFoundException("BaseSensor::getConfig", "Configuration not found for key: " + key);
+            throw ConfigurationNotFoundException("BaseDevice::getConfig", "Configuration not found for key: " + key);
         }
 
         try
@@ -639,7 +675,7 @@ public:
         }
         catch (const std::exception &e)
         {
-            throw InvalidDataTypeException("BaseSensor::getConfig", e.what());
+            throw InvalidDataTypeException("BaseDevice::getConfig", e.what());
         }
     }
 
@@ -657,13 +693,13 @@ public:
         {
             if (!checkRestrictions(value, Configs[key]))
             {
-                throw InvalidValueException("BaseSensor::setConfig", "Value " + value + " for key " + key + " does not meet restrictions.");
+                throw InvalidValueException("BaseDevice::setConfig", "Value " + value + " for key " + key + " does not meet restrictions.");
             }
             Configs[key].Value = value;
         }
         else
         {
-            throw ConfigurationNotFoundException("BaseSensor::setConfig", "Configuration not found for key: " + key);
+            throw ConfigurationNotFoundException("BaseDevice::setConfig", "Configuration not found for key: " + key);
         }
 
         isConfigsSync = false; // Set flag to indicate sensor is not synchronized with real sensor.
@@ -688,7 +724,7 @@ public:
         }
         if (value.empty())
         {
-            throw ValueNotFoundException("BaseSensor::getValue", "Value not found for key: " + key);
+            throw ValueNotFoundException("BaseDevice::getValue", "Value not found for key: " + key);
         }
 
         try
@@ -697,7 +733,7 @@ public:
         }
         catch (const std::exception &e)
         {
-            throw InvalidDataTypeException("BaseSensor::getValue", e.what());
+            throw InvalidDataTypeException("BaseDevice::getValue", e.what());
         }
     }
 
@@ -713,12 +749,28 @@ public:
     {
         if (Values.find(key) != Values.end())
         {
+            if (!checkRestrictions(value, Values[key]))
+            {
+                throw InvalidValueException("BaseDevice::setValue", "Value " + value + " for key " + key + " does not meet restrictions.");
+            }
             Values[key].Value = value;
+            Values[key].History[Values[key].lastHistoryIndex++] = value;
+            if (Values[key].lastHistoryIndex >= HISTORY_CAP)
+            {
+                Values[key].lastHistoryIndex = 0;
+            }
         }
         else
         {
-            throw ValueNotFoundException("BaseSensor::setValue", "Value not found for key: " + key);
+            throw ValueNotFoundException("BaseDevice::setValue", "Value not found for key: " + key);
         }
+
+        if (usesControlChannel())
+        {
+            isControlsSync = false;
+        }
+
+        redrawPending = true;
     }
 
     /**
@@ -765,11 +817,11 @@ public:
         LastError = error;
         if (!error.empty())
         {
-            setStatus(SensorStatus::ERROR);
+            setStatus(DeviceStatus::ERROR);
         }
         else
         {
-            setStatus(SensorStatus::OK);
+            setStatus(DeviceStatus::OK);
         }
     }
 
@@ -805,7 +857,7 @@ public:
             return Values[key].History;
         }
 
-        throw ValueNotFoundException("BaseSensor::getHistory", "Value not found for key: " + key);
+        throw ValueNotFoundException("BaseDevice::getHistory", "Value not found for key: " + key);
     }
 
     /**
@@ -832,6 +884,7 @@ public:
     {
         const bool syncConfigsChannel = usesConfigChannel();
         const bool syncValuesChannel = usesUpdateChannel();
+        const bool syncControlChannel = usesControlChannel();
 
         if (!syncConfigsChannel)
         {
@@ -843,11 +896,28 @@ public:
             isValuesSync = true;
         }
 
+        if (!syncControlChannel)
+        {
+            isControlsSync = true;
+        }
+
         if (syncConfigsChannel && !isConfigsSync)
         {
             try
             {
                 syncConfigs();
+            }
+            catch (...)
+            {
+                throw;
+            }
+        }
+
+        if (syncControlChannel && !isControlsSync)
+        {
+            try
+            {
+                syncControls();
             }
             catch (...)
             {
@@ -867,7 +937,9 @@ public:
             }
         }
 
-        return (!syncValuesChannel || isValuesSync) && (!syncConfigsChannel || isConfigsSync);
+        return (!syncValuesChannel || isValuesSync) &&
+               (!syncConfigsChannel || isConfigsSync) &&
+               (!syncControlChannel || isControlsSync);
     }
 
     /**
@@ -876,7 +948,7 @@ public:
      * @param key The key of the configuration parameter.
      * @param param The configuration parameter to add.
      */
-    void addConfigParameter(const std::string &key, const SensorParam &param)
+    void addConfigParameter(const std::string &key, const DeviceParam &param)
     {
         try
         {
@@ -884,7 +956,7 @@ public:
         }
         catch (const std::exception &e)
         {
-            throw InvalidConfigurationException("BaseSensor::addConfigParameter", e.what());
+            throw InvalidConfigurationException("BaseDevice::addConfigParameter", e.what());
         }
 
         isConfigsSync = false; // Set flag to indicate sensor is not synchronized with real sensor.
@@ -913,7 +985,7 @@ public:
                 {
                     if (!checkRestrictions(value, c.second))
                     {
-                        throw InvalidValueException("BaseSensor::config", "Value " + value + " for key " + c.first + " does not meet restrictions.");
+                        throw InvalidValueException("BaseDevice::config", "Value " + value + " for key " + c.first + " does not meet restrictions.");
                     }
                     c.second.Value = value;
 
@@ -940,7 +1012,7 @@ public:
      * @param param The value parameter to add.
      * @throws Exception if adding the value parameter fails.
      */
-    void addValueParameter(const std::string &key, const SensorParam &param)
+    void addValueParameter(const std::string &key, const DeviceParam &param)
     {
         try
         {
@@ -948,10 +1020,20 @@ public:
         }
         catch (const std::exception &e)
         {
-            throw InvalidValueException("BaseSensor::addValueParameter", new Exception(e));
+            throw InvalidValueException("BaseDevice::addValueParameter", new Exception(e));
         }
 
         isValuesSync = false; // Set flag to indicate sensor is not synchronized with real sensor.
+    }
+
+    /**
+     * @brief Applies runtime control payload to device values.
+     *
+     * @param ctl The control map containing new device values.
+     */
+    virtual void control(const std::unordered_map<std::string, std::string> &ctl)
+    {
+        update(ctl);
     }
 
     /**
@@ -978,7 +1060,7 @@ public:
                 {
                     if (!checkRestrictions(value, c.second))
                     {
-                        throw InvalidValueException("BaseSensor::update", "Value " + value + " for key " + c.first + " does not meet restrictions.");
+                        throw InvalidValueException("BaseDevice::update", "Value " + value + " for key " + c.first + " does not meet restrictions.");
                     }
                     c.second.Value = value;
                     c.second.History[c.second.lastHistoryIndex++] = value;
@@ -1004,22 +1086,22 @@ public:
      */
     void print() const
     {
-        logMessage("Sensor UID: %s\n", UID.c_str());
-        logMessage("\tSensor Type: %s\n", Type.c_str());
-        logMessage("\tSensor Description: %s\n", Description.c_str());
-        logMessage("\tSensor Status: %d\n", Status);
-        logMessage("\tSensor Error: %s\n", getError().c_str());
-        logMessage("\tSensor Configurations:\n");
+        logMessage("Device UID: %s\n", UID.c_str());
+        logMessage("\tDevice Type: %s\n", Type.c_str());
+        logMessage("\tDevice Description: %s\n", Description.c_str());
+        logMessage("\tDevice Status: %d\n", Status);
+        logMessage("\tDevice Error: %s\n", getError().c_str());
+        logMessage("\tDevice Configurations:\n");
         for (auto &c : Configs)
         {
             logMessage("\t\t%s: %s %s\n", c.first.c_str(), c.second.Value.c_str(), c.second.Unit.c_str());
         }
-        logMessage("\tSensor Values:\n");
+        logMessage("\tDevice Values:\n");
         for (auto &v : Values)
         {
             logMessage("\t\t%s: %s %s\n", v.first.c_str(), v.second.Value.c_str(), v.second.Unit.c_str());
         }
-        logMessage("\tSensor Pins: %s\n", getPins().c_str());
+        logMessage("\tDevice Pins: %s\n", getPins().c_str());
         logMessage("**************************************\n");
     }
 
@@ -1033,6 +1115,7 @@ public:
         redrawPending = true; // Set flag to redraw sensor - values updated.
         isConfigsSync = true; // Set flag to indicate sensor is synchronized by default with real sensor.
         isValuesSync = false; // Set flag to indicate sensor is not synchronized with real sensor
+        isControlsSync = true; // Control payload is synchronized until the user changes it locally.
 
         clearError();
     };
@@ -1049,15 +1132,15 @@ public:
  * and returns a pointer to the newly created object. If initialization fails, it logs the error,
  * deletes the partially constructed object, and rethrows the exception.
  *
- * @tparam T The sensor type, which must be derived from BaseSensor.
+ * @tparam T The sensor type, which must be derived from BaseDevice.
  * @param uid The unique sensor identifier.
  * @return T* Pointer to the newly created sensor.
- * @throws SensorInitializationFailException if sensor initialization fails.
+ * @throws DeviceInitializationFailException if sensor initialization fails.
  */
 template <typename T>
-T *createSensor(std::string uid)
+T *createDevice(std::string uid)
 {
-    static_assert(std::is_base_of<BaseSensor, T>::value, "T must be derived from BaseSensor");
+    static_assert(std::is_base_of<BaseDevice, T>::value, "T must be derived from BaseDevice");
 
     T *sensor = nullptr;
     try
@@ -1068,10 +1151,10 @@ T *createSensor(std::string uid)
     {
         logMessage("Error during sensor initialization: %s\n", ex.what());
         delete sensor;
-        throw SensorInitializationFailException("createSensor", "Error during sensor initialization.", new Exception(ex));
+        throw DeviceInitializationFailException("createDevice", "Error during device initialization.", new Exception(ex));
     }
 
-    logMessage("Sensor [%s]:%s created successfully.\n", sensor->UID.c_str(), sensor->Type.c_str());
+    logMessage("Device [%s]:%s created successfully.\n", sensor->UID.c_str(), sensor->Type.c_str());
     return sensor;
 }
 
@@ -1089,7 +1172,7 @@ T *createSensor(std::string uid)
  * @param config The configuration string.
  * @throws Exceptions should be internally resolved to prevent program from crash.
  */
-bool configSensor(BaseSensor *sensor, const std::string &config);
+bool configDevice(BaseDevice *device, const std::string &config);
 
 /**
  * @brief Updates the sensor with new measurement data.
@@ -1101,18 +1184,27 @@ bool configSensor(BaseSensor *sensor, const std::string &config);
  * @param update The update string containing new sensor data.
  * @throws Exceptions should be internally resolved to prevent program from crash.
  */
-bool updateSensor(BaseSensor *sensor, const std::string &update);
+bool updateDevice(BaseDevice *device, const std::string &update);
+
+/**
+ * @brief Applies control payload to the device.
+ *
+ * @param device Pointer to the device to control.
+ * @param control The control string containing runtime output values.
+ * @return true if the payload was accepted locally.
+ */
+bool controlDevice(BaseDevice *device, const std::string &control);
 
 /**
  * @brief Prints detailed information about the sensor.
  *
- * This function prints sensor details by calling the sensor's own printSensor() method,
+ * This function prints sensor details by calling the sensor's own printDevice() method,
  * which includes both basic sensor info and any additional sensor-specific data.
  *
  * @param sensor Pointer to the sensor whose information is to be printed.
  * @throws Exceptions should be internally resolved to prevent program from crash.
  */
-void printSensor(BaseSensor *sensor);
+void printDevice(BaseDevice *device);
 
 /**
  * @brief Synchronizes the sensor with the real sensor.
@@ -1122,7 +1214,7 @@ void printSensor(BaseSensor *sensor);
  * @param sensor Pointer to the sensor to be synchronized.
  * @throws Exceptions should be internally resolved to prevent program from crash.
  */
-bool syncSensor(BaseSensor *sensor);
+bool syncDevice(BaseDevice *device);
 
 /**
  * @brief Initializes the sensor.
@@ -1132,7 +1224,7 @@ bool syncSensor(BaseSensor *sensor);
  * @param sensor Pointer to the sensor to be initialized.
  * @throws Exceptions should be internally resolved to prevent program from crash.
  */
-bool initSensor(BaseSensor *sensor);
+bool initDevice(BaseDevice *device);
 
 /**
  * @brief Connect the sensor to the specified pins.
@@ -1140,7 +1232,7 @@ bool initSensor(BaseSensor *sensor);
  * @param sensor Pointer to the sensor to be connected.
  * @throws Exceptions should be internally resolved to prevent program from crash.
  */
-bool connectSensor(BaseSensor *sensor);
+bool connectDevice(BaseDevice *device);
 
 /**
  * @brief Disconnect the sensor from its current pins.
@@ -1148,6 +1240,6 @@ bool connectSensor(BaseSensor *sensor);
  * @param sensor Pointer to the sensor to be disconnected.
  * @throws Exceptions should be internally resolved to prevent program from crash.
  */
-bool disconnectSensor(BaseSensor *sensor);
+bool disconnectDevice(BaseDevice *device);
 
-#endif // BASE_SENSOR_HPP
+#endif // BASE_DEVICE_HPP

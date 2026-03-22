@@ -13,7 +13,7 @@
 #include "lvgl.h"
 
 #include "gui_callbacks.hpp"
-#include "../managers/manager.hpp"
+#include "../managers/device_manager.hpp"
 #include "../exceptions/data_exceptions.hpp"
 
 /**
