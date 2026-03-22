@@ -48,7 +48,7 @@ class GuiManager
 private:
     DeviceCatalog &deviceCatalog;
     DeviceBrowserState &deviceBrowserState;
-    DeviceManager &sensorManager;
+    DeviceManager &deviceManager;
     DeviceVisualizationSession &visualizationSession;
     DataBundleManager &dataBundleManager;
     MainMenuGui mainMenuGui;
@@ -72,6 +72,9 @@ private:
     bool selectionBackToMainMenu = false;
 
     void hideAllComponents();
+    void applyRuntimePolicy(GuiState targetState);
+    void renderState(GuiState targetState);
+    GuiState resolveBackTarget(GuiState fromState) const;
 
 public:
     explicit GuiManager(DeviceCatalog &catalog, DeviceBrowserState &browserState, DeviceManager &manager, DeviceVisualizationSession &visualizationSession, DataBundleManager &dataBundleManager);
@@ -96,6 +99,8 @@ public:
     void showAppSelectionScreen();
     void showCommunicationSelectionScreen();
 
+    void navigateTo(GuiState targetState);
+    void navigateBack();
     void switchContent(GuiState targetState);
     void redraw();
 
@@ -119,7 +124,7 @@ public:
     CreditsGui &getCreditsGui() { return creditsGui; }
     DeviceCatalog &getDeviceCatalog() { return deviceCatalog; }
     DeviceBrowserState &getDeviceBrowserState() { return deviceBrowserState; }
-    DeviceManager &getDeviceManager() { return sensorManager; }
+    DeviceManager &getDeviceManager() { return deviceManager; }
     DataBundleManager &getDataBundleManager() { return dataBundleManager; }
     AppSelectionGui &getAppSelectionGui() { return appSelectionGui; }
     CommunicationSelectionGui &getCommunicationSelectionGui() { return communicationSelectionGui; }

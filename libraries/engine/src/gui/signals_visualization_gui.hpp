@@ -43,11 +43,9 @@ class SignalsVisualizationGui
 {
 private:
     DeviceManager &deviceManager;        ///< Reference to the device manager instance
-    DeviceManager &sensorManager = deviceManager; ///< Transitional alias while internal implementation is still being renamed
     DeviceVisualizationSession &visualizationSession; ///< Active visualization session of selected devices
     DataBundleManager &dataBundleManager;///< Reference to the databundle manager instance
     BaseDevice *currentDevice = nullptr; ///< Currently visualized device
-    BaseDevice *&currentSensor = currentDevice; ///< Transitional alias while internal implementation is still being renamed
 
     /// Static buffers for chart data
     std::map<std::string, std::array<lv_coord_t, HISTORY_CAP>> bufMap;
@@ -91,18 +89,18 @@ private:
 
     /**
      * @brief Build device history data for chart display
-     * @param sensor Pointer to the device
+     * @param device Pointer to the device
      * @param key The key of the device parameter
      * @param history The history array to store the history
      */
     template <typename T>
-    void buildSensorHistory(BaseDevice *sensor, const std::string &key, lv_coord_t *history)
+    void buildDeviceHistory(BaseDevice *device, const std::string &key, lv_coord_t *history)
     {
-        if (!history || !sensor)
+        if (!history || !device)
             return;
 
-        auto it = sensor->getValues().find(key);
-        if (it == sensor->getValues().end())
+        auto it = device->getValues().find(key);
+        if (it == device->getValues().end())
             return;
 
         // Static storage between calls
@@ -113,16 +111,16 @@ private:
         lv_coord_t curr;
         try
         {
-            std::string s = sensor->getValue<std::string>(key);
+            std::string s = device->getValue<std::string>(key);
             curr = convertStringToType<T>(s);
 
-            if(recording&&sensor->getRedrawPending()){
+            if(recording && device->getRedrawPending()){
                 dataBundleManager.saveNewDataPoint(key, s);
             }   
         }
         catch (const std::exception &e)
         {
-            throw InvalidDataTypeException("SignalsVisualizationGui::buildSensorHistory", e.what());
+            throw InvalidDataTypeException("SignalsVisualizationGui::buildDeviceHistory", e.what());
         }
 
         if (!inited)
@@ -154,12 +152,12 @@ private:
             }
             catch (const std::exception &e)
             {
-                throw InvalidDataTypeException("SignalsVisualizationGui::buildSensorHistory", e.what());
+                throw InvalidDataTypeException("SignalsVisualizationGui::buildDeviceHistory", e.what());
             }
         }
     }
 
-    void clearSensorHistoryBuffer(const std::string &key)
+    void clearDeviceHistoryBuffer(const std::string &key)
     {
         std::array<lv_coord_t, HISTORY_CAP> zeroBuf;
         zeroBuf.fill(0);
@@ -247,7 +245,7 @@ public:
     lv_obj_t *getParentWidget() const { return ui_SensorWidget; }
 
     /**
-     * @brief Draw/update the currently selected sensor's visualization
+     * @brief Draw/update the currently selected device visualization
      */
     void drawCurrentDevice();
 
@@ -262,7 +260,7 @@ public:
     void goToNextDevice();
 
     /**
-     * @brief Go to the first sensor in the list
+     * @brief Go to the first device in the list
      */
     void goToFirstDevice();
 

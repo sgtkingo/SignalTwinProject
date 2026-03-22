@@ -2,8 +2,8 @@
 
 #include "../helpers.hpp"
 
-ConnectionGui::ConnectionGui(DeviceBrowserState &browserState, DeviceManager &sensorManager)
-    : browserState(browserState), sensorManager(sensorManager)
+ConnectionGui::ConnectionGui(DeviceBrowserState &browserState, DeviceManager &deviceManager)
+    : browserState(browserState), deviceManager(deviceManager)
 {
     pinContainers.fill(nullptr);
     pinLabels.fill(nullptr);
@@ -116,15 +116,15 @@ bool ConnectionGui::isPinAllowedForCurrentDevice(int pinIndex) const
         return false;
     }
 
-    return device->isPinAllowed(sensorManager.getPinNumber(pinIndex));
+    return device->isPinAllowed(deviceManager.getPinNumber(pinIndex));
 }
 
 uint32_t ConnectionGui::getPinStateColor(int pinIndex) const
 {
     BaseDevice *selectedDevice = browserState.getSelectionDevice();
-    BaseDevice *assignedDevice = sensorManager.getAssignedDevice(pinIndex);
+    BaseDevice *assignedDevice = deviceManager.getAssignedDevice(pinIndex);
 
-    if (sensorManager.isPinLocked(pinIndex) || !isPinAllowedForCurrentDevice(pinIndex)) {
+    if (deviceManager.isPinLocked(pinIndex) || !isPinAllowedForCurrentDevice(pinIndex)) {
         return 0x9E9E9E;
     }
 
@@ -168,11 +168,11 @@ void ConnectionGui::updatePinLabels()
             continue;
         }
 
-        int gpioNumber = sensorManager.getPinNumber(i);
-        BaseDevice *assignedDevice = sensorManager.getAssignedDevice(i);
+        int gpioNumber = deviceManager.getPinNumber(i);
+        BaseDevice *assignedDevice = deviceManager.getAssignedDevice(i);
         std::string labelText = "Pin " + std::to_string(gpioNumber) + "\n";
 
-        if (sensorManager.isPinLocked(i) || !isPinAllowedForCurrentDevice(i)) {
+        if (deviceManager.isPinLocked(i) || !isPinAllowedForCurrentDevice(i)) {
             labelText += "Locked";
         } else if (assignedDevice == nullptr) {
             labelText += "Available";
@@ -222,7 +222,7 @@ void ConnectionGui::handleConnectButtonClick()
         return;
     }
 
-    if (!sensorManager.ensureProtocolInitialized()) {
+    if (!deviceManager.ensureProtocolInitialized()) {
         splashMessage("Protocol init failed. Check the connected platform.");
         return;
     }
@@ -238,16 +238,16 @@ void ConnectionGui::handlePinClick(int pinIndex)
         return;
     }
 
-    if (sensorManager.isPinLocked(pinIndex) || !isPinAllowedForCurrentDevice(pinIndex)) {
+    if (deviceManager.isPinLocked(pinIndex) || !isPinAllowedForCurrentDevice(pinIndex)) {
         splashMessage("This pin cannot be used by the selected device.");
         return;
     }
 
-    BaseDevice *assignedDevice = sensorManager.getAssignedDevice(pinIndex);
+    BaseDevice *assignedDevice = deviceManager.getAssignedDevice(pinIndex);
     if (assignedDevice == device) {
-        sensorManager.unassignDeviceFromPin(pinIndex);
+        deviceManager.unassignDeviceFromPin(pinIndex);
     } else if (assignedDevice == nullptr) {
-        sensorManager.assignDeviceToPin(device, pinIndex);
+        deviceManager.assignDeviceToPin(device, pinIndex);
     } else {
         splashMessage("This pin is used by another device.");
     }

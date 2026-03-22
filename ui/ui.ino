@@ -158,7 +158,7 @@ GuiManager guiManager(deviceCatalog, deviceBrowserState, deviceManager, deviceVi
 
 // Global GUI screen switching functions for use by GUI components
 void switchToConnection() {
-    guiManager.switchContent(GuiState::CONNECTION);
+    guiManager.navigateTo(GuiState::CONNECTION);
 }
 
 void switchToMenu() {
@@ -166,11 +166,11 @@ void switchToMenu() {
 }
 
 void switchToMainMenu() {
-    guiManager.switchContent(GuiState::MAIN_MENU);
+    guiManager.navigateTo(GuiState::MAIN_MENU);
 }
 
 void switchToSelection() {
-    guiManager.switchContent(GuiState::SELECTION);
+    guiManager.navigateTo(GuiState::SELECTION);
 }
 
 void switchToWiki() {
@@ -178,7 +178,7 @@ void switchToWiki() {
 }
 
 void switchToVisualization() {
-    guiManager.switchContent(GuiState::VISUALIZATION);
+    guiManager.navigateTo(GuiState::VISUALIZATION);
 }
 
 void switchToDataBundleSelection() {
@@ -194,23 +194,23 @@ void switchToCrashScreen(const std::string &reason) {
 }
 
 void switchToCreditsScreen() {
-    guiManager.switchContent(GuiState::CREDITS);
+    guiManager.navigateTo(GuiState::CREDITS);
 }
 
 void switchToAppSelectionScreen() {
-    guiManager.switchContent(GuiState::APP_SELECTION);
+    guiManager.navigateTo(GuiState::APP_SELECTION);
 }
 
 void switchToCommunicationSelectionScreen() {
-    guiManager.switchContent(GuiState::COMMUNICATION_SELECTION);
+    guiManager.navigateTo(GuiState::COMMUNICATION_SELECTION);
 }
 
 void switchToLibrary() {
-    guiManager.switchContent(GuiState::LIBRARY);
+    guiManager.navigateTo(GuiState::LIBRARY);
 }
 
 void switchToLibraryEditor() {
-    guiManager.switchContent(GuiState::LIBRARY_EDITOR);
+    guiManager.navigateTo(GuiState::LIBRARY_EDITOR);
 }
 
 void prepareNewLibraryEntity() {
@@ -218,7 +218,7 @@ void prepareNewLibraryEntity() {
 }
 
 void switchToSettings() {
-    guiManager.switchContent(GuiState::SETTINGS);
+    guiManager.navigateTo(GuiState::SETTINGS);
 }
 
 void navigateBackFromDatabank() {

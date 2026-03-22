@@ -267,14 +267,14 @@ void SignalsVisualizationGui::addLogoPanelToWidget(lv_obj_t *parentWidget)
 
 void SignalsVisualizationGui::drawCurrentDevice()
 {
-    if (!currentSensor)
+    if (!currentDevice)
     {
-        // // logMessage("No current sensor to draw\n");
+        // // logMessage("No current device to draw\n");
         return;
     }
 
-    // // logMessage("Drawing sensor: %s\n", currentSensor->UID.c_str());
-    if (!currentSensor->getRedrawPending())
+    // // logMessage("Drawing device: %s\n", currentDevice->UID.c_str());
+    if (!currentDevice->getRedrawPending())
     {
         return;
     }
@@ -321,8 +321,8 @@ std::string SignalsVisualizationGui::buildUnitText(const std::string &unit, cons
 
 bool SignalsVisualizationGui::currentDeviceSupportsRecording() const
 {
-    return currentSensor &&
-           currentSensor->getRole() != DeviceRole::ACTUATOR &&
+    return currentDevice &&
+           currentDevice->getRole() != DeviceRole::ACTUATOR &&
            !getChartableValueKeys().empty();
 }
 
@@ -374,7 +374,7 @@ void SignalsVisualizationGui::updateSignalCards(const std::unordered_map<std::st
             continue;
         }
 
-        const std::string units = buildUnitText(currentSensor->getValueUnits(key), "Live value");
+        const std::string units = buildUnitText(currentDevice->getValueUnits(key), "Live value");
         signalListPanel.setSignalCard(i, getSignalAccentColor(i), key, it->second.Value, units);
     }
 
@@ -443,7 +443,7 @@ void SignalsVisualizationGui::updateEditableControls(const std::unordered_map<st
             key,
             param.Value,
             buildUnitText(
-                useValueControls ? currentSensor->getValueUnits(key) : currentSensor->getConfigUnits(key),
+                useValueControls ? currentDevice->getValueUnits(key) : currentDevice->getConfigUnits(key),
                 useValueControls ? "Queued via CONTROL" : "Queued via CONFIG"),
             key,
             useValueControls);
@@ -457,11 +457,11 @@ void SignalsVisualizationGui::updateEditableControls(const std::unordered_map<st
 
 bool SignalsVisualizationGui::buildNumericHistoryForKey(const std::string &key, lv_coord_t *history)
 {
-    if (!currentSensor || !history) {
+    if (!currentDevice || !history) {
         return false;
     }
 
-    auto values = currentSensor->getValues();
+    auto values = currentDevice->getValues();
     auto it = values.find(key);
     if (it == values.end()) {
         return false;
@@ -470,13 +470,13 @@ bool SignalsVisualizationGui::buildNumericHistoryForKey(const std::string &key, 
     switch (it->second.DType)
     {
     case DeviceDataType::INT:
-        buildSensorHistory<int>(currentSensor, key, history);
+        buildDeviceHistory<int>(currentDevice, key, history);
         return true;
     case DeviceDataType::FLOAT:
-        buildSensorHistory<float>(currentSensor, key, history);
+        buildDeviceHistory<float>(currentDevice, key, history);
         return true;
     case DeviceDataType::DOUBLE:
-        buildSensorHistory<double>(currentSensor, key, history);
+        buildDeviceHistory<double>(currentDevice, key, history);
         return true;
     default:
         return false;
@@ -486,16 +486,16 @@ bool SignalsVisualizationGui::buildNumericHistoryForKey(const std::string &key, 
 std::vector<std::string> SignalsVisualizationGui::getChartableValueKeys() const
 {
     std::vector<std::string> chartKeys;
-    if (!currentSensor) {
+    if (!currentDevice) {
         return chartKeys;
     }
 
-    if (currentSensor->getRole() == DeviceRole::ACTUATOR) {
+    if (currentDevice->getRole() == DeviceRole::ACTUATOR) {
         return chartKeys;
     }
 
-    const auto values = currentSensor->getValues();
-    for (const auto &key : currentSensor->getValuesKeys()) {
+    const auto values = currentDevice->getValues();
+    for (const auto &key : currentDevice->getValuesKeys()) {
         auto it = values.find(key);
         if (it == values.end()) {
             continue;
@@ -563,32 +563,32 @@ bool SignalsVisualizationGui::beginDeviceNavigation(bool requireIdleRecording, b
         return false;
     }
 
-    wasRunning = sensorManager.isRunning();
-    sensorManager.setRunning(false);
+    wasRunning = deviceManager.isRunning();
+    deviceManager.setRunning(false);
     return true;
 }
 
 void SignalsVisualizationGui::finishDeviceNavigation(bool wasRunning, BaseDevice *nextDevice)
 {
-    currentSensor = nextDevice;
-    if (currentSensor) {
-        currentSensor->setRedrawPending(true);
+    currentDevice = nextDevice;
+    if (currentDevice) {
+        currentDevice->setRedrawPending(true);
     }
 
     delay_ms(10);
-    sensorManager.setRunning(wasRunning);
+    deviceManager.setRunning(wasRunning);
 }
 
 void SignalsVisualizationGui::updateDeviceDataDisplay()
 {
-    if (!currentSensor || !signalListPanel.getContainer())
+    if (!currentDevice || !signalListPanel.getContainer())
         return;
 
-    const auto values = currentSensor->getValues();
-    const auto valueKeys = currentSensor->getValuesKeys();
-    const auto configs = currentSensor->getConfigs();
-    const auto configKeys = currentSensor->getConfigsKeys();
-    const bool useValueControls = currentSensor->getRole() == DeviceRole::ACTUATOR;
+    const auto values = currentDevice->getValues();
+    const auto valueKeys = currentDevice->getValuesKeys();
+    const auto configs = currentDevice->getConfigs();
+    const auto configKeys = currentDevice->getConfigsKeys();
+    const bool useValueControls = currentDevice->getRole() == DeviceRole::ACTUATOR;
 
     updateDeviceTitle();
     updateSignalCards(values, valueKeys, useValueControls);
@@ -598,16 +598,16 @@ void SignalsVisualizationGui::updateDeviceDataDisplay()
 
 void SignalsVisualizationGui::updateChart()
 {
-    if (!currentSensor || !chartPanel.isReady())
+    if (!currentDevice || !chartPanel.isReady())
         return;
 
-    if (sensorManager.isRedrawPending() == false)
+    if (deviceManager.isRedrawPending() == false)
         return;
 
     const auto chartKeys = getChartableValueKeys();
     if (chartKeys.empty())
     {
-        showEmptyChartState(currentSensor->getRole() == DeviceRole::ACTUATOR
+        showEmptyChartState(currentDevice->getRole() == DeviceRole::ACTUATOR
                                 ? "Control-only device"
                                 : "No numeric signal available");
         return;
@@ -664,15 +664,15 @@ void SignalsVisualizationGui::updateActionButtonsState()
 
 bool SignalsVisualizationGui::applyEditableValue(bool isValueControl, const std::string &key, const std::string &value)
 {
-    if (!currentSensor || key.empty()) {
+    if (!currentDevice || key.empty()) {
         return false;
     }
 
     try {
         if (isValueControl) {
-            currentSensor->setValue(key, value);
+            currentDevice->setValue(key, value);
         } else {
-            currentSensor->setConfig(key, value);
+            currentDevice->setConfig(key, value);
         }
         return true;
     } catch (...) {
@@ -732,13 +732,13 @@ void SignalsVisualizationGui::handleBackButtonClick(){
 void SignalsVisualizationGui::handlePauseButtonClick()
 {
     paused = !paused;
-    sensorManager.setRunning(!paused);
+    deviceManager.setRunning(!paused);
     toolbarPanel.setPaused(paused);
 }
 
 void SignalsVisualizationGui::handleSyncButtonClick()
 {
-    if (!currentSensor)
+    if (!currentDevice)
         return;
 
     if (!paused)
@@ -750,7 +750,7 @@ void SignalsVisualizationGui::handleSyncButtonClick()
 
 void SignalsVisualizationGui::handleRecordButtonClick(const char *message)
 {
-    if (!currentSensor)
+    if (!currentDevice)
         return;
 
     if (!currentDeviceSupportsRecording())
@@ -767,7 +767,7 @@ void SignalsVisualizationGui::handleRecordButtonClick(const char *message)
     }
     else
     {
-        dataBundleManager.startRecording(currentSensor->Type);
+        dataBundleManager.startRecording(currentDevice->Type);
     }
 
     recording = !recording;
@@ -818,15 +818,15 @@ void SignalsVisualizationGui::handleClearButtonClick()
 
 void SignalsVisualizationGui::handleClearConfirmButtonClick()
 {
-    if (currentSensor)
+    if (currentDevice)
     {
-        // Clear sensor internal history
-        currentSensor->clearHistory();
+        // Clear device internal history
+        currentDevice->clearHistory();
 
         // Clear per-key buffers and set them to zero
-        for (auto &v : currentSensor->getValuesKeys())
+        for (auto &v : currentDevice->getValuesKeys())
         {
-            clearSensorHistoryBuffer(v);
+            clearDeviceHistoryBuffer(v);
         }
 
         chartPanel.resetToZero();
@@ -972,23 +972,23 @@ void SignalsVisualizationGui::goToFirstDevice()
 
 bool SignalsVisualizationGui::syncCurrentDevice()
 {
-    if (!currentSensor)
+    if (!currentDevice)
     {
         return false;
     }
 
-    if (!sensorManager.ensureProtocolInitialized()) {
+    if (!deviceManager.ensureProtocolInitialized()) {
         showAlert("Protocol init failed");
         return false;
     }
 
-    const bool success = syncDevice(currentSensor);
+    const bool success = syncDevice(currentDevice);
     if (!success) {
-        showAlert(currentSensor->getError().empty() ? "Sync failed" : currentSensor->getError().c_str());
+        showAlert(currentDevice->getError().empty() ? "Sync failed" : currentDevice->getError().c_str());
         return false;
     }
 
-    currentSensor->setRedrawPending(true);
+    currentDevice->setRedrawPending(true);
     updateDeviceDataDisplay();
     updateChart();
     return true;
@@ -1001,10 +1001,10 @@ void SignalsVisualizationGui::showVisualization()
 
     lv_obj_clear_flag(ui_SensorWidget, LV_OBJ_FLAG_HIDDEN);
 
-    // Refresh the display with current sensor data
+    // Refresh the display with current device data
     goToFirstDevice();
     drawCurrentDevice();
-    // logMessage("Showing sensor visualization\n");
+    // logMessage("Showing device visualization\n");
 }
 
 void SignalsVisualizationGui::hideVisualization()
@@ -1013,7 +1013,7 @@ void SignalsVisualizationGui::hideVisualization()
         return;
 
     lv_obj_add_flag(ui_SensorWidget, LV_OBJ_FLAG_HIDDEN);
-    // logMessage("Hiding sensor visualization\n");
+    // logMessage("Hiding device visualization\n");
 }
 
 void SignalsVisualizationGui::showAlert(const char *message){

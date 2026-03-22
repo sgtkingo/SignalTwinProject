@@ -17,7 +17,7 @@ int LOOP_SYNC_COUNTER = LOOP_SYNC_TH;
 GuiManager::GuiManager(DeviceCatalog &catalog, DeviceBrowserState &browserState, DeviceManager &manager, DeviceVisualizationSession &visualizationSession, DataBundleManager &dataBundleManager)
     : deviceCatalog(catalog),
       deviceBrowserState(browserState),
-      sensorManager(manager),
+      deviceManager(manager),
       visualizationSession(visualizationSession),
       dataBundleManager(dataBundleManager),
       mainMenuGui(),
@@ -59,7 +59,7 @@ bool GuiManager::init(std::string configFile)
         deviceBrowserState.clear();
         visualizationSession.clear();
 
-        if (!sensorManager.init()) {
+        if (!deviceManager.init()) {
             crashGui.showCrash("DeviceManager initialization failed!");
             return false;
         }
@@ -120,10 +120,7 @@ void GuiManager::showMainMenu()
         return;
     }
 
-    sensorManager.setRunning(false);
-    hideAllComponents();
-    mainMenuGui.showMainMenu();
-    currentState = GuiState::MAIN_MENU;
+    navigateTo(GuiState::MAIN_MENU);
 }
 
 void GuiManager::showConnection()
@@ -132,10 +129,7 @@ void GuiManager::showConnection()
         return;
     }
 
-    sensorManager.setRunning(false);
-    hideAllComponents();
-    connectionGui.showConnection();
-    currentState = GuiState::CONNECTION;
+    navigateTo(GuiState::CONNECTION);
 }
 
 void GuiManager::showMenu()
@@ -149,13 +143,7 @@ void GuiManager::showVisualization()
         return;
     }
 
-    sensorManager.setRunning(false);
-    hideAllComponents();
-    vizGui.showVisualization();
-    sensorManager.setRunning(true);
-
-    vizGui.drawCurrentDevice();
-    currentState = GuiState::VISUALIZATION;
+    navigateTo(GuiState::VISUALIZATION);
 }
 
 void GuiManager::showDataBundleSelection()
@@ -164,10 +152,7 @@ void GuiManager::showDataBundleSelection()
         return;
     }
 
-    sensorManager.setRunning(false);
-    hideAllComponents();
-    dataBundleSelectionGui.showDataBundles();
-    currentState = GuiState::DATA_BUNDLE_SELECTION;
+    navigateTo(GuiState::DATA_BUNDLE_SELECTION);
 }
 
 void GuiManager::showSelection()
@@ -176,10 +161,7 @@ void GuiManager::showSelection()
         return;
     }
 
-    sensorManager.setRunning(false);
-    hideAllComponents();
-    selectionGui.showSelection();
-    currentState = GuiState::SELECTION;
+    navigateTo(GuiState::SELECTION);
 }
 
 void GuiManager::showLibrary()
@@ -188,10 +170,7 @@ void GuiManager::showLibrary()
         return;
     }
 
-    sensorManager.setRunning(false);
-    hideAllComponents();
-    libraryGui.showLibrary();
-    currentState = GuiState::LIBRARY;
+    navigateTo(GuiState::LIBRARY);
 }
 
 void GuiManager::showLibraryEditor()
@@ -200,10 +179,7 @@ void GuiManager::showLibraryEditor()
         return;
     }
 
-    sensorManager.setRunning(false);
-    hideAllComponents();
-    libraryEditorGui.showEditor();
-    currentState = GuiState::LIBRARY_EDITOR;
+    navigateTo(GuiState::LIBRARY_EDITOR);
 }
 
 void GuiManager::showSettings()
@@ -212,17 +188,20 @@ void GuiManager::showSettings()
         return;
     }
 
-    sensorManager.setRunning(false);
-    hideAllComponents();
-    settingsGui.showSettings();
-    currentState = GuiState::SETTINGS;
+    navigateTo(GuiState::SETTINGS);
 }
 
 void GuiManager::showCrashScreen(const std::string &reason)
 {
-    sensorManager.setRunning(false);
-    currentState = GuiState::CRASH;
-    hideAllComponents();
+    if (!initialized) {
+        deviceManager.setRunning(false);
+        hideAllComponents();
+        crashGui.showCrash(reason);
+        currentState = GuiState::CRASH;
+        return;
+    }
+
+    navigateTo(GuiState::CRASH);
     crashGui.showCrash(reason);
 }
 
@@ -232,10 +211,7 @@ void GuiManager::showCreditsScreen()
         return;
     }
 
-    sensorManager.setRunning(false);
-    hideAllComponents();
-    creditsGui.showCredits();
-    currentState = GuiState::CREDITS;
+    navigateTo(GuiState::CREDITS);
 }
 
 void GuiManager::showAppSelectionScreen()
@@ -244,10 +220,7 @@ void GuiManager::showAppSelectionScreen()
         return;
     }
 
-    sensorManager.setRunning(false);
-    hideAllComponents();
-    appSelectionGui.init();
-    currentState = GuiState::APP_SELECTION;
+    navigateTo(GuiState::APP_SELECTION);
 }
 
 void GuiManager::showCommunicationSelectionScreen()
@@ -256,13 +229,93 @@ void GuiManager::showCommunicationSelectionScreen()
         return;
     }
 
-    sensorManager.setRunning(false);
-    hideAllComponents();
-    communicationSelectionGui.init();
-    currentState = GuiState::COMMUNICATION_SELECTION;
+    navigateTo(GuiState::COMMUNICATION_SELECTION);
 }
 
-void GuiManager::switchContent(GuiState targetState)
+void GuiManager::applyRuntimePolicy(GuiState targetState)
+{
+    const bool shouldRunRuntime = targetState == GuiState::VISUALIZATION;
+    deviceManager.setRunning(shouldRunRuntime);
+}
+
+void GuiManager::renderState(GuiState targetState)
+{
+    if (!initialized) {
+        return;
+    }
+
+    hideAllComponents();
+
+    switch (targetState) {
+    case GuiState::MAIN_MENU:
+        mainMenuGui.showMainMenu();
+        break;
+    case GuiState::CONNECTION:
+        connectionGui.showConnection();
+        break;
+    case GuiState::VISUALIZATION:
+        vizGui.showVisualization();
+        vizGui.drawCurrentDevice();
+        break;
+    case GuiState::DATA_BUNDLE_SELECTION:
+        dataBundleSelectionGui.showDataBundles();
+        break;
+    case GuiState::SELECTION:
+        selectionGui.showSelection();
+        break;
+    case GuiState::LIBRARY:
+        libraryGui.showLibrary();
+        break;
+    case GuiState::LIBRARY_EDITOR:
+        libraryEditorGui.showEditor();
+        break;
+    case GuiState::SETTINGS:
+        settingsGui.showSettings();
+        break;
+    case GuiState::READY:
+        break;
+    case GuiState::CRASH:
+        break;
+    case GuiState::CREDITS:
+        creditsGui.showCredits();
+        break;
+    case GuiState::APP_SELECTION:
+        appSelectionGui.init();
+        break;
+    case GuiState::COMMUNICATION_SELECTION:
+        communicationSelectionGui.init();
+        break;
+    default:
+        splashMessage("Unknown target GUI state %d, nothing to display...\n", static_cast<int>(targetState));
+        break;
+    }
+}
+
+GuiState GuiManager::resolveBackTarget(GuiState fromState) const
+{
+    switch (fromState) {
+    case GuiState::DATA_BUNDLE_SELECTION:
+        return databankReturnToVisualization ? GuiState::VISUALIZATION : GuiState::MAIN_MENU;
+    case GuiState::VISUALIZATION:
+        return GuiState::SELECTION;
+    case GuiState::CONNECTION:
+        return GuiState::SELECTION;
+    case GuiState::SELECTION:
+        return selectionBackToMainMenu ? GuiState::MAIN_MENU : GuiState::COMMUNICATION_SELECTION;
+    case GuiState::COMMUNICATION_SELECTION:
+    case GuiState::LIBRARY:
+    case GuiState::SETTINGS:
+        return GuiState::MAIN_MENU;
+    case GuiState::LIBRARY_EDITOR:
+        return GuiState::LIBRARY;
+    case GuiState::CREDITS:
+        return GuiState::VISUALIZATION;
+    default:
+        return GuiState::MAIN_MENU;
+    }
+}
+
+void GuiManager::navigateTo(GuiState targetState)
 {
     if (!initialized) {
         return;
@@ -272,52 +325,19 @@ void GuiManager::switchContent(GuiState targetState)
         return;
     }
 
-    switch (targetState) {
-    case GuiState::MAIN_MENU:
-        showMainMenu();
-        break;
-    case GuiState::CONNECTION:
-        showConnection();
-        break;
-    case GuiState::VISUALIZATION:
-        showVisualization();
-        break;
-    case GuiState::DATA_BUNDLE_SELECTION:
-        showDataBundleSelection();
-        break;
-    case GuiState::SELECTION:
-        showSelection();
-        break;
-    case GuiState::LIBRARY:
-        showLibrary();
-        break;
-    case GuiState::LIBRARY_EDITOR:
-        showLibraryEditor();
-        break;
-    case GuiState::SETTINGS:
-        showSettings();
-        break;
-    case GuiState::READY:
-        hideAllComponents();
-        sensorManager.setRunning(false);
-        break;
-    case GuiState::CRASH:
-        showCrashScreen("Unexpected error");
-        break;
-    case GuiState::CREDITS:
-        showCreditsScreen();
-        break;
-    case GuiState::APP_SELECTION:
-        showAppSelectionScreen();
-        break;
-    case GuiState::COMMUNICATION_SELECTION:
-        showCommunicationSelectionScreen();
-        break;
-    default:
-        splashMessage("Unknown target GUI state %d, nothing to display...\n", static_cast<int>(targetState));
-        sensorManager.setRunning(false);
-        break;
-    }
+    applyRuntimePolicy(targetState);
+    renderState(targetState);
+    currentState = targetState;
+}
+
+void GuiManager::navigateBack()
+{
+    navigateTo(resolveBackTarget(currentState));
+}
+
+void GuiManager::switchContent(GuiState targetState)
+{
+    navigateTo(targetState);
 }
 
 void GuiManager::openVisualizationFlow()
@@ -325,41 +345,36 @@ void GuiManager::openVisualizationFlow()
     if (defaultCommunicationMode == DefaultCommunicationMode::CABLE) {
         sessionCommunicationMode = DefaultCommunicationMode::CABLE;
         selectionBackToMainMenu = true;
-        switchContent(GuiState::SELECTION);
+        navigateTo(GuiState::SELECTION);
         return;
     }
 
     selectionBackToMainMenu = false;
-    switchContent(GuiState::COMMUNICATION_SELECTION);
+    navigateTo(GuiState::COMMUNICATION_SELECTION);
 }
 
 void GuiManager::completeCommunicationSelection(DefaultCommunicationMode mode)
 {
     sessionCommunicationMode = mode;
     selectionBackToMainMenu = false;
-    switchContent(GuiState::SELECTION);
+    navigateTo(GuiState::SELECTION);
 }
 
 void GuiManager::openDatabankFromMainMenu()
 {
     databankReturnToVisualization = false;
-    switchContent(GuiState::DATA_BUNDLE_SELECTION);
+    navigateTo(GuiState::DATA_BUNDLE_SELECTION);
 }
 
 void GuiManager::openDatabankFromVisualization()
 {
     databankReturnToVisualization = true;
-    switchContent(GuiState::DATA_BUNDLE_SELECTION);
+    navigateTo(GuiState::DATA_BUNDLE_SELECTION);
 }
 
 void GuiManager::navigateBackFromDatabank()
 {
-    if (databankReturnToVisualization) {
-        switchContent(GuiState::VISUALIZATION);
-        return;
-    }
-
-    switchContent(GuiState::MAIN_MENU);
+    navigateBack();
 }
 
 void GuiManager::prepareNewLibraryEntity()
@@ -377,7 +392,7 @@ void GuiManager::redraw()
     }
 
     if (LOOP_SYNC_COUNTER-- < 0) {
-        sensorManager.resync(visualizationSession.getCurrentDevice());
+        deviceManager.resync(visualizationSession.getCurrentDevice());
         LOOP_SYNC_COUNTER = LOOP_SYNC_TH;
         delay_ms(1);
     }

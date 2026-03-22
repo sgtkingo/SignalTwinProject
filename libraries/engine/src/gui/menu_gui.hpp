@@ -13,7 +13,7 @@ class ConnectionGui
 {
 private:
     DeviceBrowserState &browserState;
-    DeviceManager &sensorManager;
+    DeviceManager &deviceManager;
     bool initialized = false;
 
     lv_obj_t *ui_MenuWidget = nullptr;
@@ -33,7 +33,7 @@ private:
     bool isPinAllowedForCurrentDevice(int pinIndex) const;
 
 public:
-    explicit ConnectionGui(DeviceBrowserState &browserState, DeviceManager &sensorManager);
+    explicit ConnectionGui(DeviceBrowserState &browserState, DeviceManager &deviceManager);
     ~ConnectionGui() = default;
 
     void init();

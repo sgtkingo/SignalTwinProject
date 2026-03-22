@@ -2,8 +2,8 @@
 
 #include "../helpers.hpp"
 
-DeviceSelectionGui::DeviceSelectionGui(DeviceCatalog &deviceCatalog, DeviceBrowserState &browserState, DeviceManager &sensorManager, DeviceVisualizationSession &visualizationSession)
-    : catalogBrowser(deviceCatalog), browserState(browserState), sensorManager(sensorManager), visualizationSession(visualizationSession)
+DeviceSelectionGui::DeviceSelectionGui(DeviceCatalog &deviceCatalog, DeviceBrowserState &browserState, DeviceManager &deviceManager, DeviceVisualizationSession &visualizationSession)
+    : catalogBrowser(deviceCatalog), browserState(browserState), deviceManager(deviceManager), visualizationSession(visualizationSession)
 {
 }
 
@@ -143,7 +143,7 @@ void DeviceSelectionGui::updateStartButtonState()
         return;
     }
 
-    if (sensorManager.hasAssignedDevices()) {
+    if (deviceManager.hasAssignedDevices()) {
         lv_obj_clear_state(ui_btnStart, LV_STATE_DISABLED);
         return;
     }
@@ -177,23 +177,23 @@ void DeviceSelectionGui::handleRemoveButtonClick()
         return;
     }
 
-    sensorManager.unassignAllPinsForDevice(sensor);
+    deviceManager.unassignAllPinsForDevice(sensor);
     populateSelectedList();
     updateStartButtonState();
 }
 
 void DeviceSelectionGui::handleStartButtonClick()
 {
-    sensorManager.setRunning(false);
-    visualizationSession.setDevices(sensorManager.getAssignedDevices());
+    deviceManager.setRunning(false);
+    visualizationSession.setDevices(deviceManager.getAssignedDevices());
     browserState.setSelectionDevice(nullptr);
 
-    if (!sensorManager.hasAssignedDevices()) {
+    if (!deviceManager.hasAssignedDevices()) {
         splashMessage("No devices configured.");
         return;
     }
 
-    if (!sensorManager.connect()) {
+    if (!deviceManager.connect()) {
         splashMessage("Error during device connection.");
         return;
     }

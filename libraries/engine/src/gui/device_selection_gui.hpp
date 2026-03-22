@@ -17,7 +17,7 @@ class DeviceSelectionGui
 private:
     DeviceCatalogBrowserModel catalogBrowser;
     DeviceBrowserState &browserState;
-    DeviceManager &sensorManager;
+    DeviceManager &deviceManager;
     DeviceVisualizationSession &visualizationSession;
     bool initialized = false;
 
@@ -44,7 +44,7 @@ private:
     void handleBackButtonClick();
 
 public:
-    explicit DeviceSelectionGui(DeviceCatalog &deviceCatalog, DeviceBrowserState &browserState, DeviceManager &sensorManager, DeviceVisualizationSession &visualizationSession);
+    explicit DeviceSelectionGui(DeviceCatalog &deviceCatalog, DeviceBrowserState &browserState, DeviceManager &deviceManager, DeviceVisualizationSession &visualizationSession);
     ~DeviceSelectionGui() = default;
 
     void init();
