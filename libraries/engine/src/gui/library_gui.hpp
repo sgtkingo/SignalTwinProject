@@ -20,10 +20,14 @@ private:
     lv_obj_t *ui_DeviceList = nullptr;
     lv_obj_t *ui_Detail = nullptr;
     lv_obj_t *ui_DetailLabel = nullptr;
+    lv_obj_t *ui_DeleteDialog = nullptr;
 
     void build();
     void populateDeviceList();
     void updateDetail();
+    void handleDeleteButtonClick();
+    void handleDeleteConfirmButtonClick();
+    void closeDeleteDialog();
 
 public:
     explicit LibraryGui(DeviceCatalog &deviceCatalog, DeviceBrowserState &browserState, GuiRouter &router);

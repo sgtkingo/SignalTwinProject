@@ -25,6 +25,7 @@ void DeviceBrowserState::clear()
 {
     selectionDevice = nullptr;
     libraryDevice = nullptr;
+    clearLibraryDraft();
 }
 
 BaseDevice *DeviceBrowserState::getSelectionDevice() const
@@ -44,5 +45,62 @@ BaseDevice *DeviceBrowserState::getLibraryDevice() const
 
 void DeviceBrowserState::setLibraryDevice(BaseDevice *device)
 {
-    libraryDevice = isCatalogDevice(device) ? device : nullptr;
+    BaseDevice *nextDevice = isCatalogDevice(device) ? device : nullptr;
+    if (libraryDevice != nextDevice) {
+        if (!hasLibraryDraft || !nextDevice || libraryDraft.uid != nextDevice->UID) {
+            clearLibraryDraft();
+        }
+    }
+    libraryDevice = nextDevice;
+}
+
+void DeviceBrowserState::clearLibraryDraft()
+{
+    libraryDraft = DeviceDefinitionSchema();
+    hasLibraryDraft = false;
+    libraryDraftNewEntity = false;
+}
+
+void DeviceBrowserState::beginNewLibraryDraft()
+{
+    libraryDevice = nullptr;
+    libraryDraft = DeviceDefinitionSchema();
+    libraryDraft.role = DeviceRole::SENSOR;
+    hasLibraryDraft = true;
+    libraryDraftNewEntity = true;
+}
+
+bool DeviceBrowserState::beginLibraryDraftFromLibraryDevice()
+{
+    BaseDevice *device = getLibraryDevice();
+    if (!device) {
+        return false;
+    }
+
+    const DeviceDefinitionSchema *deviceSchema = catalog.getDeviceSchema(device->UID);
+    if (!deviceSchema) {
+        return false;
+    }
+
+    libraryDraft = *deviceSchema;
+    hasLibraryDraft = true;
+    libraryDraftNewEntity = false;
+    return true;
+}
+
+const DeviceDefinitionSchema *DeviceBrowserState::getLibraryDraft() const
+{
+    return hasLibraryDraft ? &libraryDraft : nullptr;
+}
+
+DeviceDefinitionSchema *DeviceBrowserState::editLibraryDraft()
+{
+    return hasLibraryDraft ? &libraryDraft : nullptr;
+}
+
+void DeviceBrowserState::setLibraryDraft(const DeviceDefinitionSchema &draft, bool isNewEntity)
+{
+    libraryDraft = draft;
+    hasLibraryDraft = true;
+    libraryDraftNewEntity = isNewEntity;
 }

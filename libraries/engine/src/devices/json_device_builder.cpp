@@ -65,6 +65,57 @@ std::string jsonVariantToString(JsonVariantConst value)
     return "";
 }
 
+const char *deviceRoleToString(DeviceRole role)
+{
+    switch (role) {
+    case DeviceRole::ACTUATOR:
+        return "actuator";
+    case DeviceRole::HYBRID:
+        return "hybrid";
+    case DeviceRole::SENSOR:
+    default:
+        return "sensor";
+    }
+}
+
+const char *deviceDataTypeToString(DeviceDataType dtype)
+{
+    switch (dtype) {
+    case DeviceDataType::INT:
+        return "int";
+    case DeviceDataType::FLOAT:
+        return "float";
+    case DeviceDataType::DOUBLE:
+        return "double";
+    case DeviceDataType::STRING:
+    default:
+        return "string";
+    }
+}
+
+void writeTypedJsonValue(JsonVariant target, const std::string &value, DeviceDataType dtype)
+{
+    try {
+        switch (dtype) {
+        case DeviceDataType::INT:
+            target.set(convertStringToType<int>(value));
+            return;
+        case DeviceDataType::FLOAT:
+            target.set(convertStringToType<float>(value));
+            return;
+        case DeviceDataType::DOUBLE:
+            target.set(convertStringToType<double>(value));
+            return;
+        case DeviceDataType::STRING:
+        default:
+            target.set(value);
+            return;
+        }
+    } catch (...) {
+        target.set(value);
+    }
+}
+
 std::string jsonVariantToCsv(JsonVariantConst value)
 {
     if (value.is<JsonArrayConst>()) {
@@ -334,6 +385,48 @@ JsonConfiguredDevice *buildConfiguredDevice(const DeviceDefinitionSchema &schema
         throw;
     }
 }
+
+void writeRestrictions(JsonObject restrictionsJson, const DeviceRestrictions &restrictions)
+{
+    if (!restrictions.Min.empty()) {
+        restrictionsJson["min"] = restrictions.Min;
+    }
+    if (!restrictions.Max.empty()) {
+        restrictionsJson["max"] = restrictions.Max;
+    }
+    if (!restrictions.Step.empty()) {
+        restrictionsJson["step"] = restrictions.Step;
+    }
+    if (!restrictions.Options.empty()) {
+        JsonArray optionsJson = restrictionsJson["options"].to<JsonArray>();
+        for (const std::string &option : splitString(restrictions.Options, ',')) {
+            if (!option.empty()) {
+                optionsJson.add(option);
+            }
+        }
+    }
+}
+
+void writeParamsObject(JsonObject paramsJson, JsonObject defaultsJson, const std::vector<DeviceParamSchema> &params)
+{
+    for (const DeviceParamSchema &schema : params) {
+        JsonObject paramJson = paramsJson[schema.key].to<JsonObject>();
+        writeTypedJsonValue(paramJson["value"], schema.param.Value, schema.param.DType);
+        paramJson["unit"] = schema.param.Unit;
+        paramJson["dtype"] = deviceDataTypeToString(schema.param.DType);
+
+        const bool hasRestrictions = !schema.param.Restrictions.Min.empty() ||
+                                     !schema.param.Restrictions.Max.empty() ||
+                                     !schema.param.Restrictions.Step.empty() ||
+                                     !schema.param.Restrictions.Options.empty();
+        if (hasRestrictions) {
+            JsonObject restrictionsJson = paramJson["restrictions"].to<JsonObject>();
+            writeRestrictions(restrictionsJson, schema.param.Restrictions);
+        }
+
+        writeTypedJsonValue(defaultsJson[schema.key], schema.param.Value, schema.param.DType);
+    }
+}
 }
 
 DeviceCatalogSchema parseDeviceCatalogSchemaFromSdFile(const std::string &filePath)
@@ -401,10 +494,8 @@ DeviceCatalogSchema parseDeviceCatalogSchemaFromSdFile(const std::string &filePa
     return catalog;
 }
 
-DeviceCatalogLoadResult buildDeviceCatalogFromSdFile(const std::string &filePath)
+DeviceCatalogLoadResult buildDeviceCatalogFromSchema(const DeviceCatalogSchema &schemaCatalog)
 {
-    const DeviceCatalogSchema schemaCatalog = parseDeviceCatalogSchemaFromSdFile(filePath);
-
     DeviceCatalogLoadResult catalog;
     catalog.version = schemaCatalog.version;
     catalog.application = schemaCatalog.application;
@@ -422,4 +513,85 @@ DeviceCatalogLoadResult buildDeviceCatalogFromSdFile(const std::string &filePath
     }
 
     return catalog;
+}
+
+DeviceCatalogLoadResult buildDeviceCatalogFromSdFile(const std::string &filePath)
+{
+    return buildDeviceCatalogFromSchema(parseDeviceCatalogSchemaFromSdFile(filePath));
+}
+
+bool saveDeviceCatalogSchemaToSdFile(const DeviceCatalogSchema &schemaCatalog, const std::string &filePath)
+{
+    std::string resolvedPath = filePath;
+    if (resolvedPath.empty()) {
+        resolvedPath = DEFAULT_SD_DB_PATH;
+    }
+
+    if (resolvedPath.empty()) {
+        throw FileWriteException("saveDeviceCatalogSchemaToSdFile", "Empty JSON path.");
+    }
+
+    JsonDocument doc;
+    doc["version"] = schemaCatalog.version;
+    doc["application"] = schemaCatalog.application;
+    JsonObject devicesJson = doc["devices"].to<JsonObject>();
+
+    for (const DeviceDefinitionSchema &deviceSchema : schemaCatalog.devices) {
+        JsonObject deviceJson = devicesJson[deviceSchema.uid].to<JsonObject>();
+        deviceJson["uid"] = deviceSchema.uid;
+        deviceJson["role"] = deviceRoleToString(deviceSchema.role);
+        deviceJson["type"] = deviceSchema.type;
+        deviceJson["description"] = deviceSchema.description;
+
+        JsonObject valuesJson = deviceJson["values"].to<JsonObject>();
+        JsonObject configsJson = deviceJson["configs"].to<JsonObject>();
+        JsonObject defaultJson = deviceJson["default"].to<JsonObject>();
+        JsonObject defaultValuesJson = defaultJson["values"].to<JsonObject>();
+        JsonObject defaultConfigsJson = defaultJson["configs"].to<JsonObject>();
+
+        writeParamsObject(valuesJson, defaultValuesJson, deviceSchema.values);
+        writeParamsObject(configsJson, defaultConfigsJson, deviceSchema.configs);
+
+        if (!deviceSchema.allowedPinsCsv.empty()) {
+            JsonArray allowedPinsJson = deviceJson["allowedPins"].to<JsonArray>();
+            for (const std::string &pin : splitString(deviceSchema.allowedPinsCsv, ',')) {
+                if (!pin.empty()) {
+                    try {
+                        allowedPinsJson.add(convertStringToType<int>(pin));
+                    } catch (...) {
+                        allowedPinsJson.add(pin);
+                    }
+                }
+            }
+        }
+
+        if (!deviceSchema.defaultPins.empty()) {
+            JsonArray defaultPinsJson = defaultJson["pins"].to<JsonArray>();
+            for (const std::string &pin : deviceSchema.defaultPins) {
+                if (!pin.empty()) {
+                    defaultPinsJson.add(pin);
+                }
+            }
+        } else {
+            defaultJson["pins"] = "";
+        }
+    }
+
+    if (SD.exists(resolvedPath.c_str())) {
+        SD.remove(resolvedPath.c_str());
+    }
+
+    File file = SD.open(resolvedPath.c_str(), FILE_WRITE);
+    if (!file) {
+        throw FileWriteException("saveDeviceCatalogSchemaToSdFile", "Cannot open device DB for writing: " + resolvedPath);
+    }
+
+    const size_t written = serializeJsonPretty(doc, file);
+    file.close();
+
+    if (written == 0) {
+        throw FileWriteException("saveDeviceCatalogSchemaToSdFile", "Failed to serialize device DB: " + resolvedPath);
+    }
+
+    return true;
 }

@@ -71,10 +71,20 @@ public:
     void openDatabankFromVisualization() override;
     void navigateBackFromDatabank() override;
     void prepareNewLibraryEntity() override;
+    bool saveLibraryDraft(const DeviceDefinitionSchema &draft,
+                          const std::string &originalUid,
+                          bool isNewEntity,
+                          std::string &error) override;
+    bool deleteLibraryEntity(const std::string &uid, std::string &error) override;
+    bool saveCatalogMetadata(const std::string &application,
+                             const std::string &version,
+                             std::string &error) override;
     bool shouldSelectionBackGoToMainMenu() const override { return navigationPolicy.shouldSelectionBackGoToMainMenu(); }
 
     DefaultCommunicationMode getDefaultCommunicationMode() const override { return navigationPolicy.getDefaultCommunicationMode(); }
     void setDefaultCommunicationMode(DefaultCommunicationMode mode) override { navigationPolicy.setDefaultCommunicationMode(mode); }
+    std::string getCatalogApplication() const override { return deviceCatalog.getApplication(); }
+    std::string getCatalogVersion() const override { return deviceCatalog.getVersion(); }
 
     ConnectionGui &getConnectionGui() { return screenRegistry.getConnectionGui(); }
     MenuGui &getMenuGui() { return screenRegistry.getConnectionGui(); }

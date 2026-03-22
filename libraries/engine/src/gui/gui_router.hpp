@@ -1,7 +1,10 @@
 #ifndef GUI_ROUTER_HPP
 #define GUI_ROUTER_HPP
 
+#include <string>
+
 #include "app_settings.hpp"
+#include "../devices/json_device_builder.hpp"
 
 class GuiRouter
 {
@@ -25,10 +28,20 @@ public:
     virtual void openDatabankFromVisualization() = 0;
     virtual void navigateBackFromDatabank() = 0;
     virtual void prepareNewLibraryEntity() = 0;
+    virtual bool saveLibraryDraft(const DeviceDefinitionSchema &draft,
+                                  const std::string &originalUid,
+                                  bool isNewEntity,
+                                  std::string &error) = 0;
+    virtual bool deleteLibraryEntity(const std::string &uid, std::string &error) = 0;
+    virtual bool saveCatalogMetadata(const std::string &application,
+                                     const std::string &version,
+                                     std::string &error) = 0;
 
     virtual bool shouldSelectionBackGoToMainMenu() const = 0;
     virtual DefaultCommunicationMode getDefaultCommunicationMode() const = 0;
     virtual void setDefaultCommunicationMode(DefaultCommunicationMode mode) = 0;
+    virtual std::string getCatalogApplication() const = 0;
+    virtual std::string getCatalogVersion() const = 0;
 };
 
 #endif

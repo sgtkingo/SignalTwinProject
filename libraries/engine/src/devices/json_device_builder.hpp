@@ -46,6 +46,8 @@ struct DeviceCatalogLoadResult
 };
 
 DeviceCatalogSchema parseDeviceCatalogSchemaFromSdFile(const std::string &filePath);
+DeviceCatalogLoadResult buildDeviceCatalogFromSchema(const DeviceCatalogSchema &schemaCatalog);
 DeviceCatalogLoadResult buildDeviceCatalogFromSdFile(const std::string &filePath);
+bool saveDeviceCatalogSchemaToSdFile(const DeviceCatalogSchema &schemaCatalog, const std::string &filePath);
 
 #endif // JSON_DEVICE_BUILDER_HPP

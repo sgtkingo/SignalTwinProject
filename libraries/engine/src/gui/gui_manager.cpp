@@ -267,7 +267,76 @@ void GuiManager::navigateBackFromDatabank()
 
 void GuiManager::prepareNewLibraryEntity()
 {
-    deviceBrowserState.setLibraryDevice(nullptr);
+    deviceBrowserState.beginNewLibraryDraft();
+}
+
+bool GuiManager::saveLibraryDraft(const DeviceDefinitionSchema &draft,
+                                  const std::string &originalUid,
+                                  bool isNewEntity,
+                                  std::string &error)
+{
+    try {
+        deviceCatalog.saveDraft(draft, originalUid, isNewEntity);
+        deviceManager.erase();
+        visualizationSession.clear();
+        deviceBrowserState.clear();
+        deviceBrowserState.setLibraryDevice(deviceCatalog.getDevice(draft.uid));
+        deviceBrowserState.setLibraryDraft(draft, false);
+        return true;
+    } catch (const std::exception &e) {
+        error = e.what();
+        return false;
+    } catch (...) {
+        error = "Unknown error while saving device draft.";
+        return false;
+    }
+}
+
+bool GuiManager::deleteLibraryEntity(const std::string &uid, std::string &error)
+{
+    try {
+        deviceCatalog.deleteDevice(uid);
+        deviceManager.erase();
+        visualizationSession.clear();
+        deviceBrowserState.clear();
+        return true;
+    } catch (const std::exception &e) {
+        error = e.what();
+        return false;
+    } catch (...) {
+        error = "Unknown error while deleting device entity.";
+        return false;
+    }
+}
+
+bool GuiManager::saveCatalogMetadata(const std::string &application,
+                                     const std::string &version,
+                                     std::string &error)
+{
+    try {
+        BaseDevice *selectedSelectionDevice = deviceBrowserState.getSelectionDevice();
+        BaseDevice *selectedLibraryDevice = deviceBrowserState.getLibraryDevice();
+        const std::string selectionUid = selectedSelectionDevice ? selectedSelectionDevice->UID : "";
+        const std::string libraryUid = selectedLibraryDevice ? selectedLibraryDevice->UID : "";
+
+        deviceCatalog.saveMetadata(application, version);
+        deviceManager.erase();
+        visualizationSession.clear();
+        deviceBrowserState.clear();
+        if (!selectionUid.empty()) {
+            deviceBrowserState.setSelectionDevice(deviceCatalog.getDevice(selectionUid));
+        }
+        if (!libraryUid.empty()) {
+            deviceBrowserState.setLibraryDevice(deviceCatalog.getDevice(libraryUid));
+        }
+        return true;
+    } catch (const std::exception &e) {
+        error = e.what();
+        return false;
+    } catch (...) {
+        error = "Unknown error while saving catalog metadata.";
+        return false;
+    }
 }
 
 void GuiManager::redraw()
