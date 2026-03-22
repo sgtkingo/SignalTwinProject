@@ -836,6 +836,176 @@ void SignalsVisualizationGui::clearUnusedConfigControls(size_t usedCount)
     }
 }
 
+void SignalsVisualizationGui::updateDeviceTitle()
+{
+    if (!currentDevice || !ui_SensorLabel) {
+        return;
+    }
+
+    const std::string title = currentDevice->getName() + " [" + currentDevice->getRoleLabel() + "]";
+    lv_label_set_text(ui_SensorLabel, title.c_str());
+}
+
+void SignalsVisualizationGui::updateSignalCards(const std::unordered_map<std::string, DeviceParam> &values,
+                                                const std::vector<std::string> &valueKeys,
+                                                bool useValueControls)
+{
+    if (useValueControls) {
+        clearUnusedSignalCards(0);
+        return;
+    }
+
+    ensureSignalCards(valueKeys.size());
+
+    for (size_t i = 0; i < valueKeys.size(); ++i) {
+        const auto &key = valueKeys[i];
+        auto it = values.find(key);
+        if (it == values.end() || i >= signalCards.size()) {
+            continue;
+        }
+
+        const uint32_t accentColor = getSignalAccentColor(i);
+        lv_obj_set_style_bg_color(signalCards[i].accent, lv_color_hex(accentColor), LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_label_set_text(signalCards[i].nameLabel, key.c_str());
+        lv_label_set_text(signalCards[i].valueLabel, it->second.Value.c_str());
+        const std::string units = buildUnitText(currentSensor->getValueUnits(key), "Live value");
+        lv_label_set_text(signalCards[i].unitLabel, units.c_str());
+    }
+
+    clearUnusedSignalCards(valueKeys.size());
+}
+
+void SignalsVisualizationGui::ensureControlEditor(ConfigControl &control, const DeviceParam &param, size_t controlIndex)
+{
+    if (hasSelectableOptions(param)) {
+        if (control.editor) {
+            lv_obj_del(control.editor);
+        }
+
+        control.editor = lv_dropdown_create(control.container);
+        control.usesDropdown = true;
+        lv_obj_set_size(control.editor, 180, 34);
+        lv_obj_align(control.editor, LV_ALIGN_BOTTOM_RIGHT, -4, -2);
+        lv_obj_set_user_data(control.editor, reinterpret_cast<void *>(static_cast<intptr_t>(controlIndex)));
+        lv_obj_add_event_cb(control.editor, [](lv_event_t *e) {
+            if (lv_event_get_code(e) != LV_EVENT_VALUE_CHANGED) {
+                return;
+            }
+
+            auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
+            const int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_target(e))));
+            self->handleDropdownConfigChanged(static_cast<size_t>(index));
+        }, LV_EVENT_ALL, this);
+    } else if (supportsSliderInput(param)) {
+        if (control.editor) {
+            lv_obj_del(control.editor);
+        }
+
+        control.editor = lv_slider_create(control.container);
+        control.usesSlider = true;
+        lv_obj_set_size(control.editor, 180, 16);
+        lv_obj_align(control.editor, LV_ALIGN_BOTTOM_RIGHT, -4, -12);
+        lv_obj_set_user_data(control.editor, reinterpret_cast<void *>(static_cast<intptr_t>(controlIndex)));
+        lv_obj_add_event_cb(control.editor, [](lv_event_t *e) {
+            if (lv_event_get_code(e) != LV_EVENT_VALUE_CHANGED) {
+                return;
+            }
+
+            auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
+            const int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_target(e))));
+            self->handleSliderConfigChanged(static_cast<size_t>(index));
+        }, LV_EVENT_ALL, this);
+    } else if (!control.editor || control.usesDropdown || control.usesSlider) {
+        if (control.editor) {
+            lv_obj_del(control.editor);
+        }
+
+        control.editor = lv_textarea_create(control.container);
+        lv_obj_set_size(control.editor, 180, 34);
+        lv_obj_align(control.editor, LV_ALIGN_BOTTOM_RIGHT, -4, -2);
+        lv_textarea_set_one_line(control.editor, true);
+        lv_textarea_set_max_length(control.editor, 24);
+        lv_obj_set_user_data(control.editor, reinterpret_cast<void *>(static_cast<intptr_t>(controlIndex)));
+        lv_obj_add_event_cb(control.editor, [](lv_event_t *e) {
+            if (lv_event_get_code(e) != LV_EVENT_READY && lv_event_get_code(e) != LV_EVENT_DEFOCUSED) {
+                return;
+            }
+
+            auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
+            const int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_target(e))));
+            self->handleTextConfigSubmitted(static_cast<size_t>(index));
+        }, LV_EVENT_ALL, this);
+    }
+}
+
+void SignalsVisualizationGui::syncControlEditorValue(ConfigControl &control, const DeviceParam &param)
+{
+    if (control.usesDropdown) {
+        std::string optionsText;
+        int selectedIndex = 0;
+        int currentIndex = 0;
+        for (const auto &option : splitOptionsCsv(param.Restrictions.Options)) {
+            if (!optionsText.empty()) {
+                optionsText += "\n";
+            }
+            optionsText += option;
+            if (option == param.Value) {
+                selectedIndex = currentIndex;
+            }
+            ++currentIndex;
+        }
+        lv_dropdown_set_options(control.editor, optionsText.c_str());
+        lv_dropdown_set_selected(control.editor, selectedIndex);
+    } else if (control.usesSlider) {
+        const int minValue = convertStringToType<int>(param.Restrictions.Min);
+        const int maxValue = convertStringToType<int>(param.Restrictions.Max);
+        lv_slider_set_range(control.editor, minValue, maxValue);
+        lv_slider_set_value(control.editor, convertStringToType<int>(param.Value), LV_ANIM_OFF);
+    } else {
+        lv_textarea_set_text(control.editor, param.Value.c_str());
+    }
+}
+
+void SignalsVisualizationGui::updateEditableControls(const std::unordered_map<std::string, DeviceParam> &values,
+                                                     const std::vector<std::string> &valueKeys,
+                                                     const std::unordered_map<std::string, DeviceParam> &configs,
+                                                     const std::vector<std::string> &configKeys,
+                                                     bool useValueControls)
+{
+    const auto &editableKeys = useValueControls ? valueKeys : configKeys;
+    ensureConfigControls(editableKeys.size());
+
+    for (size_t i = 0; i < editableKeys.size(); ++i) {
+        const auto &key = editableKeys[i];
+        const auto editableIt = useValueControls ? values.find(key) : configs.find(key);
+        if (editableIt == (useValueControls ? values.end() : configs.end()) || i >= configControls.size()) {
+            continue;
+        }
+
+        const DeviceParam &param = editableIt->second;
+        ConfigControl &control = configControls[i];
+        control.key = key;
+        control.usesDropdown = false;
+        control.usesSlider = false;
+        control.isValueControl = useValueControls;
+
+        const uint32_t accentColor = getSignalAccentColor(i + (useValueControls ? 0 : valueKeys.size()));
+        lv_obj_set_style_bg_color(control.accent, lv_color_hex(accentColor), LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_label_set_text(control.nameLabel, key.c_str());
+        lv_label_set_text(control.valueLabel, param.Value.c_str());
+        lv_label_set_text(
+            control.unitLabel,
+            buildUnitText(
+                useValueControls ? currentSensor->getValueUnits(key) : currentSensor->getConfigUnits(key),
+                useValueControls ? "Queued via CONTROL" : "Queued via CONFIG").c_str());
+
+        ensureControlEditor(control, param, i);
+        syncControlEditorValue(control, param);
+    }
+
+    clearUnusedConfigControls(editableKeys.size());
+}
+
 bool SignalsVisualizationGui::buildNumericHistoryForKey(const std::string &key, lv_coord_t *history)
 {
     if (!currentSensor || !history) {
@@ -899,152 +1069,15 @@ void SignalsVisualizationGui::updateDeviceDataDisplay()
     if (!currentSensor || !ui_SignalScrollContainer)
         return;
 
-    if (ui_SensorLabel)
-    {
-        const std::string title = currentSensor->getName() + " [" + currentSensor->getRoleLabel() + "]";
-        lv_label_set_text(ui_SensorLabel, title.c_str());
-    }
-
     const auto values = currentSensor->getValues();
     const auto valueKeys = currentSensor->getValuesKeys();
     const auto configs = currentSensor->getConfigs();
     const auto configKeys = currentSensor->getConfigsKeys();
     const bool useValueControls = currentSensor->getRole() == DeviceRole::ACTUATOR;
 
-    ensureSignalCards(useValueControls ? 0 : valueKeys.size());
-    ensureConfigControls(useValueControls ? valueKeys.size() : configKeys.size());
-
-    if (!useValueControls) {
-        for (size_t i = 0; i < valueKeys.size(); ++i) {
-            const auto &key = valueKeys[i];
-            auto it = values.find(key);
-            if (it == values.end() || i >= signalCards.size()) {
-                continue;
-            }
-
-            const uint32_t accentColor = getSignalAccentColor(i);
-            lv_obj_set_style_bg_color(signalCards[i].accent, lv_color_hex(accentColor), LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_label_set_text(signalCards[i].nameLabel, key.c_str());
-            lv_label_set_text(signalCards[i].valueLabel, it->second.Value.c_str());
-            const std::string units = buildUnitText(currentSensor->getValueUnits(key), "Live value");
-            lv_label_set_text(signalCards[i].unitLabel, units.c_str());
-        }
-    }
-
-    clearUnusedSignalCards(useValueControls ? 0 : valueKeys.size());
-
-    const auto &editableKeys = useValueControls ? valueKeys : configKeys;
-    for (size_t i = 0; i < editableKeys.size(); ++i) {
-        const auto &key = editableKeys[i];
-        const auto editableIt = useValueControls ? values.find(key) : configs.find(key);
-        if (editableIt == (useValueControls ? values.end() : configs.end()) || i >= configControls.size()) {
-            continue;
-        }
-
-        const DeviceParam &param = editableIt->second;
-        ConfigControl &control = configControls[i];
-        control.key = key;
-        control.usesDropdown = false;
-        control.usesSlider = false;
-        control.isValueControl = useValueControls;
-
-        const uint32_t accentColor = getSignalAccentColor(i + (useValueControls ? 0 : valueKeys.size()));
-        lv_obj_set_style_bg_color(control.accent, lv_color_hex(accentColor), LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_label_set_text(control.nameLabel, key.c_str());
-        lv_label_set_text(control.valueLabel, param.Value.c_str());
-        lv_label_set_text(
-            control.unitLabel,
-            buildUnitText(
-                useValueControls ? currentSensor->getValueUnits(key) : currentSensor->getConfigUnits(key),
-                useValueControls ? "Queued via CONTROL" : "Queued via CONFIG").c_str());
-
-        if (hasSelectableOptions(param)) {
-            if (control.editor) {
-                lv_obj_del(control.editor);
-            }
-
-            control.editor = lv_dropdown_create(control.container);
-            control.usesDropdown = true;
-            lv_obj_set_size(control.editor, 180, 34);
-            lv_obj_align(control.editor, LV_ALIGN_BOTTOM_RIGHT, -4, -2);
-            lv_obj_set_user_data(control.editor, reinterpret_cast<void *>(static_cast<intptr_t>(i)));
-            lv_obj_add_event_cb(control.editor, [](lv_event_t *e) {
-                if (lv_event_get_code(e) != LV_EVENT_VALUE_CHANGED) {
-                    return;
-                }
-
-                auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
-                const int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_target(e))));
-                self->handleDropdownConfigChanged(static_cast<size_t>(index));
-            }, LV_EVENT_ALL, this);
-        } else if (supportsSliderInput(param)) {
-            if (control.editor) {
-                lv_obj_del(control.editor);
-            }
-
-            control.editor = lv_slider_create(control.container);
-            control.usesSlider = true;
-            lv_obj_set_size(control.editor, 180, 16);
-            lv_obj_align(control.editor, LV_ALIGN_BOTTOM_RIGHT, -4, -12);
-            lv_obj_set_user_data(control.editor, reinterpret_cast<void *>(static_cast<intptr_t>(i)));
-            lv_obj_add_event_cb(control.editor, [](lv_event_t *e) {
-                if (lv_event_get_code(e) != LV_EVENT_VALUE_CHANGED) {
-                    return;
-                }
-
-                auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
-                const int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_target(e))));
-                self->handleSliderConfigChanged(static_cast<size_t>(index));
-            }, LV_EVENT_ALL, this);
-        } else if (!control.editor || control.usesDropdown || control.usesSlider) {
-            if (control.editor) {
-                lv_obj_del(control.editor);
-            }
-
-            control.editor = lv_textarea_create(control.container);
-            lv_obj_set_size(control.editor, 180, 34);
-            lv_obj_align(control.editor, LV_ALIGN_BOTTOM_RIGHT, -4, -2);
-            lv_textarea_set_one_line(control.editor, true);
-            lv_textarea_set_max_length(control.editor, 24);
-            lv_obj_set_user_data(control.editor, reinterpret_cast<void *>(static_cast<intptr_t>(i)));
-            lv_obj_add_event_cb(control.editor, [](lv_event_t *e) {
-                if (lv_event_get_code(e) != LV_EVENT_READY && lv_event_get_code(e) != LV_EVENT_DEFOCUSED) {
-                    return;
-                }
-
-                auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
-                const int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_target(e))));
-                self->handleTextConfigSubmitted(static_cast<size_t>(index));
-            }, LV_EVENT_ALL, this);
-        }
-
-        if (control.usesDropdown) {
-            std::string optionsText;
-            int selectedIndex = 0;
-            int currentIndex = 0;
-            for (const auto &option : splitOptionsCsv(param.Restrictions.Options)) {
-                if (!optionsText.empty()) {
-                    optionsText += "\n";
-                }
-                optionsText += option;
-                if (option == param.Value) {
-                    selectedIndex = currentIndex;
-                }
-                ++currentIndex;
-            }
-            lv_dropdown_set_options(control.editor, optionsText.c_str());
-            lv_dropdown_set_selected(control.editor, selectedIndex);
-        } else if (control.usesSlider) {
-            const int minValue = convertStringToType<int>(param.Restrictions.Min);
-            const int maxValue = convertStringToType<int>(param.Restrictions.Max);
-            lv_slider_set_range(control.editor, minValue, maxValue);
-            lv_slider_set_value(control.editor, convertStringToType<int>(param.Value), LV_ANIM_OFF);
-        } else {
-            lv_textarea_set_text(control.editor, param.Value.c_str());
-        }
-    }
-
-    clearUnusedConfigControls(editableKeys.size());
+    updateDeviceTitle();
+    updateSignalCards(values, valueKeys, useValueControls);
+    updateEditableControls(values, valueKeys, configs, configKeys, useValueControls);
     updateActionButtonsState();
 }
 

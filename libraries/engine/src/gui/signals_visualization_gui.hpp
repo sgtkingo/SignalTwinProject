@@ -259,10 +259,21 @@ private:
      */
     void updateChart();
 
+    void updateDeviceTitle();
     void ensureSignalCards(size_t count);
     void clearUnusedSignalCards(size_t usedCount);
+    void updateSignalCards(const std::unordered_map<std::string, DeviceParam> &values,
+                           const std::vector<std::string> &valueKeys,
+                           bool useValueControls);
     void ensureConfigControls(size_t count);
     void clearUnusedConfigControls(size_t usedCount);
+    void updateEditableControls(const std::unordered_map<std::string, DeviceParam> &values,
+                                const std::vector<std::string> &valueKeys,
+                                const std::unordered_map<std::string, DeviceParam> &configs,
+                                const std::vector<std::string> &configKeys,
+                                bool useValueControls);
+    void ensureControlEditor(ConfigControl &control, const DeviceParam &param, size_t controlIndex);
+    void syncControlEditorValue(ConfigControl &control, const DeviceParam &param);
     bool buildNumericHistoryForKey(const std::string &key, lv_coord_t *history);
     std::vector<std::string> getChartableValueKeys() const;
     bool currentDeviceSupportsRecording() const;
