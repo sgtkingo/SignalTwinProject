@@ -2,14 +2,14 @@
 
 #include "../helpers.hpp"
 
-MenuGui::MenuGui(DeviceBrowserState &browserState, DeviceManager &sensorManager)
-    : browserState(browserState), sensorManager(sensorManager), activePinIndex(-1)
+ConnectionGui::ConnectionGui(DeviceBrowserState &browserState, DeviceManager &sensorManager)
+    : browserState(browserState), sensorManager(sensorManager)
 {
     pinContainers.fill(nullptr);
     pinLabels.fill(nullptr);
 }
 
-void MenuGui::init()
+void ConnectionGui::init()
 {
     if (initialized) {
         return;
@@ -19,7 +19,7 @@ void MenuGui::init()
     initialized = true;
 }
 
-void MenuGui::buildMenu()
+void ConnectionGui::buildMenu()
 {
     ui_MenuWidget = lv_obj_create(lv_scr_act());
     lv_obj_remove_style_all(ui_MenuWidget);
@@ -59,7 +59,7 @@ void MenuGui::buildMenu()
         if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
             return;
         }
-        auto *self = static_cast<MenuGui *>(lv_event_get_user_data(e));
+        auto *self = static_cast<ConnectionGui *>(lv_event_get_user_data(e));
         self->handleConnectButtonClick();
     }, LV_EVENT_ALL, this);
     lv_obj_t *connectLabel = lv_label_create(ui_btnConnect);
@@ -85,7 +85,7 @@ void MenuGui::buildMenu()
                 return;
             }
 
-            auto *self = static_cast<MenuGui *>(lv_event_get_user_data(e));
+            auto *self = static_cast<ConnectionGui *>(lv_event_get_user_data(e));
             int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_target(e))));
             self->handlePinClick(index);
         }, LV_EVENT_ALL, this);
@@ -97,7 +97,7 @@ void MenuGui::buildMenu()
     }
 }
 
-void MenuGui::updateHeader()
+void ConnectionGui::updateHeader()
 {
     BaseDevice *device = browserState.getSelectionDevice();
     if (!device) {
@@ -109,7 +109,7 @@ void MenuGui::updateHeader()
     lv_label_set_text(ui_Subtitle, subtitle.c_str());
 }
 
-bool MenuGui::isPinAllowedForCurrentDevice(int pinIndex) const
+bool ConnectionGui::isPinAllowedForCurrentDevice(int pinIndex) const
 {
     BaseDevice *device = browserState.getSelectionDevice();
     if (!device) {
@@ -119,7 +119,7 @@ bool MenuGui::isPinAllowedForCurrentDevice(int pinIndex) const
     return device->isPinAllowed(sensorManager.getPinNumber(pinIndex));
 }
 
-uint32_t MenuGui::getPinStateColor(int pinIndex) const
+uint32_t ConnectionGui::getPinStateColor(int pinIndex) const
 {
     BaseDevice *selectedDevice = browserState.getSelectionDevice();
     BaseDevice *assignedDevice = sensorManager.getAssignedDevice(pinIndex);
@@ -139,7 +139,7 @@ uint32_t MenuGui::getPinStateColor(int pinIndex) const
     return 0xD9534F;
 }
 
-void MenuGui::showMenu()
+void ConnectionGui::showConnection()
 {
     if (!initialized || !ui_MenuWidget) {
         return;
@@ -150,7 +150,7 @@ void MenuGui::showMenu()
     lv_obj_clear_flag(ui_MenuWidget, LV_OBJ_FLAG_HIDDEN);
 }
 
-void MenuGui::hideMenu()
+void ConnectionGui::hideConnection()
 {
     if (!initialized || !ui_MenuWidget) {
         return;
@@ -159,7 +159,7 @@ void MenuGui::hideMenu()
     lv_obj_add_flag(ui_MenuWidget, LV_OBJ_FLAG_HIDDEN);
 }
 
-void MenuGui::updatePinLabels()
+void ConnectionGui::updatePinLabels()
 {
     BaseDevice *selectedDevice = browserState.getSelectionDevice();
 
@@ -186,7 +186,7 @@ void MenuGui::updatePinLabels()
     }
 }
 
-void MenuGui::updatePinVisualStates()
+void ConnectionGui::updatePinVisualStates()
 {
     updatePinLabels();
 
@@ -209,12 +209,7 @@ void MenuGui::updatePinVisualStates()
     }
 }
 
-void MenuGui::setActivePin(int pinIndex)
-{
-    activePinIndex = pinIndex;
-}
-
-void MenuGui::handleConnectButtonClick()
+void ConnectionGui::handleConnectButtonClick()
 {
     BaseDevice *device = browserState.getSelectionDevice();
     if (!device) {
@@ -235,15 +230,13 @@ void MenuGui::handleConnectButtonClick()
     switchToSelection();
 }
 
-void MenuGui::handlePinClick(int pinIndex)
+void ConnectionGui::handlePinClick(int pinIndex)
 {
     BaseDevice *device = browserState.getSelectionDevice();
     if (!device || pinIndex < 0) {
         splashMessage("No device selected.");
         return;
     }
-
-    setActivePin(pinIndex);
 
     if (sensorManager.isPinLocked(pinIndex) || !isPinAllowedForCurrentDevice(pinIndex)) {
         splashMessage("This pin cannot be used by the selected device.");
@@ -262,7 +255,7 @@ void MenuGui::handlePinClick(int pinIndex)
     initializePins();
 }
 
-void MenuGui::initializePins()
+void ConnectionGui::initializePins()
 {
     updateHeader();
     updatePinVisualStates();

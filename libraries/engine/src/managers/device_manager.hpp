@@ -41,23 +41,20 @@ enum class ManagerStatus
 
 /**
  * @class DeviceManager
- * @brief Runtime/session manager for selected devices and their pin assignments.
+ * @brief Runtime manager for pin assignments, protocol access, and connected devices.
  *
- * Provides methods for accessing selected devices, synchronizing them, and assigning
- * them to runtime pins. The persistent catalog is owned separately by DeviceCatalog.
+ * Provides methods for synchronizing devices and assigning them to runtime pins.
+ * The persistent catalog is owned by DeviceCatalog and the active visualization
+ * session is owned separately by DeviceVisualizationSession.
  */
 class DeviceManager {
 private:
     DeviceCatalog &catalog;                        ///< Shared device catalog loaded during boot.
     std::array<VirtualPin, NUM_PINS> PinMap;     ///< Mapping of pins to devices.
-    std::vector<BaseDevice*> SelectedDevices;    ///< Devices selected for the current visualization session.
-
-    size_t currentIndex = 0;                         ///< Index of the current visualized device.
 
     bool initialized = false;                 ///< Initialization state flag
     ManagerStatus Status = ManagerStatus::STOPPED; ///< Current status of the manager
 
-    void clearSelectedDevices();
     std::vector<BaseDevice *> collectAssignedDevicesFromPinMap() const;
     void resetPinState(size_t pinIndex);
     void applyAssignedPinsToDevices() const;
@@ -67,8 +64,6 @@ private:
     VirtualPin *getPinState(size_t pinIndex);
     const VirtualPin *getPinState(size_t pinIndex) const;
     bool detachDeviceFromPin(size_t pinIndex);
-    BaseDevice *getSelectedDeviceAt(size_t index) const;
-    BaseDevice *stepCurrentDevice(int direction);
 
 public:
     const static uint8_t MAX_INIT_ATTEMPTS = 5; ///< Maximum initialization attempts
@@ -151,12 +146,12 @@ public:
     /**
      * @brief Print information about the current device.
      */
-    void print();
+    void print(BaseDevice *device);
 
     /**
-     * @brief Resynchronize the currently visualized device.
+     * @brief Resynchronize a specific device.
      */
-    bool resync();
+    bool resync(BaseDevice *device);
 
     /**
      * @brief Initialize protocol lazily when the user reaches the connection step.
@@ -229,6 +224,12 @@ public:
     bool hasAssignedDevices() const;
 
     /**
+     * @brief Collect currently assigned devices from the pin map.
+     * @return Unique assigned devices in pin-map order.
+     */
+    std::vector<BaseDevice *> getAssignedDevices() const { return collectAssignedDevicesFromPinMap(); }
+
+    /**
      * @brief Get read-only access to the device catalog.
      * @return Const reference to the vector of device pointers.
      */
@@ -240,41 +241,6 @@ public:
      */
     const std::array<VirtualPin, NUM_PINS>& getPinMap() const { return PinMap; }
 
-    // --- Visualization session mapping ---
-    
-    /**
-     * @brief Select assigned devices into the current visualization session list.
-     */
-    void selectDevicesFromPinMap(); 
-
-    /**
-     * @brief Get the currently visualized device.
-     * @return Pointer to the current device.
-     */
-    BaseDevice* getCurrentDevice();
-
-    /**
-     * @brief Get access to the current device index.
-     * @return Reference to the current index.
-     */
-    size_t& getCurrentIndex() { return currentIndex; }
-
-    /**
-     * @brief Reset the current device index to zero.
-     */
-    void resetCurrentIndex() { currentIndex = 0; }
-
-    /**
-     * @brief Move to the next device in the session list (wraps around).
-     * @return Pointer to the new current device.
-     */
-    BaseDevice* nextDevice();
-
-    /**
-     * @brief Move to the previous device in the session list (wraps around).
-     * @return Pointer to the new current device.
-     */
-    BaseDevice* previousDevice();
 };
 
 #endif // DEVICE_MANAGER_HPP 

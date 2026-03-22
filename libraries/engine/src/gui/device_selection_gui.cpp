@@ -2,8 +2,8 @@
 
 #include "../helpers.hpp"
 
-DeviceSelectionGui::DeviceSelectionGui(DeviceCatalog &deviceCatalog, DeviceBrowserState &browserState, DeviceManager &sensorManager)
-    : deviceCatalog(deviceCatalog), browserState(browserState), sensorManager(sensorManager)
+DeviceSelectionGui::DeviceSelectionGui(DeviceCatalog &deviceCatalog, DeviceBrowserState &browserState, DeviceManager &sensorManager, DeviceVisualizationSession &visualizationSession)
+    : deviceCatalog(deviceCatalog), browserState(browserState), sensorManager(sensorManager), visualizationSession(visualizationSession)
 {
 }
 
@@ -202,7 +202,7 @@ void DeviceSelectionGui::handleConfigureButtonClick()
     }
 
     browserState.setSelectionDevice(sensor);
-    switchToMenu();
+    switchToConnection();
 }
 
 void DeviceSelectionGui::handleRemoveButtonClick()
@@ -221,7 +221,7 @@ void DeviceSelectionGui::handleRemoveButtonClick()
 void DeviceSelectionGui::handleStartButtonClick()
 {
     sensorManager.setRunning(false);
-    sensorManager.selectDevicesFromPinMap();
+    visualizationSession.setDevices(sensorManager.getAssignedDevices());
     browserState.setSelectionDevice(nullptr);
 
     if (!sensorManager.hasAssignedDevices()) {
@@ -313,7 +313,7 @@ void DeviceSelectionGui::init()
     initialized = true;
 }
 
-void DeviceSelectionGui::showSelection(int)
+void DeviceSelectionGui::showSelection()
 {
     if (!initialized) {
         return;

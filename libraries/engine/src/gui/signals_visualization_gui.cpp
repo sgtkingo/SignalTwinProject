@@ -38,8 +38,8 @@ std::vector<std::string> splitOptionsCsv(const std::string &options)
 }
 }
 
-SignalsVisualizationGui::SignalsVisualizationGui(DeviceManager &deviceManager, DataBundleManager &dataBundleManager)
-                                              : deviceManager(deviceManager), dataBundleManager(dataBundleManager)
+SignalsVisualizationGui::SignalsVisualizationGui(DeviceManager &deviceManager, DeviceVisualizationSession &visualizationSession, DataBundleManager &dataBundleManager)
+                                              : deviceManager(deviceManager), visualizationSession(visualizationSession), dataBundleManager(dataBundleManager)
 {
     // Initialize all GUI pointers to nullptr
     ui_SensorWidget = nullptr;
@@ -1787,7 +1787,7 @@ void SignalsVisualizationGui::goToPreviousDevice()
     if (!beginDeviceNavigation(true, wasRunning))
         return;
 
-    finishDeviceNavigation(wasRunning, sensorManager.previousDevice());
+    finishDeviceNavigation(wasRunning, visualizationSession.previousDevice());
 }
 
 void SignalsVisualizationGui::goToNextDevice()
@@ -1796,7 +1796,7 @@ void SignalsVisualizationGui::goToNextDevice()
     if (!beginDeviceNavigation(true, wasRunning))
         return;
 
-    finishDeviceNavigation(wasRunning, sensorManager.nextDevice());
+    finishDeviceNavigation(wasRunning, visualizationSession.nextDevice());
 }
 
 void SignalsVisualizationGui::goToFirstDevice()
@@ -1805,8 +1805,8 @@ void SignalsVisualizationGui::goToFirstDevice()
     if (!beginDeviceNavigation(false, wasRunning))
         return;
 
-    sensorManager.resetCurrentIndex();
-    finishDeviceNavigation(wasRunning, sensorManager.getCurrentDevice());
+    visualizationSession.resetCurrentIndex();
+    finishDeviceNavigation(wasRunning, visualizationSession.getCurrentDevice());
 }
 
 bool SignalsVisualizationGui::syncCurrentDevice()

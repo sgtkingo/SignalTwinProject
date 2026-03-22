@@ -23,6 +23,11 @@
  * 
  * This function switches the GUI to connection mode and stops all sensor operations.
  */
+extern void switchToConnection();
+
+/**
+ * @brief Backward-compatible alias for the connection screen.
+ */
 extern void switchToMenu();
 
 /**

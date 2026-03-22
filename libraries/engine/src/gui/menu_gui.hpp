@@ -9,13 +9,12 @@
 #include "../managers/device_browser_state.hpp"
 #include "../managers/device_manager.hpp"
 
-class MenuGui
+class ConnectionGui
 {
 private:
     DeviceBrowserState &browserState;
     DeviceManager &sensorManager;
     bool initialized = false;
-    int activePinIndex = -1;
 
     lv_obj_t *ui_MenuWidget = nullptr;
     lv_obj_t *ui_PinScrollContainer = nullptr;
@@ -34,18 +33,20 @@ private:
     bool isPinAllowedForCurrentDevice(int pinIndex) const;
 
 public:
-    explicit MenuGui(DeviceBrowserState &browserState, DeviceManager &sensorManager);
-    ~MenuGui() = default;
+    explicit ConnectionGui(DeviceBrowserState &browserState, DeviceManager &sensorManager);
+    ~ConnectionGui() = default;
 
     void init();
     bool isInitialized() const { return initialized; }
-    void showMenu();
-    void hideMenu();
+    void showConnection();
+    void hideConnection();
+    void showMenu() { showConnection(); }
+    void hideMenu() { hideConnection(); }
     void updatePinLabels();
-    void setActivePin(int pinIndex);
-    int getActivePin() const { return activePinIndex; }
     void initializePins();
     uint32_t getPinStateColor(int pinIndex) const;
 };
+
+using MenuGui = ConnectionGui;
 
 #endif // MENU_GUI_HPP

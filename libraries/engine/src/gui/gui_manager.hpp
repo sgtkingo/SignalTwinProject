@@ -10,6 +10,7 @@
 #include "../managers/device_browser_state.hpp"
 #include "../managers/device_catalog.hpp"
 #include "../managers/device_manager.hpp"
+#include "../managers/device_visualization_session.hpp"
 #include "app_selection_gui.hpp"
 #include "app_settings.hpp"
 #include "communication_selection_gui.hpp"
@@ -48,9 +49,10 @@ private:
     DeviceCatalog &deviceCatalog;
     DeviceBrowserState &deviceBrowserState;
     DeviceManager &sensorManager;
+    DeviceVisualizationSession &visualizationSession;
     DataBundleManager &dataBundleManager;
     MainMenuGui mainMenuGui;
-    MenuGui menuGui;
+    ConnectionGui connectionGui;
     SignalsVisualizationGui vizGui;
     DataBundleSelectionGui dataBundleSelectionGui;
     DeviceSelectionGui selectionGui;
@@ -72,7 +74,7 @@ private:
     void hideAllComponents();
 
 public:
-    explicit GuiManager(DeviceCatalog &catalog, DeviceBrowserState &browserState, DeviceManager &manager, DataBundleManager &dataBundleManager);
+    explicit GuiManager(DeviceCatalog &catalog, DeviceBrowserState &browserState, DeviceManager &manager, DeviceVisualizationSession &visualizationSession, DataBundleManager &dataBundleManager);
 
     bool init();
     bool init(std::string configFile);
@@ -81,6 +83,7 @@ public:
     GuiState getCurrentState() const { return currentState; }
 
     void showMainMenu();
+    void showConnection();
     void showMenu();
     void showVisualization();
     void showDataBundleSelection();
@@ -107,7 +110,8 @@ public:
     DefaultCommunicationMode getDefaultCommunicationMode() const { return defaultCommunicationMode; }
     void setDefaultCommunicationMode(DefaultCommunicationMode mode) { defaultCommunicationMode = mode; }
 
-    MenuGui &getMenuGui() { return menuGui; }
+    ConnectionGui &getConnectionGui() { return connectionGui; }
+    MenuGui &getMenuGui() { return connectionGui; }
     SignalsVisualizationGui &getVisualizationGui() { return vizGui; }
     DataBundleSelectionGui &getDataBundleSelectionGui() { return dataBundleSelectionGui; }
     DeviceSelectionGui &getSelectionGui() { return selectionGui; }

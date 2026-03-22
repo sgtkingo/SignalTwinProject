@@ -20,6 +20,7 @@
 
 #include "gui_callbacks.hpp"
 #include "../managers/device_manager.hpp"
+#include "../managers/device_visualization_session.hpp"
 #include "../managers/data_bundle_manager.hpp"
 #include "../exceptions/data_exceptions.hpp"
 
@@ -61,6 +62,7 @@ private:
 
     DeviceManager &deviceManager;        ///< Reference to the device manager instance
     DeviceManager &sensorManager = deviceManager; ///< Transitional alias while internal implementation is still being renamed
+    DeviceVisualizationSession &visualizationSession; ///< Active visualization session of selected devices
     DataBundleManager &dataBundleManager;///< Reference to the databundle manager instance
     BaseDevice *currentDevice = nullptr; ///< Currently visualized device
     BaseDevice *&currentSensor = currentDevice; ///< Transitional alias while internal implementation is still being renamed
@@ -299,7 +301,7 @@ public:
      * @brief Constructor
      * @param deviceManager Reference to the device manager instance
      */
-    SignalsVisualizationGui(DeviceManager &deviceManager, DataBundleManager &dataBundleManager);
+    SignalsVisualizationGui(DeviceManager &deviceManager, DeviceVisualizationSession &visualizationSession, DataBundleManager &dataBundleManager);
 
     /**
      * @brief Destructor

@@ -17,16 +17,10 @@
 #include "device_manager.hpp"
 #include "helpers.hpp"
 
-DeviceManager::DeviceManager(DeviceCatalog &catalog) : catalog(catalog), currentIndex(0) {
+DeviceManager::DeviceManager(DeviceCatalog &catalog) : catalog(catalog) {
 }
 
 DeviceManager::~DeviceManager() {
-}
-
-void DeviceManager::clearSelectedDevices()
-{
-    SelectedDevices.clear();
-    resetCurrentIndex();
 }
 
 std::vector<BaseDevice *> DeviceManager::collectAssignedDevicesFromPinMap() const
@@ -121,30 +115,6 @@ bool DeviceManager::detachDeviceFromPin(size_t pinIndex)
     return true;
 }
 
-BaseDevice *DeviceManager::getSelectedDeviceAt(size_t index) const
-{
-    if (SelectedDevices.empty() || index >= SelectedDevices.size()) {
-        return nullptr;
-    }
-
-    return SelectedDevices[index];
-}
-
-BaseDevice *DeviceManager::stepCurrentDevice(int direction)
-{
-    if (SelectedDevices.empty()) {
-        return nullptr;
-    }
-
-    if (direction > 0) {
-        currentIndex = (currentIndex + 1) % SelectedDevices.size();
-    } else if (direction < 0) {
-        currentIndex = (currentIndex == 0) ? SelectedDevices.size() - 1 : currentIndex - 1;
-    }
-
-    return getSelectedDeviceAt(currentIndex);
-}
-
 bool DeviceManager::init() {
     if(initialized)
     {
@@ -211,17 +181,14 @@ void DeviceManager::print(std::string uid) {
     printDevice(device);
 }
 
-void DeviceManager::print() {
-    BaseDevice* currentDevice = getCurrentDevice();
-    printDevice(currentDevice);
+void DeviceManager::print(BaseDevice *device) {
+    printDevice(device);
 }
 
-bool DeviceManager::resync() 
+bool DeviceManager::resync(BaseDevice *device) 
 {
     if(!isRunning()) return false;
-
-    BaseDevice* currentDevice = getCurrentDevice();
-    return syncDevice(currentDevice);
+    return syncDevice(device);
 }
 
 bool DeviceManager::connect() 
@@ -238,29 +205,6 @@ bool DeviceManager::connect()
 
 void DeviceManager::erase() {
     resetPinMap();
-    currentIndex = 0;
-}
-
-/////////////////////////
-// Sensor selection management
-/////////////////////////
-
-void DeviceManager::selectDevicesFromPinMap() {
-    SelectedDevices = collectAssignedDevicesFromPinMap();
-    resetCurrentIndex();
-}
-
-BaseDevice* DeviceManager::getCurrentDevice()
-{
-    return getSelectedDeviceAt(currentIndex);
-}
-
-BaseDevice* DeviceManager::nextDevice() { 
-    return stepCurrentDevice(1);
-}
-
-BaseDevice* DeviceManager::previousDevice() {
-    return stepCurrentDevice(-1);
 }
 
 /////////////////////////
@@ -268,7 +212,6 @@ BaseDevice* DeviceManager::previousDevice() {
 /////////////////////////
 
 void DeviceManager::resetPinMap() {
-    clearSelectedDevices();
     for (size_t i = 0; i < NUM_PINS; ++i) {
         resetPinState(i);
     }

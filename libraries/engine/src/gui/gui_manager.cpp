@@ -14,16 +14,17 @@ const int CYCLE_SYNC_MS = 100;
 const int LOOP_SYNC_TH = CYCLE_SYNC_MS / CYCLE_DRAW_MS;
 int LOOP_SYNC_COUNTER = LOOP_SYNC_TH;
 
-GuiManager::GuiManager(DeviceCatalog &catalog, DeviceBrowserState &browserState, DeviceManager &manager, DataBundleManager &dataBundleManager)
+GuiManager::GuiManager(DeviceCatalog &catalog, DeviceBrowserState &browserState, DeviceManager &manager, DeviceVisualizationSession &visualizationSession, DataBundleManager &dataBundleManager)
     : deviceCatalog(catalog),
       deviceBrowserState(browserState),
       sensorManager(manager),
+      visualizationSession(visualizationSession),
       dataBundleManager(dataBundleManager),
       mainMenuGui(),
-      menuGui(browserState, manager),
-      vizGui(manager, dataBundleManager),
+      connectionGui(browserState, manager),
+      vizGui(manager, visualizationSession, dataBundleManager),
       dataBundleSelectionGui(dataBundleManager),
-      selectionGui(catalog, browserState, manager),
+      selectionGui(catalog, browserState, manager, visualizationSession),
       libraryGui(catalog, browserState),
       libraryEditorGui(browserState),
       settingsGui(),
@@ -56,6 +57,7 @@ bool GuiManager::init(std::string configFile)
         }
 
         deviceBrowserState.clear();
+        visualizationSession.clear();
 
         if (!sensorManager.init()) {
             crashGui.showCrash("DeviceManager initialization failed!");
@@ -63,7 +65,7 @@ bool GuiManager::init(std::string configFile)
         }
 
         mainMenuGui.init();
-        menuGui.init();
+        connectionGui.init();
         vizGui.init();
         dataBundleSelectionGui.init();
         selectionGui.init();
@@ -99,7 +101,7 @@ void GuiManager::hideAllComponents()
     }
 
     mainMenuGui.hideMainMenu();
-    menuGui.hideMenu();
+    connectionGui.hideConnection();
     vizGui.hideVisualization();
     dataBundleSelectionGui.hideDataBundles();
     selectionGui.hideSelection();
@@ -124,7 +126,7 @@ void GuiManager::showMainMenu()
     currentState = GuiState::MAIN_MENU;
 }
 
-void GuiManager::showMenu()
+void GuiManager::showConnection()
 {
     if (!initialized) {
         return;
@@ -132,8 +134,13 @@ void GuiManager::showMenu()
 
     sensorManager.setRunning(false);
     hideAllComponents();
-    menuGui.showMenu();
+    connectionGui.showConnection();
     currentState = GuiState::CONNECTION;
+}
+
+void GuiManager::showMenu()
+{
+    showConnection();
 }
 
 void GuiManager::showVisualization()
@@ -171,7 +178,7 @@ void GuiManager::showSelection()
 
     sensorManager.setRunning(false);
     hideAllComponents();
-    selectionGui.showSelection(menuGui.getActivePin());
+    selectionGui.showSelection();
     currentState = GuiState::SELECTION;
 }
 
@@ -270,7 +277,7 @@ void GuiManager::switchContent(GuiState targetState)
         showMainMenu();
         break;
     case GuiState::CONNECTION:
-        showMenu();
+        showConnection();
         break;
     case GuiState::VISUALIZATION:
         showVisualization();
@@ -370,7 +377,7 @@ void GuiManager::redraw()
     }
 
     if (LOOP_SYNC_COUNTER-- < 0) {
-        sensorManager.resync();
+        sensorManager.resync(visualizationSession.getCurrentDevice());
         LOOP_SYNC_COUNTER = LOOP_SYNC_TH;
         delay_ms(1);
     }

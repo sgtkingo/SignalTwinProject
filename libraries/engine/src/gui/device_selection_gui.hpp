@@ -9,6 +9,7 @@
 #include "../managers/device_browser_state.hpp"
 #include "../managers/device_catalog.hpp"
 #include "../managers/device_manager.hpp"
+#include "../managers/device_visualization_session.hpp"
 
 class DeviceSelectionGui
 {
@@ -16,6 +17,7 @@ private:
     DeviceCatalog &deviceCatalog;
     DeviceBrowserState &browserState;
     DeviceManager &sensorManager;
+    DeviceVisualizationSession &visualizationSession;
     bool initialized = false;
     int selectedDeviceIndex = 0;
 
@@ -44,12 +46,12 @@ private:
     std::string getDeviceSpecsText(BaseDevice *sensor);
 
 public:
-    explicit DeviceSelectionGui(DeviceCatalog &deviceCatalog, DeviceBrowserState &browserState, DeviceManager &sensorManager);
+    explicit DeviceSelectionGui(DeviceCatalog &deviceCatalog, DeviceBrowserState &browserState, DeviceManager &sensorManager, DeviceVisualizationSession &visualizationSession);
     ~DeviceSelectionGui() = default;
 
     void init();
     bool isInitialized() const { return initialized; }
-    void showSelection(int pinIndex = -1);
+    void showSelection();
     void hideSelection();
     BaseDevice *getSelectedDevice();
     void setSelectedDevice(int index);

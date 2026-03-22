@@ -19,6 +19,7 @@
 #include "managers/device_browser_state.hpp"
 #include "managers/device_catalog.hpp"
 #include "managers/device_manager.hpp"
+#include "managers/device_visualization_session.hpp"
 #include "managers/data_bundle_manager.hpp"
 
 #endif // ENGINE_HPP
