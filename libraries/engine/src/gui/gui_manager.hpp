@@ -12,6 +12,7 @@
 #include "../managers/device_manager.hpp"
 #include "../managers/device_visualization_session.hpp"
 #include "app_settings.hpp"
+#include "gui_navigation_policy.hpp"
 #include "gui_router.hpp"
 #include "gui_runtime_policy.hpp"
 #include "gui_screen_registry.hpp"
@@ -25,20 +26,16 @@ private:
     DeviceManager &deviceManager;
     DeviceVisualizationSession &visualizationSession;
     DataBundleManager &dataBundleManager;
+    GuiNavigationPolicy navigationPolicy;
     GuiRuntimePolicy runtimePolicy;
     GuiScreenRegistry screenRegistry;
 
     GuiState currentState;
     bool initialized;
-    bool databankReturnToVisualization = false;
-    DefaultCommunicationMode defaultCommunicationMode = DefaultCommunicationMode::ASK;
-    DefaultCommunicationMode sessionCommunicationMode = DefaultCommunicationMode::ASK;
-    bool selectionBackToMainMenu = false;
 
     void hideAllComponents();
     void applyRuntimePolicy(GuiState targetState);
     void renderState(GuiState targetState);
-    GuiState resolveBackTarget(GuiState fromState) const;
 
 public:
     explicit GuiManager(DeviceCatalog &catalog, DeviceBrowserState &browserState, DeviceManager &manager, DeviceVisualizationSession &visualizationSession, DataBundleManager &dataBundleManager);
@@ -74,10 +71,10 @@ public:
     void openDatabankFromVisualization() override;
     void navigateBackFromDatabank() override;
     void prepareNewLibraryEntity() override;
-    bool shouldSelectionBackGoToMainMenu() const override { return selectionBackToMainMenu; }
+    bool shouldSelectionBackGoToMainMenu() const override { return navigationPolicy.shouldSelectionBackGoToMainMenu(); }
 
-    DefaultCommunicationMode getDefaultCommunicationMode() const override { return defaultCommunicationMode; }
-    void setDefaultCommunicationMode(DefaultCommunicationMode mode) override { defaultCommunicationMode = mode; }
+    DefaultCommunicationMode getDefaultCommunicationMode() const override { return navigationPolicy.getDefaultCommunicationMode(); }
+    void setDefaultCommunicationMode(DefaultCommunicationMode mode) override { navigationPolicy.setDefaultCommunicationMode(mode); }
 
     ConnectionGui &getConnectionGui() { return screenRegistry.getConnectionGui(); }
     MenuGui &getMenuGui() { return screenRegistry.getConnectionGui(); }

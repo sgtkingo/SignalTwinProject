@@ -156,9 +156,14 @@ DeviceVisualizationSession deviceVisualizationSession; // Active visualization s
 DataBundleManager dataBundleManager; // Create DataBundleManager instance
 GuiManager guiManager(deviceCatalog, deviceBrowserState, deviceManager, deviceVisualizationSession, dataBundleManager);  // Create GUI manager instance
 
-// Global GUI screen switching functions for use by GUI components
+static GuiManager &router()
+{
+    return guiManager;
+}
+
+// Compatibility wrappers for legacy code paths outside router-aware GUI classes.
 void switchToConnection() {
-    guiManager.navigateTo(GuiState::CONNECTION);
+    router().showConnection();
 }
 
 void switchToMenu() {
@@ -166,11 +171,11 @@ void switchToMenu() {
 }
 
 void switchToMainMenu() {
-    guiManager.navigateTo(GuiState::MAIN_MENU);
+    router().showMainMenu();
 }
 
 void switchToSelection() {
-    guiManager.navigateTo(GuiState::SELECTION);
+    router().showSelection();
 }
 
 void switchToWiki() {
@@ -178,71 +183,71 @@ void switchToWiki() {
 }
 
 void switchToVisualization() {
-    guiManager.navigateTo(GuiState::VISUALIZATION);
+    router().showVisualization();
 }
 
 void switchToDataBundleSelection() {
-    guiManager.openDatabankFromVisualization();
+    router().openDatabankFromVisualization();
 }
 
 void switchToDatabank() {
-    guiManager.openDatabankFromMainMenu();
+    router().openDatabankFromMainMenu();
 }
 
 void switchToCrashScreen(const std::string &reason) {
-    guiManager.showCrashScreen(reason);
+    router().showCrashScreen(reason);
 }
 
 void switchToCreditsScreen() {
-    guiManager.navigateTo(GuiState::CREDITS);
+    router().showCreditsScreen();
 }
 
 void switchToAppSelectionScreen() {
-    guiManager.navigateTo(GuiState::APP_SELECTION);
+    router().showAppSelectionScreen();
 }
 
 void switchToCommunicationSelectionScreen() {
-    guiManager.navigateTo(GuiState::COMMUNICATION_SELECTION);
+    router().showCommunicationSelectionScreen();
 }
 
 void switchToLibrary() {
-    guiManager.navigateTo(GuiState::LIBRARY);
+    router().showLibrary();
 }
 
 void switchToLibraryEditor() {
-    guiManager.navigateTo(GuiState::LIBRARY_EDITOR);
+    router().showLibraryEditor();
 }
 
 void prepareNewLibraryEntity() {
-    guiManager.prepareNewLibraryEntity();
+    router().prepareNewLibraryEntity();
 }
 
 void switchToSettings() {
-    guiManager.navigateTo(GuiState::SETTINGS);
+    router().showSettings();
 }
 
 void navigateBackFromDatabank() {
-    guiManager.navigateBackFromDatabank();
+    router().navigateBackFromDatabank();
 }
 
 void openVisualizationFlow() {
-    guiManager.openVisualizationFlow();
+    router().openVisualizationFlow();
 }
 
 void completeCommunicationSelection(DefaultCommunicationMode mode) {
-    guiManager.completeCommunicationSelection(mode);
+    router().completeCommunicationSelection(mode);
 }
 
 void setDefaultCommunicationMode(DefaultCommunicationMode mode) {
-    guiManager.setDefaultCommunicationMode(mode);
+    router().setDefaultCommunicationMode(mode);
 }
 
 DefaultCommunicationMode getDefaultCommunicationMode() {
-    return guiManager.getDefaultCommunicationMode();
+    return router().getDefaultCommunicationMode();
 }
 
 bool shouldSelectionBackGoToMainMenu() {
-    return guiManager.shouldSelectionBackGoToMainMenu();
+    return router().shouldSelectionBackGoToMainMenu();
 }
 
 void setup ()
@@ -298,7 +303,7 @@ void setup ()
 
     // Wait a moment to show the boot screen
     delay(2000);
-    switchToMainMenu();
+    router().showMainMenu();
     
     //splashMessage("Hello from Elecrow DIS08070H!");
     Serial.println( "Setup done" );

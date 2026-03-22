@@ -20,6 +20,7 @@ GuiManager::GuiManager(DeviceCatalog &catalog, DeviceBrowserState &browserState,
       deviceManager(manager),
       visualizationSession(visualizationSession),
       dataBundleManager(dataBundleManager),
+      navigationPolicy(),
       runtimePolicy(deviceManager),
       screenRegistry(deviceCatalog, deviceBrowserState, *this, deviceManager, visualizationSession, dataBundleManager),
       currentState(GuiState::NONE),
@@ -214,30 +215,6 @@ void GuiManager::renderState(GuiState targetState)
     screenRegistry.render(targetState);
 }
 
-GuiState GuiManager::resolveBackTarget(GuiState fromState) const
-{
-    switch (fromState) {
-    case GuiState::DATA_BUNDLE_SELECTION:
-        return databankReturnToVisualization ? GuiState::VISUALIZATION : GuiState::MAIN_MENU;
-    case GuiState::VISUALIZATION:
-        return GuiState::SELECTION;
-    case GuiState::CONNECTION:
-        return GuiState::SELECTION;
-    case GuiState::SELECTION:
-        return selectionBackToMainMenu ? GuiState::MAIN_MENU : GuiState::COMMUNICATION_SELECTION;
-    case GuiState::COMMUNICATION_SELECTION:
-    case GuiState::LIBRARY:
-    case GuiState::SETTINGS:
-        return GuiState::MAIN_MENU;
-    case GuiState::LIBRARY_EDITOR:
-        return GuiState::LIBRARY;
-    case GuiState::CREDITS:
-        return GuiState::VISUALIZATION;
-    default:
-        return GuiState::MAIN_MENU;
-    }
-}
-
 void GuiManager::navigateTo(GuiState targetState)
 {
     if (!initialized) {
@@ -255,7 +232,7 @@ void GuiManager::navigateTo(GuiState targetState)
 
 void GuiManager::navigateBack()
 {
-    navigateTo(resolveBackTarget(currentState));
+    navigateTo(navigationPolicy.resolveBackTarget(currentState));
 }
 
 void GuiManager::switchContent(GuiState targetState)
@@ -265,34 +242,22 @@ void GuiManager::switchContent(GuiState targetState)
 
 void GuiManager::openVisualizationFlow()
 {
-    if (defaultCommunicationMode == DefaultCommunicationMode::CABLE) {
-        sessionCommunicationMode = DefaultCommunicationMode::CABLE;
-        selectionBackToMainMenu = true;
-        navigateTo(GuiState::SELECTION);
-        return;
-    }
-
-    selectionBackToMainMenu = false;
-    navigateTo(GuiState::COMMUNICATION_SELECTION);
+    navigateTo(navigationPolicy.beginVisualizationFlow());
 }
 
 void GuiManager::completeCommunicationSelection(DefaultCommunicationMode mode)
 {
-    sessionCommunicationMode = mode;
-    selectionBackToMainMenu = false;
-    navigateTo(GuiState::SELECTION);
+    navigateTo(navigationPolicy.finishCommunicationSelection(mode));
 }
 
 void GuiManager::openDatabankFromMainMenu()
 {
-    databankReturnToVisualization = false;
-    navigateTo(GuiState::DATA_BUNDLE_SELECTION);
+    navigateTo(navigationPolicy.openDatabankFromMainMenu());
 }
 
 void GuiManager::openDatabankFromVisualization()
 {
-    databankReturnToVisualization = true;
-    navigateTo(GuiState::DATA_BUNDLE_SELECTION);
+    navigateTo(navigationPolicy.openDatabankFromVisualization());
 }
 
 void GuiManager::navigateBackFromDatabank()
