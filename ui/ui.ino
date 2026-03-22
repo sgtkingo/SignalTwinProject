@@ -15,7 +15,7 @@
 
 
 enum BoardConstants { TFT_BL=2, LVGL_BUFFER_RATIO=6 };
-static constexpr const char *DEVICE_DB_SD_PATH = "/data/device_db.json";
+static constexpr const char *DEVICE_DB_SD_PATH = "/data/DB.json";
 
 
 class LGFX : public lgfx::LGFX_Device

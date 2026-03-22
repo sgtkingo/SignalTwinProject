@@ -4,12 +4,13 @@
   "devices": {
     "mic_001": {
       "uid": "mic_001",
+      "order": 1,
       "role": "sensor",
       "type": "SLM (dBFS)",
       "description": "Emulated microphone sensor.",
       "values": {
-        "dBFS": { "value": 0.0, "unit": "dBm", "dtype": "float" },
-        "peak": { "value": 0.0, "unit": "dBm", "dtype": "float" }
+        "dBFS": { "order": 1, "value": 0.0, "unit": "dBm", "dtype": "float" },
+        "peak": { "order": 2, "value": 0.0, "unit": "dBm", "dtype": "float" }
       },
       "configs": {},
       "default": {
@@ -22,11 +23,12 @@
     },
     "cam_001": {
       "uid": "cam_001",
+      "order": 2,
       "role": "sensor",
       "type": "CAM Lux meter",
       "description": "Emulated camera lux meter sensor.",
       "values": {
-        "lux_est": { "value": 0.0, "unit": "lux", "dtype": "float", "restrictions": { "min": 0.0 } }
+        "lux_est": { "order": 1, "value": 0.0, "unit": "lux", "dtype": "float", "restrictions": { "min": 0.0 } }
       },
       "configs": {},
       "default": {
@@ -38,11 +40,12 @@
     },
     "cpu_temp": {
       "uid": "cpu_temp",
+      "order": 3,
       "role": "sensor",
       "type": "CPU Temp",
       "description": "Emulated CPU temperature sensor.",
       "values": {
-        "temp": { "value": 0.0, "unit": "C", "dtype": "float" }
+        "temp": { "order": 1, "value": 0.0, "unit": "C", "dtype": "float" }
       },
       "configs": {},
       "default": {
@@ -54,15 +57,16 @@
     },
     "S00": {
       "uid": "S00",
+      "order": 4,
       "role": "sensor",
       "type": "DS18B20",
       "description": "Digital temperature sensor with alarm status.",
       "values": {
-        "temp": { "value": 0.0, "unit": "C", "dtype": "float" },
-        "alarm": { "value": "0", "unit": "", "dtype": "string" }
+        "temp": { "order": 1, "value": 0.0, "unit": "C", "dtype": "float" },
+        "alarm": { "order": 2, "value": "0", "unit": "", "dtype": "string" }
       },
       "configs": {
-        "Res": { "value": 2, "unit": "decimals", "dtype": "int", "restrictions": { "min": 0, "max": 6 } }
+        "Res": { "order": 1, "value": 2, "unit": "decimals", "dtype": "int", "restrictions": { "min": 0, "max": 6 } }
       },
       "default": {
         "values": {
@@ -77,15 +81,16 @@
     },
     "S01": {
       "uid": "S01",
+      "order": 5,
       "role": "sensor",
       "type": "DHT11",
       "description": "DHT11 temperature and humidity sensor.",
       "values": {
-        "temp": { "value": 0, "unit": "C", "dtype": "int", "restrictions": { "min": -40, "max": 80 } },
-        "humi": { "value": 0, "unit": "%", "dtype": "int", "restrictions": { "min": 0, "max": 100 } }
+        "temp": { "order": 1, "value": 0, "unit": "C", "dtype": "int", "restrictions": { "min": -40, "max": 80 } },
+        "humi": { "order": 2, "value": 0, "unit": "%", "dtype": "int", "restrictions": { "min": 0, "max": 100 } }
       },
       "configs": {
-        "Unit": { "value": "", "unit": "", "dtype": "string", "restrictions": { "options": ["C", "F"] } }
+        "Unit": { "order": 1, "value": "", "unit": "", "dtype": "string", "restrictions": { "options": ["C", "F"] } }
       },
       "default": {
         "values": {
@@ -100,14 +105,15 @@
     },
     "S15": {
       "uid": "S15",
+      "order": 6,
       "role": "sensor",
       "type": "PhotoResistor",
       "description": "Light intensity sensor.",
       "values": {
-        "intensity": { "value": 0, "unit": "lux", "dtype": "int", "restrictions": { "min": 0 } }
+        "intensity": { "order": 1, "value": 0, "unit": "lux", "dtype": "int", "restrictions": { "min": 0 } }
       },
       "configs": {
-        "Res": { "value": 5, "unit": "digits", "dtype": "int", "restrictions": { "min": 1, "max": 8 } }
+        "Res": { "order": 1, "value": 5, "unit": "digits", "dtype": "int", "restrictions": { "min": 1, "max": 8 } }
       },
       "default": {
         "values": {
@@ -121,12 +127,14 @@
     },
     "A00": {
       "uid": "A00",
+      "order": 7,
       "role": "actuator",
       "type": "PWM LED Driver",
       "description": "Simple actuator for testing runtime CONFIG-based control.",
       "values": {},
       "configs": {
         "Enabled": {
+          "order": 1,
           "value": "1",
           "unit": "",
           "dtype": "string",
@@ -135,6 +143,7 @@
           }
         },
         "Brightness": {
+          "order": 2,
           "value": 40,
           "unit": "%",
           "dtype": "int",

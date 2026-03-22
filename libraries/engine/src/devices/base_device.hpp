@@ -144,6 +144,8 @@ protected:
 
     std::unordered_map<std::string, DeviceParam> Values;            ///< Sensor values.
     std::unordered_map<std::string, DeviceParam> Configs;          ///< Sensor configurations.
+    std::vector<std::string> ValueKeyOrder;                        ///< Stable UI order for value keys.
+    std::vector<std::string> ConfigKeyOrder;                       ///< Stable UI order for config keys.
     std::vector<std::string> Pins;                                 ///< Sensor pins.
     std::string AllowedPins;                                       ///< Allowed sensor pins, enter as list of values separated by ",".
     DeviceRole Role = DeviceRole::SENSOR;                          ///< Runtime device role.
@@ -357,6 +359,10 @@ public:
     std::unordered_map<std::string, DeviceParam> getValues() const { return Values; }
     std::vector<std::string> getValuesKeys() const
     {
+        if (!ValueKeyOrder.empty()) {
+            return ValueKeyOrder;
+        }
+
         std::vector<std::string> keys;
         for (const auto &pair : Values)
         {
@@ -367,6 +373,10 @@ public:
     std::unordered_map<std::string, DeviceParam> getConfigs() const { return Configs; }
     std::vector<std::string> getConfigsKeys() const
     {
+        if (!ConfigKeyOrder.empty()) {
+            return ConfigKeyOrder;
+        }
+
         std::vector<std::string> keys;
         for (const auto &pair : Configs)
         {
@@ -953,6 +963,9 @@ public:
         try
         {
             Configs[key] = param;
+            if (!isInVector(ConfigKeyOrder, key)) {
+                ConfigKeyOrder.push_back(key);
+            }
         }
         catch (const std::exception &e)
         {
@@ -1017,6 +1030,9 @@ public:
         try
         {
             Values[key] = param;
+            if (!isInVector(ValueKeyOrder, key)) {
+                ValueKeyOrder.push_back(key);
+            }
         }
         catch (const std::exception &e)
         {

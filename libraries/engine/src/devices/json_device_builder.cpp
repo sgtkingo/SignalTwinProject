@@ -27,6 +27,8 @@ public:
     }
 };
 
+constexpr const char *DEFAULT_SD_DB_PATH = "/data/DB.json";
+
 std::string toLowerCopy(std::string value)
 {
     std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) {
@@ -82,6 +84,27 @@ std::string jsonVariantToCsv(JsonVariantConst value)
     }
 
     return jsonVariantToString(value);
+}
+
+std::vector<std::string> jsonVariantToStringVector(JsonVariantConst value)
+{
+    std::vector<std::string> items;
+
+    if (value.is<JsonArrayConst>()) {
+        for (JsonVariantConst item : value.as<JsonArrayConst>()) {
+            const std::string itemValue = jsonVariantToString(item);
+            if (!itemValue.empty()) {
+                items.push_back(itemValue);
+            }
+        }
+        return items;
+    }
+
+    const std::string single = jsonVariantToString(value);
+    if (!single.empty()) {
+        items.push_back(single);
+    }
+    return items;
 }
 
 DeviceDataType parseDeviceDataType(const std::string &dtype)
@@ -170,118 +193,170 @@ DeviceParam parseParameter(JsonObjectConst paramJson, JsonVariantConst defaultVa
     return param;
 }
 
-void populateValueParameters(JsonConfiguredDevice &sensor, JsonObjectConst paramsJson, JsonObjectConst defaultsJson)
+int parseOrderValue(JsonObjectConst objectJson, size_t sourceIndex)
 {
+    if (!objectJson["order"].isNull()) {
+        return objectJson["order"].as<int>();
+    }
+    return static_cast<int>(sourceIndex);
+}
+
+template <typename TSchema>
+void sortByOrder(std::vector<TSchema> &items)
+{
+    std::stable_sort(items.begin(), items.end(), [](const TSchema &lhs, const TSchema &rhs) {
+        if (lhs.hasExplicitOrder != rhs.hasExplicitOrder) {
+            return lhs.hasExplicitOrder && !rhs.hasExplicitOrder;
+        }
+        if (lhs.order != rhs.order) {
+            return lhs.order < rhs.order;
+        }
+        return lhs.sourceIndex < rhs.sourceIndex;
+    });
+}
+
+std::vector<DeviceParamSchema> parseParameterSchemas(JsonObjectConst paramsJson, JsonObjectConst defaultsJson)
+{
+    std::vector<DeviceParamSchema> params;
+    size_t sourceIndex = 0;
+
     for (JsonPairConst pair : paramsJson) {
         if (!pair.value().is<JsonObjectConst>()) {
             continue;
         }
 
-        const std::string key = pair.key().c_str();
-        JsonVariantConst defaultValue = defaultsJson[key];
-        sensor.addValueParameter(key, parseParameter(pair.value().as<JsonObjectConst>(), defaultValue));
+        DeviceParamSchema schema;
+        schema.key = pair.key().c_str();
+        schema.sourceIndex = sourceIndex++;
+        schema.hasExplicitOrder = !pair.value()["order"].isNull();
+        schema.order = parseOrderValue(pair.value().as<JsonObjectConst>(), schema.sourceIndex);
+        schema.param = parseParameter(pair.value().as<JsonObjectConst>(), defaultsJson[schema.key]);
+        params.push_back(schema);
     }
+
+    sortByOrder(params);
+    return params;
 }
 
-void populateConfigParameters(JsonConfiguredDevice &sensor, JsonObjectConst paramsJson, JsonObjectConst defaultsJson)
+std::vector<std::string> parseDefaultPins(JsonObjectConst defaultsJson)
 {
-    for (JsonPairConst pair : paramsJson) {
-        if (!pair.value().is<JsonObjectConst>()) {
-            continue;
+    if (defaultsJson.isNull() || defaultsJson["pins"].isNull()) {
+        return {};
+    }
+
+    if (defaultsJson["pins"].is<JsonArrayConst>()) {
+        return jsonVariantToStringVector(defaultsJson["pins"]);
+    }
+
+    std::vector<std::string> pins;
+    for (const std::string &pin : splitString(jsonVariantToString(defaultsJson["pins"]), ',')) {
+        if (!pin.empty()) {
+            pins.push_back(pin);
         }
-
-        const std::string key = pair.key().c_str();
-        JsonVariantConst defaultValue = defaultsJson[key];
-        sensor.addConfigParameter(key, parseParameter(pair.value().as<JsonObjectConst>(), defaultValue));
     }
+    return pins;
 }
 
-JsonConfiguredDevice *buildConfiguredDevice(JsonObjectConst sensorJson, const std::string &sensorKey)
+DeviceDefinitionSchema parseDeviceDefinitionSchema(JsonObjectConst deviceJson, const std::string &deviceKey, size_t sourceIndex)
 {
-    const std::string uid = !sensorJson["uid"].isNull()
-        ? jsonVariantToString(sensorJson["uid"])
-        : sensorKey;
+    DeviceDefinitionSchema schema;
+    schema.sourceIndex = sourceIndex;
+    schema.hasExplicitOrder = !deviceJson["order"].isNull();
+    schema.order = parseOrderValue(deviceJson, sourceIndex);
+    schema.uid = !deviceJson["uid"].isNull() ? jsonVariantToString(deviceJson["uid"]) : deviceKey;
 
-    if (uid.empty()) {
-        throw DeviceInitializationFailException("buildConfiguredDevice", "Device uid is missing.");
+    if (schema.uid.empty()) {
+        throw DeviceInitializationFailException("parseDeviceDefinitionSchema", "Device uid is missing.");
+    }
+    if (deviceJson["type"].isNull()) {
+        throw DeviceInitializationFailException("parseDeviceDefinitionSchema", "Device type is missing for " + schema.uid + ".");
+    }
+    if (!deviceJson["values"].is<JsonObjectConst>() && !deviceJson["configs"].is<JsonObjectConst>()) {
+        throw DeviceInitializationFailException("parseDeviceDefinitionSchema", "Device " + schema.uid + " has neither values nor configs.");
     }
 
-    if (sensorJson["type"].isNull()) {
-        throw DeviceInitializationFailException("buildConfiguredDevice", "Device type is missing for " + uid + ".");
+    schema.type = jsonVariantToString(deviceJson["type"]);
+    schema.description = !deviceJson["description"].isNull() ? jsonVariantToString(deviceJson["description"]) : "";
+    schema.role = !deviceJson["role"].isNull()
+        ? parseDeviceRole(jsonVariantToString(deviceJson["role"]))
+        : DeviceRole::SENSOR;
+
+    const JsonObjectConst defaultsJson = deviceJson["default"].is<JsonObjectConst>()
+        ? deviceJson["default"].as<JsonObjectConst>()
+        : JsonObjectConst();
+    const JsonObjectConst defaultValues = defaultsJson["values"].is<JsonObjectConst>()
+        ? defaultsJson["values"].as<JsonObjectConst>()
+        : JsonObjectConst();
+    const JsonObjectConst defaultConfigs = defaultsJson["configs"].is<JsonObjectConst>()
+        ? defaultsJson["configs"].as<JsonObjectConst>()
+        : JsonObjectConst();
+
+    if (deviceJson["values"].is<JsonObjectConst>()) {
+        schema.values = parseParameterSchemas(deviceJson["values"].as<JsonObjectConst>(), defaultValues);
+    }
+    if (deviceJson["configs"].is<JsonObjectConst>()) {
+        schema.configs = parseParameterSchemas(deviceJson["configs"].as<JsonObjectConst>(), defaultConfigs);
     }
 
-    if (!sensorJson["values"].is<JsonObjectConst>() && !sensorJson["configs"].is<JsonObjectConst>()) {
-        throw DeviceInitializationFailException("buildConfiguredDevice", "Device " + uid + " has neither values nor configs.");
+    if (!deviceJson["allowedPins"].isNull()) {
+        schema.allowedPinsCsv = jsonVariantToCsv(deviceJson["allowedPins"]);
+    } else if (!deviceJson["allowed_pins"].isNull()) {
+        schema.allowedPinsCsv = jsonVariantToCsv(deviceJson["allowed_pins"]);
     }
+    schema.defaultPins = parseDefaultPins(defaultsJson);
 
-    JsonConfiguredDevice *sensor = new JsonConfiguredDevice(uid);
+    return schema;
+}
+
+JsonConfiguredDevice *buildConfiguredDevice(const DeviceDefinitionSchema &schema)
+{
+    JsonConfiguredDevice *device = new JsonConfiguredDevice(schema.uid);
     try {
-        sensor->Type = jsonVariantToString(sensorJson["type"]);
-        sensor->Description = !sensorJson["description"].isNull()
-            ? jsonVariantToString(sensorJson["description"])
-            : "";
-        sensor->setRole(!sensorJson["role"].isNull()
-            ? parseDeviceRole(jsonVariantToString(sensorJson["role"]))
-            : DeviceRole::SENSOR);
+        device->Type = schema.type;
+        device->Description = schema.description;
+        device->setRole(schema.role);
+        device->setAllowedPinsCsv(schema.allowedPinsCsv);
 
-        const JsonObjectConst defaultsJson = sensorJson["default"].is<JsonObjectConst>()
-            ? sensorJson["default"].as<JsonObjectConst>()
-            : JsonObjectConst();
-
-        const JsonObjectConst defaultValues = defaultsJson["values"].is<JsonObjectConst>()
-            ? defaultsJson["values"].as<JsonObjectConst>()
-            : JsonObjectConst();
-
-        const JsonObjectConst defaultConfigs = defaultsJson["configs"].is<JsonObjectConst>()
-            ? defaultsJson["configs"].as<JsonObjectConst>()
-            : JsonObjectConst();
-
-        if (sensorJson["values"].is<JsonObjectConst>()) {
-            populateValueParameters(*sensor, sensorJson["values"].as<JsonObjectConst>(), defaultValues);
+        for (const DeviceParamSchema &valueSchema : schema.values) {
+            device->addValueParameter(valueSchema.key, valueSchema.param);
         }
 
-        if (sensorJson["configs"].is<JsonObjectConst>()) {
-            populateConfigParameters(*sensor, sensorJson["configs"].as<JsonObjectConst>(), defaultConfigs);
+        for (const DeviceParamSchema &configSchema : schema.configs) {
+            device->addConfigParameter(configSchema.key, configSchema.param);
         }
 
-        if (!sensorJson["allowedPins"].isNull()) {
-            sensor->setAllowedPinsCsv(jsonVariantToCsv(sensorJson["allowedPins"]));
-        } else if (!sensorJson["allowed_pins"].isNull()) {
-            sensor->setAllowedPinsCsv(jsonVariantToCsv(sensorJson["allowed_pins"]));
-        }
-
-        if (!defaultsJson["pins"].isNull()) {
-            const std::string pinsCsv = jsonVariantToCsv(defaultsJson["pins"]);
-            std::stringstream pinsStream(pinsCsv);
-            std::string pin;
-            while (std::getline(pinsStream, pin, ',')) {
-                if (!pin.empty()) {
-                    sensor->assignPin(pin);
-                }
+        for (const std::string &pin : schema.defaultPins) {
+            if (!pin.empty()) {
+                device->assignPin(pin);
             }
         }
 
-        return sensor;
+        return device;
     } catch (...) {
-        delete sensor;
+        delete device;
         throw;
     }
 }
 }
 
-DeviceCatalog buildDeviceCatalogFromSdFile(const std::string &filePath)
+DeviceCatalogSchema parseDeviceCatalogSchemaFromSdFile(const std::string &filePath)
 {
-    if (filePath.empty()) {
+    std::string resolvedPath = filePath;
+    if (resolvedPath.empty()) {
+        resolvedPath = DEFAULT_SD_DB_PATH;
+    }
+
+    if (resolvedPath.empty()) {
         throw FileNotFoundException("buildDeviceCatalogFromSdFile", "Empty JSON path.");
     }
 
-    if (!SD.exists(filePath.c_str())) {
-        throw FileNotFoundException("buildDeviceCatalogFromSdFile", "Device DB not found on SD: " + filePath);
+    if (!SD.exists(resolvedPath.c_str())) {
+        throw FileNotFoundException("parseDeviceCatalogSchemaFromSdFile", "Device DB not found on SD: " + resolvedPath);
     }
 
-    File file = SD.open(filePath.c_str(), FILE_READ);
+    File file = SD.open(resolvedPath.c_str(), FILE_READ);
     if (!file) {
-        throw FileReadException("buildDeviceCatalogFromSdFile", "Cannot open device DB on SD: " + filePath);
+        throw FileReadException("parseDeviceCatalogSchemaFromSdFile", "Cannot open device DB on SD: " + resolvedPath);
     }
 
     JsonDocument doc;
@@ -290,14 +365,14 @@ DeviceCatalog buildDeviceCatalogFromSdFile(const std::string &filePath)
     file.close();
 
     if (error) {
-        throw InvalidDataFormatException("buildDeviceCatalogFromSdFile", "JSON parsing failed: " + std::string(error.c_str()));
+        throw InvalidDataFormatException("parseDeviceCatalogSchemaFromSdFile", "JSON parsing failed: " + std::string(error.c_str()));
     }
 
     if (!doc["devices"].is<JsonObjectConst>()) {
-        throw InvalidDataFormatException("buildDeviceCatalogFromSdFile", "Device DB is missing top-level 'devices' object.");
+        throw InvalidDataFormatException("parseDeviceCatalogSchemaFromSdFile", "Device DB is missing top-level 'devices' object.");
     }
 
-    DeviceCatalog catalog;
+    DeviceCatalogSchema catalog;
     if (!doc["version"].isNull()) {
         catalog.version = jsonVariantToString(doc["version"]);
     }
@@ -307,12 +382,39 @@ DeviceCatalog buildDeviceCatalogFromSdFile(const std::string &filePath)
 
     try {
         JsonObjectConst devicesJson = doc["devices"].as<JsonObjectConst>();
+        size_t sourceIndex = 0;
         for (JsonPairConst pair : devicesJson) {
             if (!pair.value().is<JsonObjectConst>()) {
                 continue;
             }
 
-            catalog.devices.push_back(buildConfiguredDevice(pair.value().as<JsonObjectConst>(), pair.key().c_str()));
+            catalog.devices.push_back(parseDeviceDefinitionSchema(pair.value().as<JsonObjectConst>(), pair.key().c_str(), sourceIndex++));
+        }
+    } catch (...) {
+        catalog.devices.clear();
+        throw;
+    }
+
+    sortByOrder(catalog.devices);
+
+    if (catalog.devices.empty()) {
+        throw DeviceInitializationFailException("parseDeviceCatalogSchemaFromSdFile", "Device DB does not contain any buildable device.");
+    }
+
+    return catalog;
+}
+
+DeviceCatalog buildDeviceCatalogFromSdFile(const std::string &filePath)
+{
+    const DeviceCatalogSchema schemaCatalog = parseDeviceCatalogSchemaFromSdFile(filePath);
+
+    DeviceCatalog catalog;
+    catalog.version = schemaCatalog.version;
+    catalog.application = schemaCatalog.application;
+
+    try {
+        for (const DeviceDefinitionSchema &deviceSchema : schemaCatalog.devices) {
+            catalog.devices.push_back(buildConfiguredDevice(deviceSchema));
         }
     } catch (...) {
         for (BaseDevice *device : catalog.devices) {
@@ -320,10 +422,6 @@ DeviceCatalog buildDeviceCatalogFromSdFile(const std::string &filePath)
         }
         catalog.devices.clear();
         throw;
-    }
-
-    if (catalog.devices.empty()) {
-        throw DeviceInitializationFailException("buildDeviceCatalogFromSdFile", "Device DB does not contain any buildable device.");
     }
 
     return catalog;
