@@ -1064,6 +1064,60 @@ std::vector<std::string> SignalsVisualizationGui::getChartableValueKeys() const
     return chartKeys;
 }
 
+void SignalsVisualizationGui::showEmptyChartState(const char *message)
+{
+    lv_chart_set_all_value(ui_Chart, ui_Chart_series_V1, LV_CHART_POINT_NONE);
+    lv_chart_set_all_value(ui_Chart, ui_Chart_series_V2, LV_CHART_POINT_NONE);
+
+    if (ui_ChartEmptyLabel) {
+        lv_label_set_text(ui_ChartEmptyLabel, message);
+        lv_obj_clear_flag(ui_ChartEmptyLabel, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    lv_chart_refresh(ui_Chart);
+}
+
+void SignalsVisualizationGui::hideEmptyChartState()
+{
+    if (ui_ChartEmptyLabel) {
+        lv_obj_add_flag(ui_ChartEmptyLabel, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+std::pair<lv_coord_t, lv_coord_t> SignalsVisualizationGui::computeChartRange(const lv_coord_t *history)
+{
+    lv_coord_t minValue = history[0];
+    lv_coord_t maxValue = history[0];
+    for (int i = 1; i < HISTORY_CAP; ++i) {
+        if (history[i] < minValue) {
+            minValue = history[i];
+        }
+        if (history[i] > maxValue) {
+            maxValue = history[i];
+        }
+    }
+
+    if (minValue == maxValue) {
+        minValue -= 1;
+        maxValue += 1;
+    }
+
+    const lv_coord_t span = maxValue - minValue;
+    const lv_coord_t pad = (span / 10) > 1 ? (span / 10) : 1;
+    return std::pair<lv_coord_t, lv_coord_t>(minValue - pad, maxValue + pad);
+}
+
+void SignalsVisualizationGui::populateChartSeries(lv_chart_series_t *series, const lv_coord_t *history)
+{
+    if (!series || !history) {
+        return;
+    }
+
+    for (int i = 0; i < HISTORY_CAP; ++i) {
+        lv_chart_set_next_value(ui_Chart, series, history[i]);
+    }
+}
+
 void SignalsVisualizationGui::updateDeviceDataDisplay()
 {
     if (!currentSensor || !ui_SignalScrollContainer)
@@ -1092,51 +1146,22 @@ void SignalsVisualizationGui::updateChart()
     const auto chartKeys = getChartableValueKeys();
     if (chartKeys.empty())
     {
-        lv_chart_set_all_value(ui_Chart, ui_Chart_series_V1, LV_CHART_POINT_NONE);
-        lv_chart_set_all_value(ui_Chart, ui_Chart_series_V2, LV_CHART_POINT_NONE);
-        if (ui_ChartEmptyLabel) {
-            lv_label_set_text(ui_ChartEmptyLabel,
-                              currentSensor->getRole() == DeviceRole::ACTUATOR
-                                  ? "Control-only device"
-                                  : "No numeric signal available");
-            lv_obj_clear_flag(ui_ChartEmptyLabel, LV_OBJ_FLAG_HIDDEN);
-        }
-        lv_chart_refresh(ui_Chart);
+        showEmptyChartState(currentSensor->getRole() == DeviceRole::ACTUATOR
+                                ? "Control-only device"
+                                : "No numeric signal available");
         return;
     }
 
     try
     {
-        if (ui_ChartEmptyLabel) {
-            lv_obj_add_flag(ui_ChartEmptyLabel, LV_OBJ_FLAG_HIDDEN);
-        }
+        hideEmptyChartState();
 
         lv_coord_t historyPrimary[HISTORY_CAP];
         if (!buildNumericHistoryForKey(chartKeys[0], historyPrimary)) {
             return;
         }
 
-        auto computeRange = [](const lv_coord_t *history) {
-            lv_coord_t minValue = history[0];
-            lv_coord_t maxValue = history[0];
-            for (int i = 1; i < HISTORY_CAP; ++i) {
-                if (history[i] < minValue) {
-                    minValue = history[i];
-                }
-                if (history[i] > maxValue) {
-                    maxValue = history[i];
-                }
-            }
-            if (minValue == maxValue) {
-                minValue -= 1;
-                maxValue += 1;
-            }
-            const lv_coord_t span = maxValue - minValue;
-            const lv_coord_t pad = (span / 10) > 1 ? (span / 10) : 1;
-            return std::pair<lv_coord_t, lv_coord_t>(minValue - pad, maxValue + pad);
-        };
-
-        auto primaryRange = computeRange(historyPrimary);
+        auto primaryRange = computeChartRange(historyPrimary);
         lv_coord_t globalMin = primaryRange.first;
         lv_coord_t globalMax = primaryRange.second;
 
@@ -1145,7 +1170,7 @@ void SignalsVisualizationGui::updateChart()
         if (chartKeys.size() > 1) {
             haveSecond = buildNumericHistoryForKey(chartKeys[1], historySecondary);
             if (haveSecond) {
-                auto secondaryRange = computeRange(historySecondary);
+                auto secondaryRange = computeChartRange(historySecondary);
                 if (secondaryRange.first < globalMin) {
                     globalMin = secondaryRange.first;
                 }
@@ -1160,17 +1185,10 @@ void SignalsVisualizationGui::updateChart()
         lv_chart_set_all_value(ui_Chart, ui_Chart_series_V1, LV_CHART_POINT_NONE);
         lv_chart_set_all_value(ui_Chart, ui_Chart_series_V2, LV_CHART_POINT_NONE);
 
-        for (int i = 0; i < HISTORY_CAP; i++)
-        {
-            lv_chart_set_next_value(ui_Chart, ui_Chart_series_V1, historyPrimary[i]);
-        }
+        populateChartSeries(ui_Chart_series_V1, historyPrimary);
 
-        if (haveSecond)
-        {
-            for (int i = 0; i < HISTORY_CAP; i++)
-            {
-                lv_chart_set_next_value(ui_Chart, ui_Chart_series_V2, historySecondary[i]);
-            }
+        if (haveSecond) {
+            populateChartSeries(ui_Chart_series_V2, historySecondary);
         }
 
         lv_chart_refresh(ui_Chart);

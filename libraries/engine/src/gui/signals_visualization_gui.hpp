@@ -276,6 +276,10 @@ private:
     void syncControlEditorValue(ConfigControl &control, const DeviceParam &param);
     bool buildNumericHistoryForKey(const std::string &key, lv_coord_t *history);
     std::vector<std::string> getChartableValueKeys() const;
+    void showEmptyChartState(const char *message);
+    void hideEmptyChartState();
+    static std::pair<lv_coord_t, lv_coord_t> computeChartRange(const lv_coord_t *history);
+    void populateChartSeries(lv_chart_series_t *series, const lv_coord_t *history);
     bool currentDeviceSupportsRecording() const;
     void updateActionButtonsState();
     bool applyEditableValue(bool isValueControl, const std::string &key, const std::string &value);
