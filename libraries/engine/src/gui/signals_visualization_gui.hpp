@@ -20,6 +20,7 @@
 
 #include "gui_callbacks.hpp"
 #include "signals_chart_panel.hpp"
+#include "signals_feedback_panel.hpp"
 #include "signals_list_panel.hpp"
 #include "signals_settings_panel.hpp"
 #include "signals_toolbar_panel.hpp"
@@ -67,6 +68,7 @@ private:
 
     SignalsListPanel signalListPanel; ///< Scrollable panel for live values and editable controls
     SignalsChartPanel chartPanel;     ///< Chart panel for numeric signal history
+    SignalsFeedbackPanel feedbackPanel; ///< Transient alerts and modal shadow overlay
     SignalsSettingsPanel settingsPanel; ///< Settings overlay panel for databundle and credits actions
     SignalsToolbarPanel toolbarPanel; ///< Bottom navigation and recording toolbar
 
@@ -78,9 +80,6 @@ private:
     lv_obj_t *ui_LogoCornerFillBottomRight;              ///< Decorative fill for logo
     lv_obj_t *ui_LogoOutlay;                             ///< Decorative outlay for logo panel
     lv_obj_t *ui_LogoImage;                              ///< Logo image widget
-    lv_obj_t *ui_ShadowOverlay;                          ///< Shadow overlay for dialog
-    lv_obj_t *ui_Alert;                                  ///< Alert dialog container
-    lv_obj_t *ui_AlertLabel;                             ///< Alert dialog label
 
     void createToolbarPanel();
 
