@@ -1,6 +1,6 @@
 /**
  * @file device_browser_state.hpp
- * @brief Shared browse/highlight state for catalog-driven GUI screens.
+ * @brief Shared browse/focus state for catalog-driven GUI screens.
  */
 
 #ifndef DEVICE_BROWSER_STATE_HPP
@@ -14,17 +14,20 @@ class DeviceBrowserState
 {
 private:
     DeviceCatalog &catalog;
-    BaseDevice *selectionDevice = nullptr;
-    BaseDevice *libraryDevice = nullptr;
-    DeviceDefinitionSchema libraryDraft;
-    bool hasLibraryDraft = false;
-    bool libraryDraftNewEntity = false;
+    BaseDevice *selectionDevice = nullptr;    ///< Focused catalog device in the Selection screen
+    BaseDevice *libraryDevice = nullptr;      ///< Focused catalog device in the Library screen
+    DeviceDefinitionSchema libraryDraft;      ///< Active Library editor draft
+    bool hasLibraryDraft = false;             ///< Whether a draft is currently active
+    bool libraryDraftNewEntity = false;       ///< Whether the draft represents a new entity
 
     bool isCatalogDevice(const BaseDevice *device) const;
 
 public:
     explicit DeviceBrowserState(DeviceCatalog &catalog);
 
+    /**
+     * @brief Reset all browse pointers and editor draft state.
+     */
     void clear();
 
     BaseDevice *getSelectionDevice() const;

@@ -1,6 +1,6 @@
 /**
  * @file device_visualization_session.hpp
- * @brief Visualization session state for selected runtime devices.
+ * @brief Runtime visualization session for connected devices.
  */
 
 #ifndef DEVICE_VISUALIZATION_SESSION_HPP
@@ -14,14 +14,21 @@
 class DeviceVisualizationSession
 {
 private:
-    std::vector<BaseDevice *> selectedDevices;
-    size_t currentIndex = 0;
+    std::vector<BaseDevice *> selectedDevices; ///< Runtime devices included in the active visualization flow
+    size_t currentIndex = 0;                   ///< Currently focused device inside the session
 
     BaseDevice *getSelectedDeviceAt(size_t index) const;
     BaseDevice *stepCurrentDevice(int direction);
 
 public:
+    /**
+     * @brief Reset the active visualization session.
+     */
     void clear();
+
+    /**
+     * @brief Replace the active runtime device list used by visualization.
+     */
     void setDevices(const std::vector<BaseDevice *> &devices);
 
     bool hasDevices() const { return !selectedDevices.empty(); }

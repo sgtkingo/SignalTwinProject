@@ -766,7 +766,7 @@ void DataBundleSelectionGui::updateBundles()
 
         for (unsigned char i = 0; i < 6; i++)
         {
-            if (currentDataBundles[i].metaBuffer.sensorName.empty())
+            if (currentDataBundles[i].metaBuffer.deviceName.empty())
             {
                 if (ui_DataBundle[i])
                 {
@@ -775,7 +775,7 @@ void DataBundleSelectionGui::updateBundles()
                 continue;
             }
 
-            const char* sName = currentDataBundles[i].metaBuffer.sensorName.c_str();
+            const char* sName = currentDataBundles[i].metaBuffer.deviceName.c_str();
             const char* sTime = currentDataBundles[i].startTime.empty() ? "00:00" : currentDataBundles[i].startTime.c_str();
             const char* sDate = currentDataBundles[i].metaBuffer.startDate.empty() ? "01.01.2000" : currentDataBundles[i].metaBuffer.startDate.c_str();
 

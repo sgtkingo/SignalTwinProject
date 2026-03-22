@@ -101,11 +101,6 @@ void GuiManager::showConnection()
     navigateTo(GuiState::CONNECTION);
 }
 
-void GuiManager::showMenu()
-{
-    showConnection();
-}
-
 void GuiManager::showVisualization()
 {
     if (!initialized) {

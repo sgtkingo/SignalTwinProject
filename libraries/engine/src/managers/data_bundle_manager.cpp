@@ -1,8 +1,8 @@
 /**
  * @file data_bundle_manager.hpp
- * @brief bundles made from recording
+ * @brief Recording bundle manager.
  *
- * This header defines the manager for data bundles recorded from live device signals.
+ * This source file implements storage and retrieval of recorded device signal bundles.
  *
  * @copyright 2025 MTA
  * @author Ondřej Wrubel
@@ -113,12 +113,12 @@ void DataBundleManager::getSDInfo()
     (SD.exists("/DataBundles/log.txt")) ? logMessage("log.txt exists!") : logMessage("log.txt doesnt exist");
 }
 
-bool DataBundleManager::startRecording(std::string sensorName)
+bool DataBundleManager::startRecording(std::string deviceName)
 {
-    currentBundleMetaData.sensorName = sensorName;
+    currentBundleMetaData.deviceName = deviceName;
 
     uint8_t tempOrder = 1;
-    std::string temp = root + sensorName + "_0" + std::to_string(tempOrder) + ".csv";
+    std::string temp = root + deviceName + "_0" + std::to_string(tempOrder) + ".csv";
     while (SD.exists(temp.c_str()))
     {
         if (tempOrder < 10)
@@ -152,16 +152,16 @@ bool DataBundleManager::startRecording(std::string sensorName)
 
     currentBundleMetaData.filePath = temp;
 
-    // to be implemented
+    // TODO: persist real recording start date/time metadata.
     //currentBundleMetaData.startDate
     
     return true;
 }
 
-bool DataBundleManager::saveNewDataPoint(std::string partName, std::string value)
+bool DataBundleManager::saveNewDataPoint(std::string signalName, std::string value)
 {
-    // to be implemented - time
-    DataPoint temp = {partName, value, ""};
+    // TODO: persist a real timestamp for each sample.
+    DataPoint temp = {signalName, value, ""};
     currentBundleData.push_back(temp);
     return true;
 }
@@ -172,10 +172,10 @@ bool DataBundleManager::saveRecording()
 
     if (saved)
     {
-        saved.println("PartName;Value;Time");
+        saved.println("SignalName;Value;Time");
         for (unsigned int i = 0; i < currentBundleData.size(); i++)
         {
-            saved.printf("%s;%s;%s\n", currentBundleData[i].partName.c_str(), currentBundleData[i].value.c_str(), currentBundleData[i].time.c_str());
+            saved.printf("%s;%s;%s\n", currentBundleData[i].signalName.c_str(), currentBundleData[i].value.c_str(), currentBundleData[i].time.c_str());
         }
 
         saved.close(); // Save and close
@@ -200,7 +200,7 @@ bool DataBundleManager::saveRecording()
 
 void DataBundleManager::scrapRecording()
 {
-    currentBundleMetaData.sensorName = "";
+    currentBundleMetaData.deviceName = "";
     currentBundleMetaData.filePath = "";
     currentBundleMetaData.startDate = "";
     currentBundleData.clear();
@@ -394,9 +394,9 @@ BundleMetadata DataBundleManager::getBundleMetaData(unsigned char index){
     }
 
     std::string fileName = file.name();
-    std::string sensorName = fileName.substr(0,fileName.find("_"));
+    std::string deviceName = fileName.substr(0,fileName.find("_"));
 
-    return {sensorName,fullPath,""};
+    return {deviceName,fullPath,""};
 }
 
 std::array<std::string,10> DataBundleManager::getBundleDataValuePreview(unsigned char index){
@@ -425,23 +425,23 @@ std::array<std::string,10> DataBundleManager::getBundleDataValuePreview(unsigned
         return temp;
     }
 
-    // dataParsed[0] = sensorPart, dataParsed[1] = value, dataParsed[2] = time
+    // dataParsed[0] = signalName, dataParsed[1] = value, dataParsed[2] = time
     std::array<std::string,3> dataParsed = parseCSVLine(line);
-    std::string sensorPart = dataParsed[0];
+    std::string signalName = dataParsed[0];
     temp[0] = dataParsed[1];
 
     for (unsigned char i=1;i<10;i++) {
         line = readLine(file);
 
         if (!line.empty()) {
-            // if record is smaller than 10 values we repeat the last recorded value
+            // If the recording is shorter than 10 values, repeat the last known value.
             temp[i] = temp[i-1];
             continue;
         }
 
         dataParsed = parseCSVLine(line);
 
-        if(sensorPart == dataParsed[0]){
+        if(signalName == dataParsed[0]){
             temp[i] = dataParsed[1];
             continue;
         }

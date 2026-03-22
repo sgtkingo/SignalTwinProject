@@ -41,8 +41,6 @@ public:
     bool isInitialized() const { return initialized; }
     void showConnection();
     void hideConnection();
-    void showMenu() { showConnection(); }
-    void hideMenu() { hideConnection(); }
     void updatePinLabels();
     void initializePins();
     uint32_t getPinStateColor(int pinIndex) const;

@@ -7,14 +7,23 @@
 class GuiNavigationPolicy
 {
 private:
-    bool databankReturnToVisualization = false;
-    DefaultCommunicationMode defaultCommunicationMode = DefaultCommunicationMode::ASK;
-    DefaultCommunicationMode sessionCommunicationMode = DefaultCommunicationMode::ASK;
-    bool selectionBackToMainMenu = false;
+    bool databankReturnToVisualization = false;                           ///< Remembers whether Databank was opened from live visualization
+    DefaultCommunicationMode defaultCommunicationMode = DefaultCommunicationMode::ASK; ///< User preference from Settings
+    DefaultCommunicationMode sessionCommunicationMode = DefaultCommunicationMode::ASK; ///< Runtime communication mode used by current visualization flow
+    bool selectionBackToMainMenu = false;                                 ///< Whether Selection should back-navigate directly to Main Menu
 
 public:
+    /**
+     * @brief Resolve the target state for a generic Back action.
+     */
     GuiState resolveBackTarget(GuiState fromState) const;
+    /**
+     * @brief Start the Visualization entry flow, optionally skipping Communication.
+     */
     GuiState beginVisualizationFlow();
+    /**
+     * @brief Finish Communication selection and continue to Selection.
+     */
     GuiState finishCommunicationSelection(DefaultCommunicationMode mode);
     GuiState openDatabankFromMainMenu();
     GuiState openDatabankFromVisualization();

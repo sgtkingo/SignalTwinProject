@@ -1,6 +1,6 @@
 /**
  * @file data_bundle_manager.hpp
- * @brief bundles made from recording
+ * @brief Recording bundle manager.
  *
  * This header defines the manager for data bundles recorded from live device signals.
  *
@@ -18,12 +18,12 @@ class DataBundleManager {
 private:
     bool initialized = false;                 ///< Initialization state flag
     
-    std::vector<std::string> DataBundleNames;  ///< All Data Bundle Names saved (DHT11_01.csv)
+    std::vector<std::string> DataBundleNames;  ///< All saved bundle filenames (for example DHT11_01.csv)
 
-    BundleMetadata currentBundleMetaData;     ///< Current Bundle that is being recorded
-    std::vector<DataPoint> currentBundleData; ///< Current Bundle Data that are being recorded 
+    BundleMetadata currentBundleMetaData;      ///< Metadata of the active recording session
+    std::vector<DataPoint> currentBundleData;  ///< Buffered signal payload of the active recording session
 
-    const char* root = "/DataBundles/"; ///<The directory where all databundles are saved
+    const char* root = "/DataBundles/"; ///< Directory where all data bundles are stored
 
     // HELPERS
 
@@ -35,7 +35,7 @@ private:
 
     BundleMetadata getBundleMetaData(unsigned char index);
 
-    // each databundle has as a preview chart with first 10 values from one of the recorded signal parts
+    // Each data bundle preview uses the first 10 values of one recorded signal stream.
     std::array<std::string,10> getBundleDataValuePreview(unsigned char index);
     
 
@@ -69,25 +69,27 @@ public:
     bool isInitialized() const { return initialized; }
 
     /**
-     * @brief loads all data bundle names from SD
+     * @brief Load all data bundle names from SD card
      * @return True if initialized, false otherwise
      */
     bool loadAllDataBundleNames();
 
-    // *********************
-    // Current record events
-    // *********************
+    // **************************
+    // Active recording session
+    // **************************
 
-    bool startRecording(std::string sName);
+    bool startRecording(std::string deviceName);
 
-    // called when updated data comes
-    bool saveNewDataPoint(std::string partName, std::string value);
+    // Called whenever a new runtime sample arrives.
+    bool saveNewDataPoint(std::string signalName, std::string value);
 
     bool saveRecording();
 
     void scrapRecording();
 
-    // All DataBundle events
+    // *****************
+    // Catalog browsing
+    // *****************
 
     std::array<DataBundleBuffer,6> getDataBundles(unsigned char page);
 
@@ -97,7 +99,9 @@ public:
 
     bool renameDataBundle();
 
-    // Single Databundle events
+    // *********************
+    // Single bundle events
+    // *********************
 
     void deleteDataBundle(unsigned char index);
 

@@ -1,6 +1,6 @@
 /**
  * @file gui_manager.hpp
- * @brief Declaration of the GuiManager class
+ * @brief Navigation orchestrator that coordinates routing, runtime policy and screen registry.
  */
 
 #ifndef GUI_MANAGER_HPP
@@ -22,13 +22,13 @@ class GuiManager : public GuiRouter
 {
 private:
     DeviceCatalog &deviceCatalog;
-    DeviceBrowserState &deviceBrowserState;
-    DeviceManager &deviceManager;
-    DeviceVisualizationSession &visualizationSession;
-    DataBundleManager &dataBundleManager;
-    GuiNavigationPolicy navigationPolicy;
-    GuiRuntimePolicy runtimePolicy;
-    GuiScreenRegistry screenRegistry;
+    DeviceBrowserState &deviceBrowserState;             ///< Shared browse/focus state for catalog screens
+    DeviceManager &deviceManager;                       ///< Runtime connection/synchronization manager
+    DeviceVisualizationSession &visualizationSession;  ///< Active visualization session
+    DataBundleManager &dataBundleManager;              ///< Recording/databank manager
+    GuiNavigationPolicy navigationPolicy;              ///< Navigation and back-flow rules
+    GuiRuntimePolicy runtimePolicy;                    ///< Side effects when entering/leaving GUI states
+    GuiScreenRegistry screenRegistry;                  ///< Screen ownership and rendering registry
 
     GuiState currentState;
     bool initialized;
@@ -48,7 +48,6 @@ public:
 
     void showMainMenu() override;
     void showConnection() override;
-    void showMenu();
     void showVisualization() override;
     void showDataBundleSelection();
     void showSelection() override;
@@ -87,11 +86,9 @@ public:
     std::string getCatalogVersion() const override { return deviceCatalog.getVersion(); }
 
     ConnectionGui &getConnectionGui() { return screenRegistry.getConnectionGui(); }
-    MenuGui &getMenuGui() { return screenRegistry.getConnectionGui(); }
     SignalsVisualizationGui &getVisualizationGui() { return screenRegistry.getVisualizationGui(); }
     DataBundleSelectionGui &getDataBundleSelectionGui() { return screenRegistry.getDataBundleSelectionGui(); }
     DeviceSelectionGui &getSelectionGui() { return screenRegistry.getSelectionGui(); }
-    DeviceSelectionGui &getWikiGui() { return screenRegistry.getSelectionGui(); }
     CreditsGui &getCreditsGui() { return screenRegistry.getCreditsGui(); }
     DeviceCatalog &getDeviceCatalog() { return deviceCatalog; }
     DeviceBrowserState &getDeviceBrowserState() { return deviceBrowserState; }
