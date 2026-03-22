@@ -280,6 +280,8 @@ private:
     void hideEmptyChartState();
     static std::pair<lv_coord_t, lv_coord_t> computeChartRange(const lv_coord_t *history);
     void populateChartSeries(lv_chart_series_t *series, const lv_coord_t *history);
+    bool beginDeviceNavigation(bool requireIdleRecording, bool &wasRunning);
+    void finishDeviceNavigation(bool wasRunning, BaseDevice *nextDevice);
     bool currentDeviceSupportsRecording() const;
     void updateActionButtonsState();
     bool applyEditableValue(bool isValueControl, const std::string &key, const std::string &value);

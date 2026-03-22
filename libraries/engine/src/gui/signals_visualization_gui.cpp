@@ -1118,6 +1118,28 @@ void SignalsVisualizationGui::populateChartSeries(lv_chart_series_t *series, con
     }
 }
 
+bool SignalsVisualizationGui::beginDeviceNavigation(bool requireIdleRecording, bool &wasRunning)
+{
+    if (requireIdleRecording && recording) {
+        return false;
+    }
+
+    wasRunning = sensorManager.isRunning();
+    sensorManager.setRunning(false);
+    return true;
+}
+
+void SignalsVisualizationGui::finishDeviceNavigation(bool wasRunning, BaseDevice *nextDevice)
+{
+    currentSensor = nextDevice;
+    if (currentSensor) {
+        currentSensor->setRedrawPending(true);
+    }
+
+    delay_ms(10);
+    sensorManager.setRunning(wasRunning);
+}
+
 void SignalsVisualizationGui::updateDeviceDataDisplay()
 {
     if (!currentSensor || !ui_SignalScrollContainer)
@@ -1761,45 +1783,30 @@ void SignalsVisualizationGui::hideSettingsPanel()
 
 void SignalsVisualizationGui::goToPreviousDevice()
 {
-    if (recording)
+    bool wasRunning = false;
+    if (!beginDeviceNavigation(true, wasRunning))
         return;
 
-    const bool wasRunning = sensorManager.isRunning();
-    sensorManager.setRunning(false); // Pause any ongoing sensor updates
-    currentSensor = sensorManager.previousDevice();
-    if (currentSensor) {
-        currentSensor->setRedrawPending(true);
-    }
-    delay_ms(10);                   // Small delay to ensure UI responsiveness
-    sensorManager.setRunning(wasRunning); // Resume previous state
+    finishDeviceNavigation(wasRunning, sensorManager.previousDevice());
 }
 
 void SignalsVisualizationGui::goToNextDevice()
 {
-    if (recording)
+    bool wasRunning = false;
+    if (!beginDeviceNavigation(true, wasRunning))
         return;
 
-    const bool wasRunning = sensorManager.isRunning();
-    sensorManager.setRunning(false); // Pause any ongoing sensor updates
-    currentSensor = sensorManager.nextDevice();
-    if (currentSensor) {
-        currentSensor->setRedrawPending(true);
-    }
-    delay_ms(10);                   // Small delay to ensure UI responsiveness
-    sensorManager.setRunning(wasRunning); // Resume previous state
+    finishDeviceNavigation(wasRunning, sensorManager.nextDevice());
 }
 
 void SignalsVisualizationGui::goToFirstDevice()
 {
-    const bool wasRunning = sensorManager.isRunning();
-    sensorManager.setRunning(false); // Pause any ongoing sensor updates
+    bool wasRunning = false;
+    if (!beginDeviceNavigation(false, wasRunning))
+        return;
+
     sensorManager.resetCurrentIndex();
-    currentSensor = sensorManager.getCurrentDevice();
-    if (currentSensor) {
-        currentSensor->setRedrawPending(true);
-    }
-    delay_ms(10);                   // Small delay to ensure UI responsiveness
-    sensorManager.setRunning(wasRunning); // Resume previous state
+    finishDeviceNavigation(wasRunning, sensorManager.getCurrentDevice());
 }
 
 bool SignalsVisualizationGui::syncCurrentDevice()
