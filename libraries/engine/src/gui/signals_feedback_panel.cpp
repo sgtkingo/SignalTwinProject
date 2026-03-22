@@ -72,3 +72,43 @@ void SignalsFeedbackPanel::hideAlert()
         ui_AlertLabel = nullptr;
     }
 }
+
+void SignalsFeedbackPanel::showConfirmationDialog(const char *title,
+                                                  const char *message,
+                                                  const char *buttons[],
+                                                  void *userData,
+                                                  lv_event_cb_t callback)
+{
+    showShadowOverlay();
+
+    lv_obj_t *confirmDialog = lv_msgbox_create(lv_scr_act(), title, message, buttons, true);
+    lv_obj_set_width(confirmDialog, 250);
+    lv_obj_center(confirmDialog);
+    lv_obj_move_foreground(confirmDialog);
+    lv_obj_add_event_cb(confirmDialog, callback, LV_EVENT_ALL, userData);
+}
+
+bool SignalsFeedbackPanel::isConfirmationAccepted(lv_event_t *e, const char *buttonText) const
+{
+    if (!e || lv_event_get_code(e) != LV_EVENT_VALUE_CHANGED) {
+        return false;
+    }
+
+    lv_obj_t *msgbox = lv_event_get_current_target(e);
+    const char *activeText = lv_msgbox_get_active_btn_text(msgbox);
+    return activeText && strcmp(activeText, buttonText) == 0;
+}
+
+void SignalsFeedbackPanel::closeConfirmationDialog(lv_event_t *e)
+{
+    hideShadowOverlay();
+
+    if (!e) {
+        return;
+    }
+
+    lv_obj_t *msgbox = lv_event_get_current_target(e);
+    if (lv_event_get_code(e) != LV_EVENT_DELETE && msgbox) {
+        lv_obj_del(msgbox);
+    }
+}

@@ -788,49 +788,32 @@ void SignalsVisualizationGui::handleClearButtonClick()
     }
 
     static const char *btns[] = {"Yes", ""};
-    showShadowOverlay();
-    // Clear button has different behavior based on recording state
-    char const* message;
-    if(recording){
-        message = "Are you sure you want to scrape this recording?";
-    }
-    else{
-        message = "Are you sure you want to clear the sensor history?";
-    }
-    
-    // Show confirmation dialog before clearing history
-    lv_obj_t *confirmDialog = lv_msgbox_create(lv_scr_act(), "Confirm Clear", message, btns, true);
-    lv_obj_set_width(confirmDialog, 250);
-    lv_obj_center(confirmDialog);
-    lv_obj_move_foreground(confirmDialog);
-    lv_obj_add_event_cb(confirmDialog, [](lv_event_t *e)
-                        {
-        auto self = static_cast<SignalsVisualizationGui*>(lv_event_get_user_data(e));
-        lv_event_code_t code = lv_event_get_code(e);
+    const char *message = recording
+                              ? "Are you sure you want to scrape this recording?"
+                              : "Are you sure you want to clear the sensor history?";
 
-        if (code == LV_EVENT_VALUE_CHANGED)
-        {
-            lv_obj_t *msgbox = lv_event_get_current_target(e);
-            const char *btnText = lv_msgbox_get_active_btn_text(msgbox);
-            if (btnText && strcmp(btnText, "Yes") == 0)
-            {
-                if(self->recording){
+    feedbackPanel.showConfirmationDialog(
+        "Confirm Clear",
+        message,
+        btns,
+        this,
+        [](lv_event_t *e) {
+            auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
+            const lv_event_code_t code = lv_event_get_code(e);
+
+            if (self->feedbackPanel.isConfirmationAccepted(e, "Yes")) {
+                if (self->recording) {
                     self->dataBundleManager.scrapRecording();
-
                     self->handleRecordButtonClick("Recording discarded as requested");
-                }
-                else{
-                    // Clear sensor history
+                } else {
                     self->handleClearConfirmButtonClick();
                 }
+            } else if (code != LV_EVENT_DELETE) {
+                return;
             }
-            self->hideShadowOverlay();
-            lv_obj_del(msgbox);
-        }
-        else if (code == LV_EVENT_DELETE)
-        {
-            self->hideShadowOverlay();
-        } }, LV_EVENT_ALL, this);
+
+            self->feedbackPanel.closeConfirmationDialog(e);
+        });
 }
 
 void SignalsVisualizationGui::handleClearConfirmButtonClick()
@@ -890,41 +873,32 @@ void SignalsVisualizationGui::handleDataBundleShowButtonClick(){
 
 void SignalsVisualizationGui::handleDataBundleDeleteAllButtonClick(){
     static const char *btns[] = {"Yes", ""};
-    showShadowOverlay();
-    // Clear button has different behavior based on recording state
-    char const* message = "Are you sure you want DELETE ALL BUNDLES?";
+    feedbackPanel.showConfirmationDialog(
+        "Confirm Clear (Bundles)",
+        "Are you sure you want DELETE ALL BUNDLES?",
+        btns,
+        this,
+        [](lv_event_t *e) {
+            auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
+            const lv_event_code_t code = lv_event_get_code(e);
 
-    // Show confirmation dialog before clearing history
-    lv_obj_t *confirmDialog = lv_msgbox_create(lv_scr_act(), "Confirm Clear (Bundles)", message, btns, true);
-    lv_obj_set_width(confirmDialog, 250);
-    lv_obj_center(confirmDialog);
-    lv_obj_move_foreground(confirmDialog);
-    lv_obj_add_event_cb(confirmDialog, [](lv_event_t *e)
-                        {
-        auto self = static_cast<SignalsVisualizationGui*>(lv_event_get_user_data(e));
-        lv_event_code_t code = lv_event_get_code(e);
+            if (self->feedbackPanel.isConfirmationAccepted(e, "Yes")) {
+                self->feedbackPanel.closeConfirmationDialog(e);
 
-        if (code == LV_EVENT_VALUE_CHANGED)
-        {
-            lv_obj_t *msgbox = lv_event_get_current_target(e);
-            const char *btnText = lv_msgbox_get_active_btn_text(msgbox);
-            if (btnText && strcmp(btnText, "Yes") == 0)
-            {
-                if(self->recording){
+                if (self->recording) {
                     self->handleStillRecording();
                     return;
                 }
-                self->hideSettingsPanel();
 
+                self->hideSettingsPanel();
                 self->dataBundleManager.deleteAllDataBundles();
+                return;
             }
-            self->hideShadowOverlay();
-            lv_obj_del(msgbox);
-        }
-        else if (code == LV_EVENT_DELETE)
-        {
-            self->hideShadowOverlay();
-        } }, LV_EVENT_ALL, this);
+
+            if (code == LV_EVENT_DELETE) {
+                self->feedbackPanel.closeConfirmationDialog(e);
+            }
+        });
 }
 
 void SignalsVisualizationGui::handleCreditsButtonClick(){
@@ -939,44 +913,28 @@ void SignalsVisualizationGui::handleCreditsButtonClick(){
 void SignalsVisualizationGui::handleStillRecording(){
     if(!recording) return;
 
-        static const char *btns[] = {"Save", "Discard", ""};
-    showShadowOverlay();
-    // Clear button has different behavior based on recording state
-    char const* message = "You are currently recording. Do you want to stop recording?";
-    
-    // Show confirmation dialog before clearing history
-    lv_obj_t *confirmDialog = lv_msgbox_create(lv_scr_act(), "Confirm Clear", message, btns, true);
-    lv_obj_set_width(confirmDialog, 250);
-    lv_obj_center(confirmDialog);
-    lv_obj_move_foreground(confirmDialog);
-    lv_obj_add_event_cb(confirmDialog, [](lv_event_t *e)
-                        {
-        auto self = static_cast<SignalsVisualizationGui*>(lv_event_get_user_data(e));
-        lv_event_code_t code = lv_event_get_code(e);
+    static const char *btns[] = {"Save", "Discard", ""};
+    feedbackPanel.showConfirmationDialog(
+        "Confirm Clear",
+        "You are currently recording. Do you want to stop recording?",
+        btns,
+        this,
+        [](lv_event_t *e) {
+            auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
+            const lv_event_code_t code = lv_event_get_code(e);
 
-        if (code == LV_EVENT_VALUE_CHANGED)
-        {
-            lv_obj_t *msgbox = lv_event_get_current_target(e);
-            const char *btnText = lv_msgbox_get_active_btn_text(msgbox);
-            if (btnText && strcmp(btnText, "Save") == 0)
-            {
+            if (self->feedbackPanel.isConfirmationAccepted(e, "Save")) {
                 self->handleRecordButtonClick(nullptr);
-
                 self->dataBundleManager.saveRecording();
-            }
-            else if (btnText && strcmp(btnText, "Discard") == 0)
-            {
+            } else if (self->feedbackPanel.isConfirmationAccepted(e, "Discard")) {
                 self->handleRecordButtonClick("Recording discarded as requested");
-                
                 self->dataBundleManager.scrapRecording();
+            } else if (code != LV_EVENT_DELETE) {
+                return;
             }
-            self->hideShadowOverlay();
-            lv_obj_del(msgbox);
-        }
-        else if (code == LV_EVENT_DELETE)
-        {
-            self->hideShadowOverlay();
-        } }, LV_EVENT_ALL, this);
+
+            self->feedbackPanel.closeConfirmationDialog(e);
+        });
 }
 
 void SignalsVisualizationGui::hideSettingsPanel()

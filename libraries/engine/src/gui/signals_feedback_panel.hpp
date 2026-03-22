@@ -16,6 +16,13 @@ public:
 
     void showAlert(lv_obj_t *parentWidget, void *userData, const char *message, lv_event_cb_t dismissCallback);
     void hideAlert();
+    void showConfirmationDialog(const char *title,
+                                const char *message,
+                                const char *buttons[],
+                                void *userData,
+                                lv_event_cb_t callback);
+    bool isConfirmationAccepted(lv_event_t *e, const char *buttonText) const;
+    void closeConfirmationDialog(lv_event_t *e);
 };
 
 #endif
