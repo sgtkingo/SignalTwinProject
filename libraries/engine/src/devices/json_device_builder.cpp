@@ -205,9 +205,6 @@ template <typename TSchema>
 void sortByOrder(std::vector<TSchema> &items)
 {
     std::stable_sort(items.begin(), items.end(), [](const TSchema &lhs, const TSchema &rhs) {
-        if (lhs.hasExplicitOrder != rhs.hasExplicitOrder) {
-            return lhs.hasExplicitOrder && !rhs.hasExplicitOrder;
-        }
         if (lhs.order != rhs.order) {
             return lhs.order < rhs.order;
         }
