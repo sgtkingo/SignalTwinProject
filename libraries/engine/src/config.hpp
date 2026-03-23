@@ -28,4 +28,8 @@
 // Uncomment to enable ESP32 platform
 //#define ESP_PLATFORM
 
+// For debugging and testing purposes, you can enable the following macros:
+// #define DATABUNDLE_DEBUG  // For debugging DataBundleManager operations
+// #define PROTOCOL_DEBUG    // For debugging Protocol operations
+
 #endif // CONFIG_ENGINE_H

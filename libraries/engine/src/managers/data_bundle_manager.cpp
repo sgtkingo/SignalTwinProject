@@ -57,7 +57,7 @@ bool DataBundleManager::init()
 
     logMessage("DataBundle Manager initialized successfully");
 
-    #ifdef VISENSORS_DEBUG
+    #ifdef DATABUNDLE_DEBUG
     getSDInfo();
     listAllBundles();
     #endif
@@ -82,7 +82,7 @@ bool DataBundleManager::ensureStorageDirectories()
         //logMessage("Created /DataBundles directory");
     }
 
-    #ifdef VISENSORS_DEBUG
+    #ifdef DATABUNDLE_DEBUG
     // log.txt creation test
     File myFile = SD.open("/DataBundles/log.txt", FILE_WRITE);
 
