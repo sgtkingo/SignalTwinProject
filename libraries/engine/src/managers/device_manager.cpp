@@ -194,6 +194,9 @@ void DeviceManager::print(BaseDevice *device) {
 bool DeviceManager::resync(BaseDevice *device) 
 {
     if(!isRunning()) return false;
+    if(device) {
+        device->requestRuntimeUpdate();
+    }
     return syncDevice(device);
 }
 

@@ -391,6 +391,17 @@ public:
     bool getRedrawPending() const { return redrawPending; }
 
     /**
+     * @brief Mark live runtime values as stale so the next synchronization polls UPDATE.
+     */
+    void requestRuntimeUpdate()
+    {
+        if (usesUpdateChannel())
+        {
+            isValuesSync = false;
+        }
+    }
+
+    /**
      * @brief Get the runtime role of the device.
      *
      * @return DeviceRole The role of the current device.
