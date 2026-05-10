@@ -30,7 +30,7 @@
 
 // For debugging and testing purposes, you can enable the following macros:
 // #define DATABUNDLE_DEBUG  // For debugging DataBundleManager operations
-// #define PROTOCOL_DEBUG    // For debugging Protocol operations
+#define PROTOCOL_DEBUG    // For debugging Protocol operations
 
 // Storage backend selection for all persistent data access.
 #define STORAGE_OPTION_SD 1

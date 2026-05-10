@@ -49,6 +49,9 @@ void DeviceManager::resetPinState(size_t pinIndex)
     detachDeviceFromPin(pinIndex);
     PinMap[pinIndex].pinNumber = static_cast<int>(pinIndex);
     PinMap[pinIndex].locked = false;
+    PinMap[pinIndex].lockReason = PinLockReason::NONE;
+    PinMap[pinIndex].lockDescription = "";
+    PinMap[pinIndex].state = PinState::AVAILABLE;
 }
 
 void DeviceManager::applyAssignedPinsToDevices() const
