@@ -17,7 +17,7 @@ GuiScreenRegistry::GuiScreenRegistry(DeviceCatalog &catalog,
       crashGui(),
       creditsGui(router),
       appSelectionGui(router),
-      communicationSelectionGui(router)
+      communicationSelectionGui(router, deviceManager)
 {
 }
 

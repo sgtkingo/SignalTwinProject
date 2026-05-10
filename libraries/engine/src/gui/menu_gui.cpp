@@ -87,7 +87,7 @@ void ConnectionGui::buildMenu()
             }
 
             auto *self = static_cast<ConnectionGui *>(lv_event_get_user_data(e));
-            int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_target(e))));
+            int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_current_target(e))));
             self->handlePinClick(index);
         }, LV_EVENT_ALL, this);
 
@@ -234,7 +234,7 @@ void ConnectionGui::handleConnectButtonClick()
 void ConnectionGui::handlePinClick(int pinIndex)
 {
     BaseDevice *device = browserState.getSelectionDevice();
-    if (!device || pinIndex < 0) {
+    if (!device || pinIndex < 0 || pinIndex >= NUM_PINS) {
         splashMessage("No device selected.");
         return;
     }
@@ -246,9 +246,13 @@ void ConnectionGui::handlePinClick(int pinIndex)
 
     BaseDevice *assignedDevice = deviceManager.getAssignedDevice(pinIndex);
     if (assignedDevice == device) {
-        deviceManager.unassignDeviceFromPin(pinIndex);
+        if (!deviceManager.unassignDeviceFromPin(pinIndex)) {
+            splashMessage("Failed to unassign device from pin.");
+        }
     } else if (assignedDevice == nullptr) {
-        deviceManager.assignDeviceToPin(device, pinIndex);
+        if (!deviceManager.assignDeviceToPin(device, pinIndex)) {
+            splashMessage("Failed to assign device to pin.");
+        }
     } else {
         splashMessage("This pin is used by another device.");
     }

@@ -26,7 +26,7 @@ void SettingsGui::addModeButton(const char *text, DefaultCommunicationMode mode,
         }
 
         auto *self = static_cast<SettingsGui *>(lv_event_get_user_data(e));
-        auto mode = static_cast<DefaultCommunicationMode>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_target(e))));
+        auto mode = static_cast<DefaultCommunicationMode>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_current_target(e))));
         self->router.setDefaultCommunicationMode(mode);
         self->showSettings();
     }, LV_EVENT_ALL, this);

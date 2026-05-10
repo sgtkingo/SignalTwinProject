@@ -131,7 +131,7 @@ void LibraryGui::populateDeviceList()
             }
 
             auto *self = static_cast<LibraryGui *>(lv_event_get_user_data(e));
-            int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_target(e))));
+            int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_current_target(e))));
             self->setSelectedDevice(index);
         }, LV_EVENT_ALL, this);
         lv_obj_set_user_data(button, reinterpret_cast<void *>(static_cast<intptr_t>(i)));

@@ -118,7 +118,7 @@ void SignalsVisualizationGui::createSignalScrollPanel()
             }
 
             auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
-            const int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_target(e))));
+            const int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_current_target(e))));
             self->handleDropdownConfigChanged(static_cast<size_t>(index));
         },
         [](lv_event_t *e) {
@@ -127,7 +127,7 @@ void SignalsVisualizationGui::createSignalScrollPanel()
             }
 
             auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
-            const int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_target(e))));
+            const int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_current_target(e))));
             self->handleSliderConfigChanged(static_cast<size_t>(index));
         },
         [](lv_event_t *e) {
@@ -136,7 +136,7 @@ void SignalsVisualizationGui::createSignalScrollPanel()
             }
 
             auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
-            const int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_target(e))));
+            const int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_current_target(e))));
             self->handleTextConfigSubmitted(static_cast<size_t>(index));
         });
 }

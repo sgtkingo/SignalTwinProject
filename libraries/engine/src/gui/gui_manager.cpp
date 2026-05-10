@@ -252,6 +252,11 @@ void GuiManager::openVisualizationFlow()
 
 void GuiManager::completeCommunicationSelection(DefaultCommunicationMode mode)
 {
+    if (mode != DefaultCommunicationMode::CABLE) {
+        splashMessage("Wireless connection is not supported yet.");
+        return;
+    }
+
     navigateTo(navigationPolicy.finishCommunicationSelection(mode));
 }
 

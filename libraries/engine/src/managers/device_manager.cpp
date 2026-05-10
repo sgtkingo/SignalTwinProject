@@ -139,6 +139,11 @@ bool DeviceManager::ensureProtocolInitialized()
         return true;
     }
 
+    return initializeProtocolConnection();
+}
+
+bool DeviceManager::initializeProtocolConnection()
+{
     logMessage("\tinitializing protocol on demand...\n");
 
     ResponseStatus response {ResponseStatusEnum::ERROR, "Protocol initialization failed", {}};
@@ -158,8 +163,6 @@ bool DeviceManager::ensureProtocolInitialized()
     logMessage("\t\tProtocol initialization failed permanently: %s\n", response.error.c_str());
     return false;
 }
-
-
 
 BaseDevice* DeviceManager::getDevice(std::string uid) {
     return catalog.getDevice(uid);

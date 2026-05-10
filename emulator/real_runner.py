@@ -2,7 +2,7 @@
 import os
 import time
 import threading
-from engine.emulator import VSCPEmulator
+from engine.emulator import VSCPEmulator, available_serial_ports, load_catalog_defaults
 from engine.sensors import load_sensors
 
 UPDATE_PERIOD_S = float(os.getenv("VSCP_UPDATE_PERIOD", "0.5"))
@@ -45,10 +45,8 @@ class RealSensorBridge:
             self.t.join(timeout=1.0)
 
 if __name__ == "__main__":
-    import serial.tools.list_ports
-    
     # Get available COM ports
-    available_ports = [port.device for port in serial.tools.list_ports.comports()]
+    available_ports = available_serial_ports()
     
     if available_ports:
         default_port = available_ports[0]
@@ -61,15 +59,14 @@ if __name__ == "__main__":
     if not port:
         port = default_port
         
-    # Load virtual sensors
-    virtual_sensors = {
-            "mic_001": {"dBFS": 89.3, "peak": 10.0, "type": "Microphone"},
-            "cam_001": {"lux_est": 10.4, "type": "Lux meter"},
-            "cpu_temp": {"temp": 55.0, "type": "CPU Temperature"},
-    }
+    # Load the same device catalog that the firmware uses. Real adapters overwrite
+    # matching runtime values as samples arrive.
+    virtual_sensors, metadata = load_catalog_defaults()
     if not virtual_sensors:
-        print("No virtual sensors found. Exiting.")
+        print("No catalog devices found. Exiting.")
         raise SystemExit(1)
+    print(f"Using catalog {metadata.get('path', 'fallback defaults')}")
+    print(f"Catalog app={metadata.get('application')} db={metadata.get('version')}")
     emu = VSCPEmulator(virtual_sensors, port=port, baudrate=115200)
 
     if not emu.connect_serial():
@@ -78,8 +75,8 @@ if __name__ == "__main__":
 
     threading.Thread(target=emu.listen_loop, daemon=True).start()
 
-    # Initialize protocol so UPDATE works immediately
-    #print(emu.process_request("?type=INIT&app=RealRunner&db=1.0.0&api=1.2"))
+    # The firmware initializes the protocol with:
+    # ?type=INIT&app=<catalog application>&db=<catalog version>&api=1.3
 
     # Start real sensor bridge
     real_sensors = load_sensors()
@@ -87,7 +84,7 @@ if __name__ == "__main__":
     bridge.start()
 
     print("Real sensors active:", [f"{s.uid}({s.kind})" for s in real_sensors])
-    print("Send UPDATE, e.g.: ?type=UPDATE&id=mic_001  |  ?type=UPDATE&id=cam_001  |  ?type=UPDATE&id=cpu_temp")
+    print("Send INIT first, then UPDATE, e.g.: ?type=UPDATE&id=mic_001 | ?type=UPDATE&id=S01")
 
     try:
         while True:

@@ -1,453 +1,473 @@
 #!/usr/bin/env python3
 """
-Virtual Sensors Protocol (VSCP) Emulator
-========================================
+Virtual Sensors Communication Protocol (VSCP) emulator.
 
-Reactive client emulator that implements the complete VSCP communication protocol
-as specified in vscp.hpp. Handles all protocol methods with dummy responses.
+This module mirrors the protocol implemented by libraries/vscp/src/protocol.cpp.
+The wire format is a URL-like query string:
 
-Protocol Methods:
-- INIT: Handshake and version compatibility check
-- UPDATE: Sensor data update requests
-- CONFIG: Configuration changes from HMI to HW
-- RESET: Sensor reset operations
-- CONNECT: Connect sensor to specific pin
-- DISCONNECT: Disconnect sensor from pin
+    ?type=UPDATE&id=S01
+    ?id=S01&status=1&temp=24&humi=58
 
-Protocol Format: URL-like with key-value pairs
-Request: ?type=METHOD&param1=value1&param2=value2
-Response: ?status=1/0&param1=value1&error=message
-
-Author: Generated for VSCP Protocol Testing
+Supported API 1.3 requests:
+INIT, UPDATE, CONFIG, CONTROL, RESET, CONNECT, DISCONNECT.
 """
 
-import serial
-import time
+from __future__ import annotations
+
+import json
+import importlib
 import random
 import threading
-import re
-from urllib.parse import parse_qs, unquote
-from typing import Dict, Any, Optional
+import time
+from pathlib import Path
+from typing import Any, Dict, Optional
+from urllib.parse import unquote
+
+try:
+    import serial
+except ModuleNotFoundError:
+    serial = None
+
+
+PROTOCOL_API_VERSION = "1.3"
+DEFAULT_DB_VERSION = "1.0"
+DEFAULT_APP_NAME = "board"
+
+
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+def _catalog_path() -> Optional[Path]:
+    for candidate in (_repo_root() / "data" / "DB.json", _repo_root() / "ui" / "data" / "DB.json"):
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def _stringify(value: Any) -> str:
+    if isinstance(value, bool):
+        return "1" if value else "0"
+    return str(value)
+
+
+def available_serial_ports() -> list[str]:
+    if serial is None:
+        return []
+
+    try:
+        list_ports = importlib.import_module("serial.tools.list_ports")
+    except Exception:
+        return []
+
+    return [port.device for port in list_ports.comports()]
+
+
+def load_catalog_defaults(path: Optional[str | Path] = None) -> tuple[Dict[str, Dict[str, Any]], Dict[str, Any]]:
+    """Load emulator device defaults from the project device catalog."""
+    catalog_file = Path(path) if path else _catalog_path()
+    if not catalog_file or not catalog_file.exists():
+        return default_sensor_values(), {
+            "application": DEFAULT_APP_NAME,
+            "version": DEFAULT_DB_VERSION,
+        }
+
+    with catalog_file.open("r", encoding="utf-8") as fh:
+        catalog = json.load(fh)
+
+    devices: Dict[str, Dict[str, Any]] = {}
+    for uid, device in catalog.get("devices", {}).items():
+        defaults = device.get("default", {})
+        payload: Dict[str, Any] = {}
+
+        for key, schema in device.get("values", {}).items():
+            default_values = defaults.get("values", {})
+            value = default_values.get(key, schema.get("value", 0))
+            payload[key] = value
+
+        restrictions = {}
+        for key, schema in device.get("values", {}).items():
+            schema_restrictions = schema.get("restrictions", {})
+            if schema_restrictions:
+                restrictions[key] = schema_restrictions
+        if restrictions:
+            payload["_restrictions"] = restrictions
+
+        payload["type"] = device.get("type", uid)
+
+        configs = {}
+        for key, schema in device.get("configs", {}).items():
+            default_configs = defaults.get("configs", {})
+            configs[key] = default_configs.get(key, schema.get("value", ""))
+
+        if configs:
+            payload["_configs"] = configs
+
+        role = device.get("role", "sensor")
+        payload["_role"] = role
+        devices[uid] = payload
+
+    return devices, {
+        "application": catalog.get("application", DEFAULT_APP_NAME),
+        "version": str(catalog.get("version", DEFAULT_DB_VERSION)),
+        "path": str(catalog_file),
+    }
+
+
+def default_sensor_values() -> Dict[str, Dict[str, Any]]:
+    """Fallback catalog matching the current bundled DB.json."""
+    return {
+        "mic_001": {"dBFS": 0.0, "peak": 0.0, "type": "SLM (dBFS)", "_role": "sensor"},
+        "cam_001": {"lux_est": 0.0, "type": "CAM Lux meter", "_role": "sensor"},
+        "cpu_temp": {"temp": 0.0, "type": "CPU Temp", "_role": "sensor"},
+        "S00": {"temp": 0.0, "alarm": "0", "type": "DS18B20", "_configs": {"Res": 2}, "_role": "sensor"},
+        "S01": {"temp": 0, "humi": 0, "type": "DHT11", "_configs": {"Unit": "C"}, "_role": "sensor"},
+        "S15": {"intensity": 0, "type": "PhotoResistor", "_configs": {"Res": 5}, "_role": "sensor"},
+        "A00": {
+            "type": "PWM LED Driver",
+            "_configs": {"Enabled": "1", "Brightness": 40},
+            "_role": "actuator",
+        },
+    }
+
 
 class VSCPEmulator:
-    """Virtual Sensors Communication Protocol Emulator"""
-    
-    def __init__(self, sensors:dict, port='COM3', baudrate=115200, timeout=0.1):
-        """Initialize the VSCP emulator"""
-        self.API_VERSION = "1.2"
-        self.DB_VERSION = "1.0.0"
-        self.APP_NAME = "VSCP Emulator"
+    """Reactive VSCP endpoint used by virtual and real sensor runners."""
+
+    def __init__(
+        self,
+        sensors: Optional[Dict[str, Dict[str, Any]]] = None,
+        port: str = "COM3",
+        baudrate: int = 115200,
+        timeout: float = 0.1,
+        api_version: str = PROTOCOL_API_VERSION,
+        db_version: Optional[str] = None,
+        app_name: Optional[str] = None,
+        strict_api: bool = True,
+    ):
+        catalog_sensors, metadata = load_catalog_defaults()
+
+        self.API_VERSION = api_version
+        self.DB_VERSION = db_version or metadata.get("version", DEFAULT_DB_VERSION)
+        self.APP_NAME = app_name or metadata.get("application", DEFAULT_APP_NAME)
         self.APP_VERSION = "1.0.0"
-        
-        # Protocol state
+        self.strict_api = strict_api
+
         self.initialized = False
-        self.connected_sensors = {}  # uid -> pin mapping
-        self.sensor_configs = {}     # uid -> config dict
-        
-        # Serial connection
+        self.connected_sensors: Dict[str, list[int]] = {}
+        self.sensor_configs: Dict[str, Dict[str, str]] = {}
+        self.control_values: Dict[str, Dict[str, str]] = {}
+
         self.port = port
         self.baudrate = baudrate
         self.timeout = timeout
         self.ser = None
         self.running = False
-        
-        # Dummy sensor data
-        self.sensor_data = sensors
-        
+
+        self.sensor_data = sensors if sensors is not None else catalog_sensors
+        for uid, payload in self.sensor_data.items():
+            configs = payload.get("_configs", {})
+            if isinstance(configs, dict):
+                self.sensor_configs[uid] = {key: _stringify(value) for key, value in configs.items()}
+
     def connect_serial(self) -> bool:
-        """Connect to serial port"""
+        if serial is None:
+            print("pyserial is not installed. Install emulator/requirements.txt before using serial mode.")
+            return False
+
         try:
-            self.ser = serial.Serial(
-                port=self.port,
-                baudrate=self.baudrate,
-                timeout=self.timeout
-            )
+            self.ser = serial.Serial(port=self.port, baudrate=self.baudrate, timeout=self.timeout)
             if not self.ser.is_open:
                 self.ser.open()
-            print(f"✓ Connected to {self.port} at {self.baudrate} baud")
+            print(f"Connected to {self.port} at {self.baudrate} baud")
             return True
-        except Exception as e:
-            print(f"✗ Failed to connect to {self.port}: {e}")
+        except Exception as exc:
+            print(f"Failed to connect to {self.port}: {exc}")
             return False
-    
+
     def disconnect_serial(self):
-        """Disconnect from serial port"""
         if self.ser and self.ser.is_open:
             self.ser.close()
-            print("✓ Serial connection closed")
-    
+            print("Serial connection closed")
+
     def parse_message(self, message: str) -> Dict[str, str]:
-        """Parse protocol message into key-value pairs"""
-        params = {}
-        
-        # Remove leading '?' if present
+        params: Dict[str, str] = {}
         clean_message = message.strip()
-        if clean_message.startswith('?'):
+        if clean_message.startswith("?"):
             clean_message = clean_message[1:]
-        
-        # Split by '&' and parse key=value pairs
-        if clean_message:
-            pairs = clean_message.split('&')
-            for pair in pairs:
-                if '=' in pair:
-                    key, value = pair.split('=', 1)
-                    params[key.strip()] = unquote(value.strip())
-        
+
+        for pair in clean_message.split("&"):
+            if "=" not in pair:
+                continue
+            key, value = pair.split("=", 1)
+            key = key.strip()
+            if key:
+                params[key] = unquote(value.strip())
+
         return params
-    
+
     def build_message(self, params: Dict[str, Any]) -> str:
-        """Build protocol message from key-value pairs"""
         if not params:
             return "?status=0&error=No parameters"
-        
-        parts = []
-        for key, value in params.items():
-            parts.append(f"{key}={value}")
-        
-        return "?" + "&".join(parts)
-    
-    def handle_init(self, params: Dict[str, str]) -> str:
-        """Handle INIT method - handshake and version check"""
-        print(f"🔄 INIT request: {params}")
-        
-        # Dummy response for testing
-        response_params = {'status': '1'}
-        self.initialized = True
-        return self.build_message(response_params)
-        
-        # Extract parameters
-        app = params.get('app', 'Unknown')
-        dbversion = params.get('db', '0.0.0')
-        api = params.get('api', '0.0.0')
-        
-        # Simulate version compatibility check
-        response_params = {}
-        
-        if api == self.API_VERSION and dbversion == self.DB_VERSION:
-            self.initialized = True
-            response_params = {
-                'status': '1',
-                'message': f'Initialized with {app}'
-            }
-            print(f"✓ Initialization successful for {app}")
-        else:
-            response_params = {
-                'status': '0',
-                'error': f'Version mismatch - API:{api} (need {self.API_VERSION}), DB:{dbversion} (need {self.DB_VERSION})'
-            }
-            print(f"✗ Version mismatch: API {api}, DB {dbversion}")
-        
-        return self.build_message(response_params)
-    
-    def handle_update(self, params: Dict[str, str]) -> str:
-        """Handle UPDATE method - return sensor data"""
-        uid = params.get('id', '')
-        print(f"📊 UPDATE request for sensor: {uid}")
-        
-        if not self.initialized:
-            return self.build_message({'status': '0', 'error': 'Protocol not initialized'})
-        
-        if uid in self.sensor_data:
-            # Get sensor data and add status
-            sensor_info = self.sensor_data[uid].copy()
-            
-            # Add some random variation to make it realistic
-            for key, value in sensor_info.items():
-                if key != 'type' and isinstance(value, (int, float)):
-                    if isinstance(value, int):
-                        sensor_info[key] = value + random.randint(-2, 2)
-                    else:
-                        sensor_info[key] = round(value + random.uniform(-0.5, 0.5), 2)
-            
-            response_params = {'id': uid, 'status': '1'}
-            response_params.update(sensor_info)
-            
-            print(f"✓ Sensor {uid} data: {sensor_info}")
-        else:
-            response_params = {
-                'id': uid,
-                'status': '0',
-                'error': f'Sensor {uid} not found'
-            }
-            print(f"✗ Sensor {uid} not found")
-        
-        return self.build_message(response_params)
-    
-    def handle_config(self, params: Dict[str, str]) -> str:
-        """Handle CONFIG method - configure sensor"""
-        uid = params.get('id', '')
-        print(f"⚙️  CONFIG request for sensor: {uid}")
-        
-        if not self.initialized:
-            return self.build_message({'status': '0', 'error': 'Protocol not initialized'})
-        
-        # Extract configuration parameters (exclude 'type' and 'id')
-        config_params = {k: v for k, v in params.items() if k not in ['type', 'id']}
-        
-        if uid:
-            # Store configuration
-            self.sensor_configs[uid] = config_params
-            response_params = {
-                'id': uid,
-                'status': '1',
-                'message': f'Configuration applied: {config_params}'
-            }
-            print(f"✓ Sensor {uid} configured: {config_params}")
-        else:
-            response_params = {
-                'id': uid,
-                'status': '0',
-                'error': 'Invalid sensor ID'
-            }
-            print(f"✗ Invalid sensor ID: {uid}")
-        
-        return self.build_message(response_params)
-    
-    def handle_reset(self, params: Dict[str, str]) -> str:
-        """Handle RESET method - reset sensor"""
-        uid = params.get('id', '')
-        print(f"🔄 RESET request for sensor: {uid}")
-        
-        if not self.initialized:
-            return self.build_message({'status': '0', 'error': 'Protocol not initialized'})
-        
-        if uid in self.sensor_data or uid == 'all':
-            # Reset sensor(s)
-            if uid == 'all':
-                self.sensor_configs.clear()
-                self.connected_sensors.clear()
-                print("✓ All sensors reset")
-            else:
-                self.sensor_configs.pop(uid, None)
-                self.connected_sensors.pop(uid, None)
-                print(f"✓ Sensor {uid} reset")
-            
-            response_params = {
-                'id': uid,
-                'status': '1'
-            }
-        else:
-            response_params = {
-                'id': uid,
-                'status': '0',
-                'error': f'Sensor {uid} not found'
-            }
-            print(f"✗ Sensor {uid} not found for reset")
-        
-        return self.build_message(response_params)
-    
-    def handle_connect(self, params: Dict[str, str]) -> str:
-        """Handle CONNECT method - connect sensor to pin"""
-        uid = params.get('id', '')
-        pins = params.get('pins', '')
-        print(f"🔌 CONNECT request: sensor {uid} to pins {pins}")
-        
-        if not self.initialized:
-            return self.build_message({'status': '0', 'error': 'Protocol not initialized'})
-        
-        if uid and pins:
-            try:
-                pins_num = [int(pin) for pin in pins.split(',')]
-                # Check if pin is already used
-                used_by = None
-                for sensor_id, used_pin in self.connected_sensors.items():
-                    if used_pin in pins_num:
-                        used_by = sensor_id
-                        break
-                
-                if used_by and used_by != uid:
-                    response_params = {
-                        'id': uid,
-                        'status': '0',
-                        'error': f'Pins {pins} already used by sensor {used_by}'
-                    }
-                    print(f"✗ Pins {pins} conflict: used by {used_by}")
-                else:
-                    self.connected_sensors[uid] = pins_num
-                    response_params = {
-                        'id': uid,
-                        'status': '1'
-                    }
-                    print(f"✓ Sensor {uid} connected to pins {pins}")
+        return "?" + "&".join(f"{key}={_stringify(value)}" for key, value in params.items())
 
-            except ValueError:
-                response_params = {
-                    'id': uid,
-                    'status': '0',
-                    'error': f'Invalid pin number: {pins}'
-                }
-                print(f"✗ Invalid pin number: {pins}")
-        else:
-            response_params = {
-                'id': uid,
-                'status': '0',
-                'error': 'Missing sensor ID or pin number'
-            }
-            print(f"✗ Missing parameters: uid={uid}, pins={pins}")
-        
-        return self.build_message(response_params)
-    
-    def handle_disconnect(self, params: Dict[str, str]) -> str:
-        """Handle DISCONNECT method - disconnect sensor from pin"""
-        uid = params.get('id', '')
-        print(f"🔌 DISCONNECT request for sensor: {uid}")
-        
-        if not self.initialized:
-            return self.build_message({'status': '0', 'error': 'Protocol not initialized'})
-        
-        if uid in self.connected_sensors:
-            pin = self.connected_sensors.pop(uid)
-            response_params = {
-                'id': uid,
-                'status': '1',
-                'pin': str(pin)
-            }
-            print(f"✓ Sensor {uid} disconnected from pin {pin}")
-        else:
-            response_params = {
-                'id': uid,
-                'status': '0',
-                'error': f'Sensor {uid} not connected'
-            }
-            print(f"✗ Sensor {uid} not connected")
-        
-        return self.build_message(response_params)
-    
-    def process_request(self, message: str) -> str:
-        """Process incoming protocol request"""
-        params = self.parse_message(message)
-        request_type = params.get('type', '').upper()
-        
-        # Route to appropriate handler
-        handlers = {
-            'INIT': self.handle_init,
-            'UPDATE': self.handle_update,
-            'CONFIG': self.handle_config,
-            'RESET': self.handle_reset,
-            'CONNECT': self.handle_connect,
-            'DISCONNECT': self.handle_disconnect
-        }
-        
-        if request_type in handlers:
-            return handlers[request_type](params)
-        else:
+    def _is_known_device(self, uid: str) -> bool:
+        return uid in self.sensor_data
+
+    def _require_initialized(self) -> Optional[str]:
+        if self.initialized:
+            return None
+        return self.build_message({"status": "0", "error": "Protocol not initialized"})
+
+    def _require_device_id(self, uid: str) -> Optional[str]:
+        if not uid:
+            return self.build_message({"id": uid, "status": "0", "error": "UID cannot be empty"})
+        if not self._is_known_device(uid):
+            return self.build_message({"id": uid, "status": "0", "error": f"Device {uid} not found"})
+        return None
+
+    def handle_init(self, params: Dict[str, str]) -> str:
+        app = params.get("app", "")
+        db = params.get("db", "")
+        api = params.get("api", "")
+        print(f"INIT request: app={app or '-'} db={db or '-'} api={api or '-'}")
+
+        if self.strict_api and api and api != self.API_VERSION:
             return self.build_message({
-                'status': '0',
-                'error': f'Unknown request type: {request_type}'
+                "status": "0",
+                "error": f"API mismatch - got {api}, expected {self.API_VERSION}",
             })
-    
+
+        if db and db != self.DB_VERSION:
+            print(f"DB version differs: HMI={db}, emulator={self.DB_VERSION}; accepting for emulator run")
+
+        self.initialized = True
+        return self.build_message({"status": "1"})
+
+    def _runtime_payload(self, uid: str) -> Dict[str, Any]:
+        payload = {}
+        restrictions = self.sensor_data[uid].get("_restrictions", {})
+        for key, value in self.sensor_data[uid].items():
+            if key.startswith("_") or key == "type":
+                continue
+            if isinstance(value, (int, float)):
+                jitter = random.randint(-2, 2) if isinstance(value, int) else random.uniform(-0.5, 0.5)
+                next_value = value + jitter
+                restriction = restrictions.get(key, {})
+                if "min" in restriction:
+                    next_value = max(float(restriction["min"]), next_value)
+                if "max" in restriction:
+                    next_value = min(float(restriction["max"]), next_value)
+                payload[key] = round(next_value, 2) if isinstance(value, float) else int(round(next_value))
+            else:
+                payload[key] = value
+        return payload
+
+    def handle_update(self, params: Dict[str, str]) -> str:
+        error = self._require_initialized()
+        if error:
+            return error
+
+        uid = params.get("id", "")
+        error = self._require_device_id(uid)
+        if error:
+            return error
+
+        response = {"id": uid, "status": "1"}
+        response.update(self._runtime_payload(uid))
+        print(f"UPDATE {uid}: {response}")
+        return self.build_message(response)
+
+    def handle_config(self, params: Dict[str, str]) -> str:
+        error = self._require_initialized()
+        if error:
+            return error
+
+        uid = params.get("id", "")
+        error = self._require_device_id(uid)
+        if error:
+            return error
+
+        config_params = {key: value for key, value in params.items() if key not in {"type", "id"}}
+        self.sensor_configs.setdefault(uid, {}).update(config_params)
+        print(f"CONFIG {uid}: {config_params}")
+        return self.build_message({"id": uid, "status": "1"})
+
+    def handle_control(self, params: Dict[str, str]) -> str:
+        error = self._require_initialized()
+        if error:
+            return error
+
+        uid = params.get("id", "")
+        error = self._require_device_id(uid)
+        if error:
+            return error
+
+        control_params = {key: value for key, value in params.items() if key not in {"type", "id"}}
+        self.control_values.setdefault(uid, {}).update(control_params)
+        print(f"CONTROL {uid}: {control_params}")
+        return self.build_message({"id": uid, "status": "1"})
+
+    def handle_reset(self, params: Dict[str, str]) -> str:
+        error = self._require_initialized()
+        if error:
+            return error
+
+        uid = params.get("id", "")
+        if uid == "all":
+            self.sensor_configs.clear()
+            self.control_values.clear()
+            self.connected_sensors.clear()
+            return self.build_message({"id": uid, "status": "1"})
+
+        error = self._require_device_id(uid)
+        if error:
+            return error
+
+        self.sensor_configs.pop(uid, None)
+        self.control_values.pop(uid, None)
+        self.connected_sensors.pop(uid, None)
+        print(f"RESET {uid}")
+        return self.build_message({"id": uid, "status": "1"})
+
+    def handle_connect(self, params: Dict[str, str]) -> str:
+        error = self._require_initialized()
+        if error:
+            return error
+
+        uid = params.get("id", "")
+        pins = params.get("pins", "")
+        error = self._require_device_id(uid)
+        if error:
+            return error
+
+        if not pins:
+            return self.build_message({"id": uid, "status": "0", "error": "Missing pins"})
+
+        try:
+            pin_list = [int(pin.strip()) for pin in pins.split(",") if pin.strip()]
+        except ValueError:
+            return self.build_message({"id": uid, "status": "0", "error": f"Invalid pin number: {pins}"})
+
+        if not pin_list:
+            return self.build_message({"id": uid, "status": "0", "error": "Missing pins"})
+
+        requested = set(pin_list)
+        for other_uid, used_pins in self.connected_sensors.items():
+            if other_uid != uid and requested.intersection(used_pins):
+                return self.build_message({
+                    "id": uid,
+                    "status": "0",
+                    "error": f"Pins {pins} already used by device {other_uid}",
+                })
+
+        self.connected_sensors[uid] = pin_list
+        print(f"CONNECT {uid}: pins={pins}")
+        return self.build_message({"id": uid, "status": "1"})
+
+    def handle_disconnect(self, params: Dict[str, str]) -> str:
+        error = self._require_initialized()
+        if error:
+            return error
+
+        uid = params.get("id", "")
+        error = self._require_device_id(uid)
+        if error:
+            return error
+
+        self.connected_sensors.pop(uid, None)
+        print(f"DISCONNECT {uid}")
+        return self.build_message({"id": uid, "status": "1"})
+
+    def process_request(self, message: str) -> str:
+        params = self.parse_message(message)
+        request_type = params.get("type", "").upper()
+        handlers = {
+            "INIT": self.handle_init,
+            "UPDATE": self.handle_update,
+            "CONFIG": self.handle_config,
+            "CONTROL": self.handle_control,
+            "RESET": self.handle_reset,
+            "CONNECT": self.handle_connect,
+            "DISCONNECT": self.handle_disconnect,
+        }
+
+        handler = handlers.get(request_type)
+        if not handler:
+            return self.build_message({"status": "0", "error": f"Unknown request type: {request_type}"})
+        return handler(params)
+
+    def _extract_messages(self, buffer: str) -> tuple[list[str], str]:
+        messages = []
+        while "\n" in buffer:
+            line, buffer = buffer.split("\n", 1)
+            qmark_index = line.find("?")
+            if qmark_index != -1:
+                line = line[qmark_index:].strip()
+                if line:
+                    messages.append(line)
+        return messages, buffer
+
     def listen_loop(self):
-        """Main listening loop for incoming requests"""
-        print("🎧 Listening for protocol requests...")
+        print("Listening for VSCP requests...")
         buffer = ""
-        
+
         while self.running:
             try:
                 if self.ser and self.ser.in_waiting > 0:
-                    data = self.ser.read(self.ser.in_waiting).decode('utf-8', errors='ignore')
+                    data = self.ser.read(self.ser.in_waiting).decode("utf-8", errors="ignore")
                     buffer += data
-                    
-                    if data and '\n' in buffer:
-                        print(f"DEBUG: {data}") 
-                        #print(f"DEBUG BUFFER: {buffer}")
-                    # Process complete messages (ending with newline or containing '?')
-                    while '\n' in buffer or '?' in buffer:
-                        if '\n' in buffer:
-                            line, buffer = buffer.split('\n', 1)
-                        else:
-                            # If no newline but contains '?', process the whole buffer
-                            line = buffer
-                            buffer = ""
-                        
-                        line = line.strip()
-                        #print(f"DEBUG LINE: {line}, first char: {line[0] if line else 'N/A'}, ASCII: {ord(line[0])}")
-                        # Substring from ? char if exists
-                        qmark_index = line.find('?')
-                        if qmark_index != -1:
-                            line = line[qmark_index:]
-                        if line and line.startswith('?'):
-                            print(f"📨 Received: {line}")
-                            response = self.process_request(line)
-                            
-                            # Send response
-                            if response:
-                                self.ser.write((response + '\n').encode('utf-8'))
-                                print(f"📤 Sent: {response}")
-                
-                time.sleep(0.01)  # Small delay to prevent busy waiting
-                
-            except Exception as e:
-                print(f"❌ Error in listen loop: {e}")
+                    messages, buffer = self._extract_messages(buffer)
+
+                    for message in messages:
+                        print(f"Received: {message}")
+                        response = self.process_request(message)
+                        if response:
+                            self.ser.write((response + "\n").encode("utf-8"))
+                            print(f"Sent: {response}")
+
+                time.sleep(0.01)
+            except Exception as exc:
+                print(f"Error in listen loop: {exc}")
                 time.sleep(0.1)
-    
+
     def run(self):
-        """Start the emulator"""
-        print("🚀 Starting VSCP Emulator...")
-        print(f"   API Version: {self.API_VERSION}")
-        print(f"   DB Version: {self.DB_VERSION}")
-        print(f"   Available sensors: {list(self.sensor_data.keys())}")
-        
+        print("Starting VSCP Emulator")
+        print(f"  API Version: {self.API_VERSION}")
+        print(f"  DB Version: {self.DB_VERSION}")
+        print(f"  App: {self.APP_NAME}")
+        print(f"  Devices: {', '.join(self.sensor_data.keys())}")
+
         if not self.connect_serial():
             return
-        
+
         self.running = True
-        
-        # Start listening thread
         listen_thread = threading.Thread(target=self.listen_loop, daemon=True)
         listen_thread.start()
-        
+
         try:
-            print("\n💡 Emulator ready! Send protocol requests to test.")
-            print("   Example: ?type=INIT&app=TestApp&version=1.0.0&dbversion=1.0.0&api=1.0")
-            print("   Press Ctrl+C to stop\n")
-            
-            # Keep main thread alive
+            print("Emulator ready. Example: ?type=INIT&app=board&db=1.0&api=1.3")
             while True:
                 time.sleep(1)
-                
         except KeyboardInterrupt:
-            print("\n🛑 Shutting down emulator...")
-        
+            print("Shutting down emulator...")
         finally:
             self.running = False
             self.disconnect_serial()
 
+
 def main():
-    """Main entry point"""
-    import serial.tools.list_ports
-    
-    # Get available COM ports
-    available_ports = [port.device for port in serial.tools.list_ports.comports()]
-    
+    available_ports = available_serial_ports()
     if available_ports:
         default_port = available_ports[0]
         print(f"Available COM ports: {', '.join(available_ports)}")
     else:
-        default_port = 'COM8'
+        default_port = "COM8"
         print("No COM ports detected, using default COM8")
-    
-    port = input(f"Enter serial port (default: {default_port}): ").strip()
-    if not port:
-        port = default_port
-    
-    sensors = {
-            "0": {"temp": 25.5, "alarm": 60.2, "type": "DHT22"},
-            "1": {"temp": 25.5, "humi": 80},
-            "15": {"intensity": 85, "type": "Light"},
-            "2": {"Pressure": 1013.25, "Temperature": 22.1, "type": "BMP280"},
-            "3": {"X": 45, "Y": 78, "Button": 0, "type": "Joystick"},
-            "5": {"MagField": 12.5, "Detected": 0, "type": "Magnetic"},
-            "imu_001": {
-                "acm_x": -2.1, "acm_y": 0.8, "acm_z": 9.8,
-                "gyr_x": 0.05, "gyr_y": -0.02, "gyr_z": 0.01,
-                "type": "IMU"
-            },
-            "mic_001": {"dBFS": 89.3, "peak": 10.0, "type": "Microphone"},
-            "cam_001": {"lux_est": 10.4, "type": "Lux meter"},
-            "cpu_temp": {"temp": 55.0, "type": "CPU Temperature"},
-        }
-    emulator = VSCPEmulator(sensors, port=port, baudrate=115200)
-    emulator.run()
+
+    port = input(f"Enter serial port (default: {default_port}): ").strip() or default_port
+    VSCPEmulator(port=port, baudrate=115200).run()
+
 
 if __name__ == "__main__":
     main()

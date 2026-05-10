@@ -564,7 +564,7 @@ void DataBundleSelectionGui::handleClearButtonClick(unsigned char index)
     lv_obj_add_event_cb(confirmDialog, [](lv_event_t *e)
                         {
         auto self = static_cast<DataBundleSelectionGui*>(lv_event_get_user_data(e));
-        int index = (intptr_t)lv_obj_get_user_data(lv_event_get_target(e));
+        int index = (intptr_t)lv_obj_get_user_data(lv_event_get_current_target(e));
         lv_event_code_t code = lv_event_get_code(e);
 
         if (code == LV_EVENT_VALUE_CHANGED)

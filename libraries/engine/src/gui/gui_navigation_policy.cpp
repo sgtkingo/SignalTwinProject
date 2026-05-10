@@ -26,12 +26,6 @@ GuiState GuiNavigationPolicy::resolveBackTarget(GuiState fromState) const
 
 GuiState GuiNavigationPolicy::beginVisualizationFlow()
 {
-    if (defaultCommunicationMode == DefaultCommunicationMode::CABLE) {
-        sessionCommunicationMode = DefaultCommunicationMode::CABLE;
-        selectionBackToMainMenu = true;
-        return GuiState::SELECTION;
-    }
-
     selectionBackToMainMenu = false;
     return GuiState::COMMUNICATION_SELECTION;
 }

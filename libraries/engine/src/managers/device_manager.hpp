@@ -160,6 +160,12 @@ public:
     bool ensureProtocolInitialized();
 
     /**
+     * @brief Send an explicit VSCP INIT handshake for the current catalog metadata.
+     * @return True if the remote endpoint acknowledges the INIT request.
+     */
+    bool initializeProtocolConnection();
+
+    /**
      * @brief Connect assigned devices to pins (bulk operation).
      */
     bool connect();

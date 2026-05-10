@@ -139,7 +139,7 @@ void LibraryEditorGui::buildParamListSection(lv_obj_t *panel, const char *title,
         }
 
         auto *self = static_cast<LibraryEditorGui *>(lv_event_get_user_data(e));
-        const bool isConfig = reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_target(e))) != 0;
+        const bool isConfig = reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_current_target(e))) != 0;
         self->showParamEditor(isConfig, -1);
     }, LV_EVENT_ALL, this);
     lv_obj_t *addLabel = lv_label_create(add);
@@ -368,7 +368,7 @@ void LibraryEditorGui::populateParamList(lv_obj_t *list, const std::vector<Devic
             }
 
             auto *self = static_cast<LibraryEditorGui *>(lv_event_get_user_data(e));
-            const intptr_t packed = reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_target(e)));
+            const intptr_t packed = reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_current_target(e)));
             const bool isConfig = (packed & 0x10000) != 0;
             const int index = static_cast<int>(packed & 0xFFFF);
             self->showParamEditor(isConfig, index);

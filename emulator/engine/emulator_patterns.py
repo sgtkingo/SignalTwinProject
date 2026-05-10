@@ -21,22 +21,30 @@ Response: ?status=1/0&param1=value1&error=message
 Author: Generated for VSCP Protocol Testing
 """
 
-import serial
+try:
+    import serial
+except ModuleNotFoundError:
+    serial = None
 import time
 import random
 import threading
 import re
 import math
+import sys
 from urllib.parse import parse_qs, unquote
 from typing import Dict, Any, Optional
+
+for stream in (sys.stdout, sys.stderr):
+    if hasattr(stream, "reconfigure"):
+        stream.reconfigure(encoding="utf-8", errors="replace")
 
 class VSCPEmulator:
     """Virtual Sensors Communication Protocol Emulator"""
     
     def __init__(self, port='COM3', baudrate=115200, timeout=0.1):
         """Initialize the VSCP emulator"""
-        self.API_VERSION = "1.2"
-        self.DB_VERSION = "dummy"
+        self.API_VERSION = "1.3"
+        self.DB_VERSION = "1.0"
         self.APP_NAME = "VSCP Emulator"
         self.APP_VERSION = "1.0.0"
         
@@ -44,6 +52,7 @@ class VSCPEmulator:
         self.initialized = False
         self.connected_sensors = {}  # uid -> pin mapping
         self.sensor_configs = {}     # uid -> config dict
+        self.control_values = {}     # uid -> control dict
         
         # Serial connection
         self.port = port
@@ -126,6 +135,10 @@ class VSCPEmulator:
         
     def connect_serial(self) -> bool:
         """Connect to serial port"""
+        if serial is None:
+            print("pyserial is not installed. Install emulator/requirements.txt before using serial mode.")
+            return False
+
         try:
             self.ser = serial.Serial(
                 port=self.port,
@@ -180,20 +193,15 @@ class VSCPEmulator:
         """Handle INIT method - handshake and version check"""
         print(f"🔄 INIT request: {params}")
         
-        # Dummy response for testing
-        response_params = {'status': '1'}
-        self.initialized = True
-        return self.build_message(response_params)
-        
         # Extract parameters
         app = params.get('app', 'Unknown')
-        dbversion = params.get('db', 'Unknown')
+        dbversion = params.get('db', '')
         api = params.get('api', '0.0.0')
         
         # Simulate version compatibility check
         response_params = {}
         
-        if api == self.API_VERSION:
+        if not api or api == self.API_VERSION:
             self.initialized = True
             response_params = {
                 'status': '1',
@@ -444,6 +452,32 @@ class VSCPEmulator:
             print(f"✗ Invalid sensor ID: {uid}")
         
         return self.build_message(response_params)
+
+    def handle_control(self, params: Dict[str, str]) -> str:
+        """Handle CONTROL method - apply runtime control values"""
+        uid = params.get('id', '')
+        print(f"CONTROL request for device: {uid}")
+
+        if not self.initialized:
+            return self.build_message({'status': '0', 'error': 'Protocol not initialized'})
+
+        control_params = {k: v for k, v in params.items() if k not in ['type', 'id']}
+
+        if uid and uid in self.sensor_data:
+            self.control_values[uid] = control_params
+            response_params = {
+                'id': uid,
+                'status': '1'
+            }
+            print(f"Device {uid} control applied: {control_params}")
+        else:
+            response_params = {
+                'id': uid,
+                'status': '0',
+                'error': f'Device {uid} not found'
+            }
+
+        return self.build_message(response_params)
     
     def handle_reset(self, params: Dict[str, str]) -> str:
         """Handle RESET method - reset sensor"""
@@ -457,10 +491,12 @@ class VSCPEmulator:
             # Reset sensor(s)
             if uid == 'all':
                 self.sensor_configs.clear()
+                self.control_values.clear()
                 self.connected_sensors.clear()
                 print("✓ All sensors reset")
             else:
                 self.sensor_configs.pop(uid, None)
+                self.control_values.pop(uid, None)
                 self.connected_sensors.pop(uid, None)
                 print(f"✓ Sensor {uid} reset")
             
@@ -493,7 +529,7 @@ class VSCPEmulator:
                 # Check if pin is already used
                 used_by = None
                 for sensor_id, used_pin in self.connected_sensors.items():
-                    if used_pin in pins_num:
+                    if set(used_pin).intersection(pins_num):
                         used_by = sensor_id
                         break
                 
@@ -565,6 +601,7 @@ class VSCPEmulator:
             'INIT': self.handle_init,
             'UPDATE': self.handle_update,
             'CONFIG': self.handle_config,
+            'CONTROL': self.handle_control,
             'RESET': self.handle_reset,
             'CONNECT': self.handle_connect,
             'DISCONNECT': self.handle_disconnect
@@ -651,7 +688,7 @@ class VSCPEmulator:
         
         try:
             print("\n💡 Enhanced emulator ready! Realistic sensor data patterns active.")
-            print("   Example: ?type=INIT&app=TestApp&version=1.0.0&dbversion=1.0.0&api=1.2")
+            print("   Example: ?type=INIT&app=board&db=1.0&api=1.3")
             print("   Press Ctrl+C to stop\n")
             
             # Keep main thread alive and show simulation status

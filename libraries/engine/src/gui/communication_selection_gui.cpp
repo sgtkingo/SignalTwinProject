@@ -2,23 +2,29 @@
 
 #include "../helpers.hpp"
 
-CommunicationSelectionGui::CommunicationSelectionGui(GuiRouter &router) : router(router)
+CommunicationSelectionGui::CommunicationSelectionGui(GuiRouter &router, DeviceManager &deviceManager)
+    : router(router), deviceManager(deviceManager)
 {
 }
 
-void CommunicationSelectionGui::createOptionButton(const char *text, lv_coord_t x, lv_coord_t y, DefaultCommunicationMode mode)
+void CommunicationSelectionGui::createOptionButton(const char *text, lv_coord_t x, lv_coord_t y, DefaultCommunicationMode mode, bool supported)
 {
     lv_obj_t *button = lv_btn_create(ui_Widget);
     lv_obj_set_size(button, 220, 80);
     lv_obj_set_pos(button, x, y);
+    if (!supported) {
+        lv_obj_set_style_bg_color(button, lv_color_hex(0x8A8F98), LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_bg_color(button, lv_color_hex(0x8A8F98), LV_PART_MAIN | LV_STATE_PRESSED);
+        lv_obj_set_style_bg_opa(button, 180, LV_PART_MAIN | LV_STATE_DEFAULT);
+    }
     lv_obj_add_event_cb(button, [](lv_event_t *e) {
         if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
             return;
         }
 
         auto *self = static_cast<CommunicationSelectionGui *>(lv_event_get_user_data(e));
-        DefaultCommunicationMode mode = static_cast<DefaultCommunicationMode>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_target(e))));
-        self->router.completeCommunicationSelection(mode);
+        DefaultCommunicationMode mode = static_cast<DefaultCommunicationMode>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_current_target(e))));
+        self->handleModeSelection(mode);
     }, LV_EVENT_ALL, this);
     lv_obj_set_user_data(button, reinterpret_cast<void *>(static_cast<intptr_t>(mode)));
 
@@ -26,6 +32,22 @@ void CommunicationSelectionGui::createOptionButton(const char *text, lv_coord_t 
     lv_label_set_text(label, text);
     lv_obj_center(label);
     lv_obj_set_style_text_font(label, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+}
+
+void CommunicationSelectionGui::handleModeSelection(DefaultCommunicationMode mode)
+{
+    if (mode != DefaultCommunicationMode::CABLE) {
+        splashMessage("Wireless connection is not supported yet.");
+        return;
+    }
+
+    splashMessage("Connecting...");
+    if (!deviceManager.initializeProtocolConnection()) {
+        splashMessage("VSCP init failed. Check cable connection and emulator.");
+        return;
+    }
+
+    router.completeCommunicationSelection(mode);
 }
 
 void CommunicationSelectionGui::init(void)
@@ -63,8 +85,8 @@ void CommunicationSelectionGui::constructCommunicationSelection(void)
     lv_obj_set_style_text_color(subtitle, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
 
     createOptionButton("Cable (UART)", 70, 130, DefaultCommunicationMode::CABLE);
-    createOptionButton("Wireless Auto", 395, 130, DefaultCommunicationMode::WIRELESS_AUTO);
-    createOptionButton("Wireless Manual", 230, 235, DefaultCommunicationMode::WIRELESS_MANUAL);
+    createOptionButton("Wireless Auto", 395, 130, DefaultCommunicationMode::WIRELESS_AUTO, false);
+    createOptionButton("Wireless Manual", 230, 235, DefaultCommunicationMode::WIRELESS_MANUAL, false);
 
     lv_obj_t *back = lv_btn_create(ui_Widget);
     lv_obj_set_size(back, 90, 36);
@@ -80,7 +102,7 @@ void CommunicationSelectionGui::constructCommunicationSelection(void)
     lv_obj_center(backLabel);
 
     lv_obj_t *hint = lv_label_create(ui_Widget);
-    lv_label_set_text(hint, "Bluetooth pairing is represented as a flow option in this stage.");
+    lv_label_set_text(hint, "Cable starts VSCP init. Wireless modes are not supported yet.");
     lv_obj_align(hint, LV_ALIGN_BOTTOM_MID, 0, -16);
     lv_obj_set_style_text_color(hint, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
 }

@@ -94,7 +94,7 @@ void DeviceSelectionGui::populateAvailableList()
             }
 
             auto *self = static_cast<DeviceSelectionGui *>(lv_event_get_user_data(e));
-            int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_target(e))));
+            int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_current_target(e))));
             self->handleDeviceSelection(index);
         }, LV_EVENT_ALL, this);
     }

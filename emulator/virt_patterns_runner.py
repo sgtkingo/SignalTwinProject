@@ -1,11 +1,11 @@
-import serial.tools.list_ports
+from engine.emulator import available_serial_ports
 from engine.emulator_patterns import VSCPEmulator
 
 def main():
     """Main entry point"""
     
     # Get available COM ports
-    available_ports = [port.device for port in serial.tools.list_ports.comports()]
+    available_ports = available_serial_ports()
     
     if available_ports:
         default_port = available_ports[0]
