@@ -212,15 +212,10 @@ void SignalsToolbarPanel::create(lv_obj_t *parentWidget,
     lv_obj_set_style_radius(ui_btnSync, 7, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_add_event_cb(ui_btnSync, syncButtonCallback, LV_EVENT_CLICKED, userData);
 
-    ui_syncImage = lv_img_create(ui_btnSync);
-    lv_img_set_src(ui_syncImage, &ui_img_clockicon_png);
-    lv_obj_set_width(ui_syncImage, LV_SIZE_CONTENT);
-    lv_obj_set_height(ui_syncImage, LV_SIZE_CONTENT);
-    lv_obj_set_x(ui_syncImage, -1);
-    lv_obj_set_align(ui_syncImage, LV_ALIGN_CENTER);
-    lv_obj_clear_flag(ui_syncImage, LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_GESTURE_BUBBLE |
-                                        LV_OBJ_FLAG_SNAPPABLE | LV_OBJ_FLAG_SCROLLABLE);
-    lv_img_set_zoom(ui_syncImage, 119);
+    ui_syncLabel = lv_label_create(ui_btnSync);
+    lv_label_set_text(ui_syncLabel, LV_SYMBOL_REFRESH);
+    lv_obj_center(ui_syncLabel);
+    lv_obj_set_style_text_font(ui_syncLabel, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_btnRecord = lv_btn_create(ui_RecordGroup);
     lv_obj_set_width(ui_btnRecord, 37);

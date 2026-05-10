@@ -144,6 +144,14 @@ void SignalsVisualizationGui::createSignalScrollPanel()
 void SignalsVisualizationGui::createChartPanel()
 {
     chartPanel.create(ui_DeviceWidget);
+    lv_obj_t *chart = chartPanel.getChart();
+    if (chart) {
+        lv_obj_add_flag(chart, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_event_cb(chart, [](lv_event_t *e) {
+            auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
+            self->handleChartDrag(e);
+        }, LV_EVENT_ALL, this);
+    }
 }
 
 void SignalsVisualizationGui::constructVisualization()
@@ -286,6 +294,7 @@ void SignalsVisualizationGui::drawCurrentDevice()
 
     updateDeviceDataDisplay();
     updateChart();
+    currentDevice->setRedrawPending(false);
 }
 
 uint32_t SignalsVisualizationGui::getSignalAccentColor(size_t index)
@@ -455,7 +464,7 @@ void SignalsVisualizationGui::updateEditableControls(const std::unordered_map<st
     clearUnusedConfigControls(editableKeys.size());
 }
 
-bool SignalsVisualizationGui::buildNumericHistoryForKey(const std::string &key, lv_coord_t *history)
+bool SignalsVisualizationGui::buildNumericHistoryForKey(const std::string &key, lv_coord_t *history, bool appendSample)
 {
     if (!currentDevice || !history) {
         return false;
@@ -470,13 +479,13 @@ bool SignalsVisualizationGui::buildNumericHistoryForKey(const std::string &key, 
     switch (it->second.DType)
     {
     case DeviceDataType::INT:
-        buildDeviceHistory<int>(currentDevice, key, history);
+        buildDeviceHistory<int>(currentDevice, key, history, appendSample);
         return true;
     case DeviceDataType::FLOAT:
-        buildDeviceHistory<float>(currentDevice, key, history);
+        buildDeviceHistory<float>(currentDevice, key, history, appendSample);
         return true;
     case DeviceDataType::DOUBLE:
-        buildDeviceHistory<double>(currentDevice, key, history);
+        buildDeviceHistory<double>(currentDevice, key, history, appendSample);
         return true;
     default:
         return false;
@@ -546,15 +555,90 @@ std::pair<lv_coord_t, lv_coord_t> SignalsVisualizationGui::computeChartRange(con
     return std::pair<lv_coord_t, lv_coord_t>(minValue - pad, maxValue + pad);
 }
 
-void SignalsVisualizationGui::populateChartSeries(lv_chart_series_t *series, const lv_coord_t *history)
+int SignalsVisualizationGui::getMaxChartHistoryOffset(const std::vector<std::string> &chartKeys) const
 {
-    if (!series || !history || !chartPanel.getChart()) {
+    int maxOffset = 0;
+    for (const auto &key : chartKeys) {
+        auto countIt = historyCountMap.find(makeHistoryBufferKey(currentDevice, key));
+        if (countIt == historyCountMap.end()) {
+            continue;
+        }
+
+        const int offset = countIt->second > HISTORY_CAP ? countIt->second - HISTORY_CAP : 0;
+        if (offset > maxOffset) {
+            maxOffset = offset;
+        }
+    }
+
+    return maxOffset;
+}
+
+void SignalsVisualizationGui::panChartHistory(int steps)
+{
+    if (steps == 0) {
         return;
     }
 
-    for (int i = 0; i < HISTORY_CAP; ++i) {
-        lv_chart_set_next_value(chartPanel.getChart(), series, history[i]);
+    const auto chartKeys = getChartableValueKeys();
+    if (chartKeys.empty()) {
+        return;
     }
+
+    const int maxOffset = getMaxChartHistoryOffset(chartKeys);
+    int nextOffset = chartHistoryOffset + steps;
+    if (nextOffset < 0) {
+        nextOffset = 0;
+    }
+    if (nextOffset > maxOffset) {
+        nextOffset = maxOffset;
+    }
+
+    if (nextOffset == chartHistoryOffset) {
+        return;
+    }
+
+    chartHistoryOffset = nextOffset;
+    updateChart(true);
+}
+
+void SignalsVisualizationGui::handleChartDrag(lv_event_t *e)
+{
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code == LV_EVENT_PRESSED || code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST)
+    {
+        chartDragAccumulatorPx = 0;
+        return;
+    }
+
+    if (code != LV_EVENT_PRESSING)
+    {
+        return;
+    }
+
+    lv_indev_t *indev = lv_indev_get_act();
+    if (!indev)
+    {
+        return;
+    }
+
+    lv_point_t vect;
+    lv_indev_get_vect(indev, &vect);
+    chartDragAccumulatorPx += vect.x;
+
+    const int pixelsPerStep = 24;
+    int steps = 0;
+    while (chartDragAccumulatorPx >= pixelsPerStep)
+    {
+        ++steps;
+        chartDragAccumulatorPx -= pixelsPerStep;
+    }
+    while (chartDragAccumulatorPx <= -pixelsPerStep)
+    {
+        --steps;
+        chartDragAccumulatorPx += pixelsPerStep;
+    }
+
+    panChartHistory(steps);
 }
 
 bool SignalsVisualizationGui::beginDeviceNavigation(bool requireIdleRecording, bool &wasRunning)
@@ -571,6 +655,8 @@ bool SignalsVisualizationGui::beginDeviceNavigation(bool requireIdleRecording, b
 void SignalsVisualizationGui::finishDeviceNavigation(bool wasRunning, BaseDevice *nextDevice)
 {
     currentDevice = nextDevice;
+    chartHistoryOffset = 0;
+    chartDragAccumulatorPx = 0;
     if (currentDevice) {
         currentDevice->setRedrawPending(true);
     }
@@ -596,12 +682,12 @@ void SignalsVisualizationGui::updateDeviceDataDisplay()
     updateActionButtonsState();
 }
 
-void SignalsVisualizationGui::updateChart()
+void SignalsVisualizationGui::updateChart(bool force)
 {
     if (!currentDevice || !chartPanel.isReady())
         return;
 
-    if (deviceManager.isRedrawPending() == false)
+    if (!force && !currentDevice->getRedrawPending())
         return;
 
     const auto chartKeys = getChartableValueKeys();
@@ -616,9 +702,10 @@ void SignalsVisualizationGui::updateChart()
     try
     {
         hideEmptyChartState();
+        const bool appendSample = !force && currentDevice->getRedrawPending();
 
         lv_coord_t historyPrimary[HISTORY_CAP];
-        if (!buildNumericHistoryForKey(chartKeys[0], historyPrimary)) {
+        if (!buildNumericHistoryForKey(chartKeys[0], historyPrimary, appendSample)) {
             return;
         }
 
@@ -629,7 +716,7 @@ void SignalsVisualizationGui::updateChart()
         bool haveSecond = false;
         lv_coord_t historySecondary[HISTORY_CAP];
         if (chartKeys.size() > 1) {
-            haveSecond = buildNumericHistoryForKey(chartKeys[1], historySecondary);
+            haveSecond = buildNumericHistoryForKey(chartKeys[1], historySecondary, appendSample);
             if (haveSecond) {
                 auto secondaryRange = computeChartRange(historySecondary);
                 if (secondaryRange.first < globalMin) {
@@ -647,6 +734,8 @@ void SignalsVisualizationGui::updateChart()
 
         if (haveSecond) {
             chartPanel.populateSecondarySeries(historySecondary);
+        } else {
+            chartPanel.hideSecondarySeries();
         }
 
         chartPanel.refresh();
@@ -738,14 +827,10 @@ void SignalsVisualizationGui::handlePauseButtonClick()
 
 void SignalsVisualizationGui::handleSyncButtonClick()
 {
-    if (!currentDevice)
+    if (!currentDevice || !paused)
         return;
 
-    if (!paused)
-        return;
-
-    bool success = syncCurrentDevice();
-    //logMessage("Sync button clicked. Sync %s\n", success ? "succeeded" : "failed");
+    syncCurrentDevice();
 }
 
 void SignalsVisualizationGui::handleRecordButtonClick(const char *message)
@@ -820,6 +905,9 @@ void SignalsVisualizationGui::handleClearConfirmButtonClick()
 {
     if (currentDevice)
     {
+        chartHistoryOffset = 0;
+        chartDragAccumulatorPx = 0;
+
         // Clear device internal history
         currentDevice->clearHistory();
 
@@ -982,15 +1070,19 @@ bool SignalsVisualizationGui::syncCurrentDevice()
         return false;
     }
 
+    currentDevice->requestRuntimeUpdate();
     const bool success = syncDevice(currentDevice);
     if (!success) {
         showAlert(currentDevice->getError().empty() ? "Sync failed" : currentDevice->getError().c_str());
         return false;
     }
 
+    chartHistoryOffset = 0;
+    chartDragAccumulatorPx = 0;
     currentDevice->setRedrawPending(true);
     updateDeviceDataDisplay();
     updateChart();
+    currentDevice->setRedrawPending(false);
     return true;
 }
 

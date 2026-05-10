@@ -16,6 +16,7 @@ void SignalsChartPanel::create(lv_obj_t *parent)
     lv_obj_clear_flag(chart, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE |
                                 LV_OBJ_FLAG_GESTURE_BUBBLE | LV_OBJ_FLAG_SNAPPABLE);
     lv_chart_set_type(chart, LV_CHART_TYPE_LINE);
+    lv_chart_set_point_count(chart, HISTORY_CAP);
     lv_chart_set_div_line_count(chart, HISTORY_CAP - 1, HISTORY_CAP);
     lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_X, HISTORY_CAP / 2, 0, HISTORY_CAP, 1, true, 50);
     lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_Y, HISTORY_CAP, 5, 5, 2, true, 50);
@@ -88,7 +89,7 @@ void SignalsChartPanel::populatePrimarySeries(const lv_coord_t *history)
     }
 
     for (int i = 0; i < HISTORY_CAP; ++i) {
-        lv_chart_set_next_value(chart, primarySeries, history[i]);
+        lv_chart_set_value_by_id(chart, primarySeries, i, history[i]);
     }
 }
 
@@ -99,14 +100,24 @@ void SignalsChartPanel::populateSecondarySeries(const lv_coord_t *history)
     }
 
     for (int i = 0; i < HISTORY_CAP; ++i) {
-        lv_chart_set_next_value(chart, secondarySeries, history[i]);
+        lv_chart_set_value_by_id(chart, secondarySeries, i, history[i]);
     }
+}
+
+void SignalsChartPanel::hideSecondarySeries()
+{
+    if (!isReady()) {
+        return;
+    }
+
+    lv_chart_set_all_value(chart, secondarySeries, LV_CHART_POINT_NONE);
 }
 
 void SignalsChartPanel::refresh()
 {
     if (chart) {
         lv_chart_refresh(chart);
+        lv_obj_invalidate(chart);
     }
 }
 

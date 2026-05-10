@@ -31,6 +31,7 @@ public:
     void clearSeries();
     void populatePrimarySeries(const lv_coord_t *history);
     void populateSecondarySeries(const lv_coord_t *history);
+    void hideSecondarySeries();
     void refresh();
     void resetToZero();
 };

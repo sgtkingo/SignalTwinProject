@@ -14,8 +14,10 @@
 
 #include "lvgl.h"
 #include <array>
+#include <cmath>
 #include <map>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #include "gui_router.hpp"
@@ -48,13 +50,18 @@ private:
     DataBundleManager &dataBundleManager;///< Reference to the databundle manager instance
     BaseDevice *currentDevice = nullptr; ///< Currently visualized device
 
+    static const int CHART_HISTORY_CAP = HISTORY_CAP * 12;
+
     /// Static buffers for chart data
-    std::map<std::string, std::array<lv_coord_t, HISTORY_CAP>> bufMap;
+    std::map<std::string, std::array<lv_coord_t, CHART_HISTORY_CAP>> bufMap;
     std::map<std::string, bool> initedMap;
+    std::map<std::string, int> historyCountMap;
 
     bool initialized = false; ///< Initialization state flag
     bool paused = false;      ///< Pause state flag
     bool recording = false;   ///< Recording state flag
+    int chartHistoryOffset = 0;
+    int chartDragAccumulatorPx = 0;
 
     void createMainWidget();
     void createTitleLabel();
@@ -95,7 +102,7 @@ private:
      * @param history The history array to store the history
      */
     template <typename T>
-    void buildDeviceHistory(BaseDevice *device, const std::string &key, lv_coord_t *history)
+    void buildDeviceHistory(BaseDevice *device, const std::string &key, lv_coord_t *history, bool appendSample)
     {
         if (!history || !device)
             return;
@@ -104,18 +111,27 @@ private:
         if (it == device->getValues().end())
             return;
 
-        // Static storage between calls
-        auto &buf = bufMap[key];
-        bool &inited = initedMap[key];
+        const std::string historyKey = makeHistoryBufferKey(device, key);
+        auto &buf = bufMap[historyKey];
+        bool &inited = initedMap[historyKey];
+        int &count = historyCountMap[historyKey];
 
         // Get current value as string and convert
         lv_coord_t curr;
         try
         {
             std::string s = device->getValue<std::string>(key);
-            curr = convertStringToType<T>(s);
+            const T value = convertStringToType<T>(s);
+            if (std::is_floating_point<T>::value)
+            {
+                curr = static_cast<lv_coord_t>(std::lround(value * 100.0));
+            }
+            else
+            {
+                curr = static_cast<lv_coord_t>(value);
+            }
 
-            if(recording && device->getRedrawPending()){
+            if(recording && appendSample){
                 dataBundleManager.saveNewDataPoint(key, s);
             }   
         }
@@ -126,30 +142,50 @@ private:
 
         if (!inited)
         {
-            // First call: fill entire buffer with current value
-            for (int i = 0; i < HISTORY_CAP; ++i)
+            // First call: fill the visible window with the current value.
+            for (int i = 0; i < CHART_HISTORY_CAP; ++i)
             {
                 buf[i] = curr;
             }
+            count = HISTORY_CAP;
             inited = true;
         }
-        else
+        else if (appendSample)
         {
             // Shift left by one position
-            for (int i = 0; i < HISTORY_CAP - 1; ++i)
+            if (count < CHART_HISTORY_CAP)
             {
-                buf[i] = buf[i + 1];
+                buf[count++] = curr;
             }
-            // Add current value at the end
-            buf[HISTORY_CAP - 1] = curr;
+            else
+            {
+                for (int i = 0; i < CHART_HISTORY_CAP - 1; ++i)
+                {
+                    buf[i] = buf[i + 1];
+                }
+                buf[CHART_HISTORY_CAP - 1] = curr;
+            }
         }
 
-        // Copy entire buffer to output array
+        const int maxOffset = count > HISTORY_CAP ? count - HISTORY_CAP : 0;
+        if (chartHistoryOffset > maxOffset)
+        {
+            chartHistoryOffset = maxOffset;
+        }
+
+        int start = count - HISTORY_CAP - chartHistoryOffset;
+        if (start < 0)
+        {
+            start = 0;
+        }
+
+        // Copy selected window to output array
         for (int i = 0; i < HISTORY_CAP; ++i)
         {
             try
             {
-                history[i] = buf[i];
+                const int sourceIndex = start + i;
+                history[i] = sourceIndex < count ? buf[sourceIndex] : buf[count - 1];
             }
             catch (const std::exception &e)
             {
@@ -158,13 +194,20 @@ private:
         }
     }
 
+    std::string makeHistoryBufferKey(const BaseDevice *device, const std::string &key) const
+    {
+        return device ? device->getId() + ":" + key : key;
+    }
+
     void clearDeviceHistoryBuffer(const std::string &key)
     {
-        std::array<lv_coord_t, HISTORY_CAP> zeroBuf;
+        const std::string historyKey = makeHistoryBufferKey(currentDevice, key);
+        std::array<lv_coord_t, CHART_HISTORY_CAP> zeroBuf;
         zeroBuf.fill(0);
 
-        bufMap[key] = zeroBuf;
-        initedMap[key] = true;
+        bufMap[historyKey] = zeroBuf;
+        initedMap[historyKey] = true;
+        historyCountMap[historyKey] = HISTORY_CAP;
     }
 
     /**
@@ -175,7 +218,7 @@ private:
     /**
      * @brief Update chart with current device data
      */
-    void updateChart();
+    void updateChart(bool force = false);
 
     void updateDeviceTitle();
     void ensureSignalCards(size_t count);
@@ -192,12 +235,14 @@ private:
                                 bool useValueControls);
     void ensureControlEditor(size_t controlIndex, const DeviceParam &param);
     void syncControlEditorValue(size_t controlIndex, const DeviceParam &param);
-    bool buildNumericHistoryForKey(const std::string &key, lv_coord_t *history);
+    bool buildNumericHistoryForKey(const std::string &key, lv_coord_t *history, bool appendSample);
     std::vector<std::string> getChartableValueKeys() const;
     void showEmptyChartState(const char *message);
     void hideEmptyChartState();
     static std::pair<lv_coord_t, lv_coord_t> computeChartRange(const lv_coord_t *history);
-    void populateChartSeries(lv_chart_series_t *series, const lv_coord_t *history);
+    int getMaxChartHistoryOffset(const std::vector<std::string> &chartKeys) const;
+    void panChartHistory(int steps);
+    void handleChartDrag(lv_event_t *e);
     bool beginDeviceNavigation(bool requireIdleRecording, bool &wasRunning);
     void finishDeviceNavigation(bool wasRunning, BaseDevice *nextDevice);
     bool currentDeviceSupportsRecording() const;
@@ -276,7 +321,7 @@ public:
     void handlePauseButtonClick();
 
     /**
-     * @brief Handle sync button click event
+     * @brief Handle manual runtime update button click event
      */
     void handleSyncButtonClick();
 

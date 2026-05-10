@@ -25,7 +25,7 @@ private:
     lv_obj_t *ui_btnPause = nullptr;
     lv_obj_t *ui_pauseImage = nullptr;
     lv_obj_t *ui_btnSync = nullptr;
-    lv_obj_t *ui_syncImage = nullptr;
+    lv_obj_t *ui_syncLabel = nullptr;
     lv_obj_t *ui_btnRecord = nullptr;
     lv_obj_t *ui_recordImage = nullptr;
     lv_obj_t *ui_btnClear = nullptr;
