@@ -21,6 +21,7 @@
 #include "managers/device_manager.hpp"
 #include "managers/device_visualization_session.hpp"
 #include "managers/data_bundle_manager.hpp"
+#include "managers/storage_manager.hpp"
 
 #endif // ENGINE_HPP
 

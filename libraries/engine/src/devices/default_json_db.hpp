@@ -1,0 +1,158 @@
+#define DEFAULT_JSON_DB R"json({
+  "version": "1.0",
+  "application": "board",
+  "devices": {
+    "mic_001": {
+      "uid": "mic_001",
+      "role": "sensor",
+      "type": "SLM (dBFS)",
+      "description": "Emulated microphone sensor.",
+      "values": {
+        "dBFS": { "value": 0.0, "unit": "dBm", "dtype": "float" },
+        "peak": { "value": 0.0, "unit": "dBm", "dtype": "float" }
+      },
+      "configs": {},
+      "default": {
+        "values": {
+          "dBFS": 0.0,
+          "peak": 0.0
+        },
+        "pins": ""
+      }
+    },
+    "cam_001": {
+      "uid": "cam_001",
+      "role": "sensor",
+      "type": "CAM Lux meter",
+      "description": "Emulated camera lux meter sensor.",
+      "values": {
+        "lux_est": { "value": 0.0, "unit": "lux", "dtype": "float", "restrictions": { "min": 0.0 } }
+      },
+      "configs": {},
+      "default": {
+        "values": {
+          "lux_est": 0.0
+        },
+        "pins": ""
+      }
+    },
+    "cpu_temp": {
+      "uid": "cpu_temp",
+      "role": "sensor",
+      "type": "CPU Temp",
+      "description": "Emulated CPU temperature sensor.",
+      "values": {
+        "temp": { "value": 0.0, "unit": "C", "dtype": "float" }
+      },
+      "configs": {},
+      "default": {
+        "values": {
+          "temp": 0.0
+        },
+        "pins": ""
+      }
+    },
+    "S00": {
+      "uid": "S00",
+      "role": "sensor",
+      "type": "DS18B20",
+      "description": "Digital temperature sensor with alarm status.",
+      "values": {
+        "temp": { "value": 0.0, "unit": "C", "dtype": "float" },
+        "alarm": { "value": "0", "unit": "", "dtype": "string" }
+      },
+      "configs": {
+        "Res": { "value": 2, "unit": "decimals", "dtype": "int", "restrictions": { "min": 0, "max": 6 } }
+      },
+      "default": {
+        "values": {
+          "temp": 0.0,
+          "alarm": "0"
+        },
+        "configs": {
+          "Res": 2
+        },
+        "pins": ""
+      }
+    },
+    "S01": {
+      "uid": "S01",
+      "role": "sensor",
+      "type": "DHT11",
+      "description": "DHT11 temperature and humidity sensor.",
+      "values": {
+        "temp": { "value": 0, "unit": "C", "dtype": "int", "restrictions": { "min": -40, "max": 80 } },
+        "humi": { "value": 0, "unit": "%", "dtype": "int", "restrictions": { "min": 0, "max": 100 } }
+      },
+      "configs": {
+        "Unit": { "value": "", "unit": "", "dtype": "string", "restrictions": { "options": ["C", "F"] } }
+      },
+      "default": {
+        "values": {
+          "temp": 0,
+          "humi": 0
+        },
+        "configs": {
+          "Unit": "C"
+        },
+        "pins": ""
+      }
+    },
+    "S15": {
+      "uid": "S15",
+      "role": "sensor",
+      "type": "PhotoResistor",
+      "description": "Light intensity sensor.",
+      "values": {
+        "intensity": { "value": 0, "unit": "lux", "dtype": "int", "restrictions": { "min": 0 } }
+      },
+      "configs": {
+        "Res": { "value": 5, "unit": "digits", "dtype": "int", "restrictions": { "min": 1, "max": 8 } }
+      },
+      "default": {
+        "values": {
+          "intensity": 0
+        },
+        "configs": {
+          "Res": 5
+        },
+        "pins": ""
+      }
+    },
+    "A00": {
+      "uid": "A00",
+      "role": "actuator",
+      "type": "PWM LED Driver",
+      "description": "Simple actuator for testing runtime CONFIG-based control.",
+      "values": {},
+      "configs": {
+        "Enabled": {
+          "value": "1",
+          "unit": "",
+          "dtype": "string",
+          "restrictions": {
+            "options": ["0", "1"]
+          }
+        },
+        "Brightness": {
+          "value": 40,
+          "unit": "%",
+          "dtype": "int",
+          "restrictions": {
+            "min": 0,
+            "max": 100,
+            "step": 5
+          }
+        }
+      },
+      "allowedPins": [3, 5, 6, 9, 10, 11],
+      "default": {
+        "configs": {
+          "Enabled": "1",
+          "Brightness": 40
+        },
+        "pins": ""
+      }
+    }
+  }
+})json";

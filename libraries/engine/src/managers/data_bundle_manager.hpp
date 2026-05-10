@@ -12,7 +12,7 @@
 #define DATA_BUNDLE_MANAGER_H
 
 #include "data_bundle_types.hpp"
-#include "SD.h"
+#include "storage_manager.hpp"
 
 class DataBundleManager {
 private:
@@ -51,7 +51,7 @@ public:
     ~DataBundleManager();
 
     /**
-     * @brief Initialize the data bundle manager and SD card
+     * @brief Initialize the data bundle manager and selected storage backend
      * @return True if initialization was successful, false otherwise
      */
     bool init();
@@ -69,7 +69,7 @@ public:
     bool isInitialized() const { return initialized; }
 
     /**
-     * @brief Load all data bundle names from SD card
+     * @brief Load all data bundle names from storage
      * @return True if initialized, false otherwise
      */
     bool reloadBundleFileNames();
@@ -129,9 +129,9 @@ public:
     void printBundleCsv(std::string filename);
 
     /**
-     * @brief Prints size of SD and its used size in bytes
+     * @brief Prints size of the active storage and its used size in bytes
      */
-    void getSDInfo();
+    void getStorageInfo();
 
     // public GETTERS
 

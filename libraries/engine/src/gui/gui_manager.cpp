@@ -6,6 +6,7 @@
 #include "gui_manager.hpp"
 
 #include "../helpers.hpp"
+#include "../managers/storage_manager.hpp"
 
 const int FPS = 60;
 const int CYCLE_DRAW_MS = (1000 / FPS);
@@ -37,8 +38,17 @@ bool GuiManager::init(std::string configFile)
     try {
         screenRegistry.getCrashGui().init();
 
+        if (!storageManager().init()) {
+            const std::string reason =
+                std::string(storageManager().getStorageLabel()) +
+                " storage mount failed.\nCheck the configured partition scheme and restart the device.";
+            screenRegistry.getCrashGui().showCrash(reason.c_str(), "STORAGE ERROR", LV_SYMBOL_SD_CARD);
+            return false;
+        }
+
         if (!dataBundleManager.init()) {
-            screenRegistry.getCrashGui().showCrash("SD card missing or not readable.\nInsert SD card and restart the device.", "SD ERROR", LV_SYMBOL_SD_CARD);
+            const std::string reason = std::string("Persistent storage is not ready on ") + storageManager().getStorageLabel() + ".";
+            screenRegistry.getCrashGui().showCrash(reason.c_str(), "STORAGE ERROR", LV_SYMBOL_SD_CARD);
             return false;
         }
 

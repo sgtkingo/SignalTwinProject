@@ -45,9 +45,9 @@ struct DeviceCatalogLoadResult
     std::string application;
 };
 
-DeviceCatalogSchema parseDeviceCatalogSchemaFromSdFile(const std::string &filePath);
+DeviceCatalogSchema parseDeviceCatalogSchemaFromStorageFile(const std::string &filePath);
 DeviceCatalogLoadResult buildDeviceCatalogFromSchema(const DeviceCatalogSchema &schemaCatalog);
-DeviceCatalogLoadResult buildDeviceCatalogFromSdFile(const std::string &filePath);
-bool saveDeviceCatalogSchemaToSdFile(const DeviceCatalogSchema &schemaCatalog, const std::string &filePath);
+DeviceCatalogLoadResult buildDeviceCatalogFromStorageFile(const std::string &filePath);
+bool saveDeviceCatalogSchemaToStorageFile(const DeviceCatalogSchema &schemaCatalog, const std::string &filePath);
 
 #endif // JSON_DEVICE_BUILDER_HPP

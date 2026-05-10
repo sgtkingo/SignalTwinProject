@@ -31,8 +31,8 @@ DataBundleManager::DataBundleManager() {}
 DataBundleManager::~DataBundleManager() {}
 
 /**
- * @brief Initialize the data bundle manager and SD card
- * Also calls ensureStorageDirectories() and prints SD info
+ * @brief Initialize the data bundle manager and selected storage backend
+ * Also calls ensureStorageDirectories() and prints storage info
  * @return True if initialization was successful, false otherwise
  */
 bool DataBundleManager::init()
@@ -42,9 +42,7 @@ bool DataBundleManager::init()
 
     logMessage("Initializing DataBundle Manager...");
 
-
-    SPI.begin(12, 13, 11, 10);
-    if (!SD.begin(10))
+    if (!storageManager().isAvailable() && !storageManager().init())
     {
         logMessage("DataBundle Manager Failed to initialize");
         return false;
@@ -58,7 +56,7 @@ bool DataBundleManager::init()
     logMessage("DataBundle Manager initialized successfully");
 
     #ifdef DATABUNDLE_DEBUG
-    getSDInfo();
+    getStorageInfo();
     listAllBundles();
     #endif
 
@@ -72,19 +70,15 @@ bool DataBundleManager::init()
  */
 bool DataBundleManager::ensureStorageDirectories()
 {
-    if (!SD.exists(root))
+    if (!storageManager().ensureDirectory(root))
     {
-        if (!SD.mkdir(root))
-        {
-            logMessage("Error: Failed to create /DataBundles directory");
-            return false;
-        }
-        //logMessage("Created /DataBundles directory");
+        logMessage("Error: Failed to prepare /DataBundles directory");
+        return false;
     }
 
     #ifdef DATABUNDLE_DEBUG
     // log.txt creation test
-    File myFile = SD.open("/DataBundles/log.txt", FILE_WRITE);
+    File myFile = storageManager().open("/DataBundles/log.txt", FILE_WRITE);
 
     if (myFile)
     {
@@ -102,15 +96,15 @@ bool DataBundleManager::ensureStorageDirectories()
     return true;
 }
 
-void DataBundleManager::getSDInfo()
+void DataBundleManager::getStorageInfo()
 {
-    uint64_t total = SD.totalBytes();
-    uint64_t used = SD.usedBytes();
+    uint64_t total = storageManager().totalBytes();
+    uint64_t used = storageManager().usedBytes();
 
     logMessage("Total Bytes: %llu", total);
     logMessage("Used Bytes: %llu", used);
 
-    (SD.exists("/DataBundles/log.txt")) ? logMessage("log.txt exists!") : logMessage("log.txt doesnt exist");
+    storageManager().exists("/DataBundles/log.txt") ? logMessage("log.txt exists!") : logMessage("log.txt doesnt exist");
 }
 
 bool DataBundleManager::startRecording(std::string deviceName)
@@ -119,7 +113,7 @@ bool DataBundleManager::startRecording(std::string deviceName)
 
     uint8_t tempOrder = 1;
     std::string temp = root + deviceName + "_0" + std::to_string(tempOrder) + ".csv";
-    while (SD.exists(temp.c_str()))
+    while (storageManager().exists(temp))
     {
         if (tempOrder < 10)
         {
@@ -168,7 +162,7 @@ bool DataBundleManager::saveNewDataPoint(std::string signalName, std::string val
 
 bool DataBundleManager::saveRecording()
 {
-    File saved = SD.open(recordingBundleMetadata.filePath.c_str(), FILE_WRITE);
+    File saved = storageManager().open(recordingBundleMetadata.filePath, FILE_WRITE);
 
     if (saved)
     {
@@ -218,31 +212,14 @@ std::array<DataBundleBuffer,6> DataBundleManager::getBundlePage(unsigned char pa
 
 bool DataBundleManager::deleteAllBundles()
 {
-    File dir = SD.open(root);
-    if (!dir || !dir.isDirectory())
-        return false;
-
-    std::vector<std::string> filesToDelete;
-
-    dir.rewindDirectory();
-
-    while (true)
-    {
-        File entry = dir.openNextFile();
-        if (!entry)
-            break;
-
-        std::string fullPath = root;
-        fullPath += entry.name();
-
-        filesToDelete.push_back(fullPath);
-        entry.close();
+    std::vector<std::string> filesToDelete = storageManager().listFiles(root);
+    if (filesToDelete.empty()) {
+        return true;
     }
-    dir.close();
 
     for (const auto &file : filesToDelete)
     {
-        SD.remove(file.c_str());
+        storageManager().remove(file);
     }
 
     bundleFileNames.clear();
@@ -254,98 +231,65 @@ bool DataBundleManager::reloadBundleFileNames()
 {
     bundleFileNames.clear();
 
-    File dir = SD.open(root);
-    if (!dir || !dir.isDirectory()) {
+    const std::vector<std::string> bundlePaths = storageManager().listFiles(root);
+    if (bundlePaths.empty() && !storageManager().ensureDirectory(root)) {
         logMessage("Error: Failed to open /DataBundles/ directory whilst getting bundle names");
         return false;
     }
 
-    dir.rewindDirectory();
-
-    while (true)
-    {
-        std::string fileName = dir.getNextFileName().c_str();
-        if (fileName.empty())
-            break;
-
-        fileName = fileName.substr(strlen(root));   
-
-        bundleFileNames.push_back(fileName);
+    const std::string rootPath = root;
+    for (const std::string &fullPath : bundlePaths) {
+        if (fullPath.rfind(rootPath, 0) == 0) {
+            bundleFileNames.push_back(fullPath.substr(rootPath.length()));
+        } else {
+            bundleFileNames.push_back(fullPath);
+        }
     }
-    dir.close();
 
     return true;
 }
 
 void DataBundleManager::pruneOldestBundle()
 {
-    File dir = SD.open(root);
-    if (!dir || !dir.isDirectory())
+    const std::vector<std::string> bundlePaths = storageManager().listFiles(root);
+    if (bundlePaths.empty())
         return;
 
-    dir.rewindDirectory();
-
-    // After rewinding, the first file is the oldest
-    File oldestFile = dir.openNextFile();
-    if(!oldestFile)
-    {
-        dir.close();
-        return; 
-    }
-    else{
-        SD.remove(oldestFile.name());
-    }
+    storageManager().remove(bundlePaths.front());
 }
 
 void DataBundleManager::listAllBundles()
 {
     logMessage("--- Listing Files in /DataBundles ---");
 
-    File dir = SD.open(root);
-
-    if (!dir)
-    {
-        logMessage("Error: Failed to open directory /DataBundles");
+    const std::vector<std::string> bundlePaths = storageManager().listFiles(root);
+    if (bundlePaths.empty()) {
+        logMessage("No bundle files found in /DataBundles");
         return;
     }
 
-    if (!dir.isDirectory())
+    for (const std::string &bundlePath : bundlePaths)
     {
-        logMessage("Error: /DataBundles is not a directory");
-        dir.close();
-        return;
-    }
-
-    dir.rewindDirectory();
-
-    File file = dir.openNextFile();
-
-    while (file)
-    {
-        if (file.isDirectory())
-        {
-            logMessage("  [DIR]  %s", file.name());
-        }
-        else
-        {
-            logMessage("  [FILE] %s  (%u bytes)", file.name(), file.size());
+        File file = storageManager().open(bundlePath, FILE_READ);
+        if (!file) {
+            logMessage("  [FILE] %s  (unavailable)", bundlePath.c_str());
+            continue;
         }
 
+        logMessage("  [FILE] %s  (%u bytes)", file.name(), file.size());
         file.close();
-        file = dir.openNextFile();
     }
 
-    dir.close();
     logMessage("--- End of List ---");
 }
 
 void DataBundleManager::printBundleCsv(std::string filename)
 {
-    std::string fullPath = std::string(root) + filename;
+    std::string fullPath = filename.rfind(root, 0) == 0 ? filename : std::string(root) + filename;
 
     logMessage("--- Reading CSV: %s ---", fullPath.c_str());
 
-    File file = SD.open(fullPath.c_str(), FILE_READ);
+    File file = storageManager().open(fullPath, FILE_READ);
 
     if (!file)
     {
@@ -385,7 +329,7 @@ void DataBundleManager::printBundleCsv(std::string filename)
 BundleMetadata DataBundleManager::getBundleMetadata(unsigned char index){
     std::string fullPath = root + bundleFileNames[index];
 
-    File file = SD.open(fullPath.c_str(), FILE_READ);
+    File file = storageManager().open(fullPath, FILE_READ);
 
     if (!file)
     {
@@ -406,7 +350,7 @@ std::array<std::string,10> DataBundleManager::getBundleValuePreview(unsigned cha
     std::array<std::string,10> temp;
     for(int k=0; k<10; k++) temp[k] = "0";
     
-    File file = SD.open(fullPath.c_str(), FILE_READ);
+    File file = storageManager().open(fullPath, FILE_READ);
     
     if (!file)
     {
@@ -460,7 +404,7 @@ void DataBundleManager::deleteBundle(unsigned char index){
         return;
 
     std::string fullPath = std::string(root) + bundleFileNames[index];
-    SD.remove(fullPath.c_str());
+    storageManager().remove(fullPath);
     bundleFileNames.erase(bundleFileNames.begin() + index);
 }
 

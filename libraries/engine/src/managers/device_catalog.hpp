@@ -8,7 +8,7 @@
 #include "../devices/json_device_builder.hpp"
 
 /**
- * @brief Owns the boot-time device catalog loaded from JSON on SD.
+ * @brief Owns the boot-time device catalog loaded from JSON on the configured storage backend.
  *
  * The catalog stores both the runtime devices used by the application and
  * the editable schema used by Library persistence.
@@ -30,7 +30,7 @@ public:
     ~DeviceCatalog();
 
     /**
-     * @brief Load the catalog schema from SD and build runtime devices.
+     * @brief Load the catalog schema from storage and build runtime devices.
      */
     bool init(const std::string &configFile = "");
 

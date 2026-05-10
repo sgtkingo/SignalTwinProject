@@ -14,7 +14,7 @@
 
 
 enum BoardConstants { TFT_BL=2, LVGL_BUFFER_RATIO=6 };
-static constexpr const char *DEVICE_DB_SD_PATH = "/data/DB.json";
+static constexpr const char *DEVICE_DB_STORAGE_PATH = STORAGE_DEFAULT_DEVICE_DB_PATH;
 
 
 class LGFX : public lgfx::LGFX_Device
@@ -205,7 +205,7 @@ void setup ()
     lv_timer_handler();
 
     // Initialize the GUI manager
-    if(!guiManager.init(DEVICE_DB_SD_PATH))
+    if(!guiManager.init(DEVICE_DB_STORAGE_PATH))
     {
         return;
     }

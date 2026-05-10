@@ -1,5 +1,6 @@
 #include "device_catalog.hpp"
 
+#include "../config.hpp"
 #include "../devices/json_device_builder.hpp"
 #include "expt.hpp"
 #include "helpers.hpp"
@@ -8,7 +9,7 @@
 
 namespace
 {
-constexpr const char *DEFAULT_DEVICE_DB_PATH = "/data/DB.json";
+constexpr const char *DEFAULT_DEVICE_DB_PATH = STORAGE_DEFAULT_DEVICE_DB_PATH;
 }
 
 DeviceCatalog::~DeviceCatalog()
@@ -36,7 +37,7 @@ bool DeviceCatalog::init(const std::string &configFile)
 
     logMessage("Initializing device catalog via JSON DB: %s\n", configFilePath.c_str());
 
-    schema = parseDeviceCatalogSchemaFromSdFile(configFilePath);
+    schema = parseDeviceCatalogSchemaFromStorageFile(configFilePath);
     DeviceCatalogLoadResult catalog = buildDeviceCatalogFromSchema(schema);
     devices = std::move(catalog.devices);
     version = std::move(catalog.version);
@@ -91,7 +92,7 @@ bool DeviceCatalog::saveDraft(const DeviceDefinitionSchema &draft, const std::st
     DeviceCatalogLoadResult builtCatalog = buildDeviceCatalogFromSchema(nextSchema);
 
     try {
-        saveDeviceCatalogSchemaToSdFile(nextSchema, configFilePath);
+        saveDeviceCatalogSchemaToStorageFile(nextSchema, configFilePath);
     } catch (...) {
         for (BaseDevice *device : builtCatalog.devices) {
             delete device;
@@ -120,7 +121,7 @@ bool DeviceCatalog::saveMetadata(const std::string &applicationValue, const std:
     DeviceCatalogLoadResult builtCatalog = buildDeviceCatalogFromSchema(nextSchema);
 
     try {
-        saveDeviceCatalogSchemaToSdFile(nextSchema, configFilePath);
+        saveDeviceCatalogSchemaToStorageFile(nextSchema, configFilePath);
     } catch (...) {
         for (BaseDevice *device : builtCatalog.devices) {
             delete device;
@@ -165,7 +166,7 @@ bool DeviceCatalog::deleteDevice(const std::string &uid)
     DeviceCatalogLoadResult builtCatalog = buildDeviceCatalogFromSchema(nextSchema);
 
     try {
-        saveDeviceCatalogSchemaToSdFile(nextSchema, configFilePath);
+        saveDeviceCatalogSchemaToStorageFile(nextSchema, configFilePath);
     } catch (...) {
         for (BaseDevice *device : builtCatalog.devices) {
             delete device;

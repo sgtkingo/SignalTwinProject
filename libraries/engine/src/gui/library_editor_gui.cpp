@@ -635,7 +635,7 @@ void LibraryEditorGui::saveDraft()
         return;
     }
 
-    splashMessage("Device schema saved to SD.");
+    splashMessage("Device schema saved to storage.");
     router.showLibrary();
 }
 
