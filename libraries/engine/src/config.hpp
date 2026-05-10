@@ -37,6 +37,7 @@
 #define STORAGE_OPTION_SPIFFS 2
 
 #ifndef STORAGE_OPTION
+// Default to SPIFFS for development boards without an SD card installed.
 #define STORAGE_OPTION STORAGE_OPTION_SPIFFS
 #endif
 
@@ -46,9 +47,12 @@
 #endif
 
 #if STORAGE_OPTION == STORAGE_OPTION_SPIFFS
+// SPIFFS stores the boot catalog in the filesystem root.
 #define STORAGE_DEFAULT_DEVICE_DB_PATH "/DB.json"
+// Automatically create the default embedded DB on first boot when missing.
 #define STORAGE_SEED_DEFAULT_DB_ON_MISSING 1
 #else
+// SD mode keeps the catalog under the shared /data folder on the card.
 #define STORAGE_DEFAULT_DEVICE_DB_PATH "/data/DB.json"
 #define STORAGE_SEED_DEFAULT_DB_ON_MISSING 0
 #endif

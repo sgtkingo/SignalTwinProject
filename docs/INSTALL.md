@@ -23,6 +23,20 @@
 3. Update the libraries accourding *Libraries versions*
 4. Build the project
 
+## Persistent storage
+
+The runtime storage backend is selected in [libraries/engine/src/config.hpp](/D:/Prace/MTA/SignalTwinProject/libraries/engine/src/config.hpp) via `STORAGE_OPTION`.
+
+- `STORAGE_OPTION_SD`: persistent data is read from the SD card. The device catalog is expected at `/data/DB.json`.
+- `STORAGE_OPTION_SPIFFS`: persistent data is read from internal flash SPIFFS. The device catalog is expected at `/DB.json`.
+
+When `STORAGE_OPTION_SPIFFS` is active:
+
+- `STORAGE_SPIFFS_FORMAT_ON_FAIL` controls whether the filesystem is formatted automatically when mount fails.
+- `STORAGE_SEED_DEFAULT_DB_ON_MISSING` is enabled by default and will create `/DB.json` from the embedded default catalog on first boot if the file is missing.
+
+This means SPIFFS mode does not require a separate filesystem upload just to bootstrap the default device catalog.
+
 # Libraries versions
 
 1. LovyanGFX: 1.20
