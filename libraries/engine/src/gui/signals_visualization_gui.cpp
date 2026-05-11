@@ -819,14 +819,49 @@ bool SignalsVisualizationGui::applyEditableValue(bool isValueControl, const std:
         } else {
             currentDevice->setConfig(key, value);
         }
+
+        debugLogMessage(
+            "SignalsVisualizationGui::applyEditableValue",
+            isValueControl ? "runtime control" : "runtime config",
+            "device=%s key=%s value=%s",
+            currentDevice->UID.c_str(),
+            key.c_str(),
+            value.c_str());
+
+        if (!deviceManager.ensureProtocolInitialized()) {
+            debugLogMessage(
+                "SignalsVisualizationGui::applyEditableValue",
+                "protocol init failed",
+                "device=%s key=%s",
+                currentDevice->UID.c_str(),
+                key.c_str());
+            showAlert("Protocol init failed");
+            return false;
+        }
+
+        if (!syncDevice(currentDevice)) {
+            const std::string syncError = currentDevice->getError();
+            debugLogMessage(
+                "SignalsVisualizationGui::applyEditableValue",
+                isValueControl ? "runtime control failed" : "runtime config failed",
+                "device=%s key=%s error=%s",
+                currentDevice->UID.c_str(),
+                key.c_str(),
+                syncError.c_str());
+            showAlert(isValueControl
+                          ? (syncError.empty() ? "Control failed" : syncError.c_str())
+                          : (syncError.empty() ? "Config failed" : syncError.c_str()));
+            return false;
+        }
+
         return true;
     } catch (const std::exception &e) {
         Exception("SignalsVisualizationGui::applyEditableValue", e.what()).print();
-        showAlert(isValueControl ? "Failed to queue control value" : "Failed to queue config value");
+        showAlert(isValueControl ? "Failed to send control value" : "Failed to send config value");
         return false;
     } catch (...) {
         Exception("SignalsVisualizationGui::applyEditableValue", "Unknown exception").print();
-        showAlert(isValueControl ? "Failed to queue control value" : "Failed to queue config value");
+        showAlert(isValueControl ? "Failed to send control value" : "Failed to send config value");
         return false;
     }
 }
