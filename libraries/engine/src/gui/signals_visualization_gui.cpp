@@ -848,17 +848,18 @@ void SignalsVisualizationGui::handleRecordButtonClick(const char *message)
 
     if (recording)
     {
-        dataBundleManager.saveRecording();
+        const bool saved = dataBundleManager.saveRecording();
+        recording = false;
+        showAlert(saved ? (message ? message : "Record was saved (view settings)") : "Recording has no data to save");
     }
     else
     {
-        dataBundleManager.startRecording(currentDevice->Type);
-    }
-
-    recording = !recording;
-
-    if(!recording){
-        showAlert(message ? message : "Record was saved (view settings)");
+        if (!dataBundleManager.startRecording(currentDevice->Type, currentDevice->UID))
+        {
+            showAlert("Failed to start recording");
+            return;
+        }
+        recording = true;
     }
 
     updateActionButtonsState();
@@ -888,8 +889,10 @@ void SignalsVisualizationGui::handleClearButtonClick()
 
             if (self->feedbackPanel.isConfirmationAccepted(e, "Yes")) {
                 if (self->recording) {
-            self->dataBundleManager.discardRecording();
-                    self->handleRecordButtonClick("Recording discarded as requested");
+                    self->dataBundleManager.discardRecording();
+                    self->recording = false;
+                    self->showAlert("Recording discarded as requested");
+                    self->updateActionButtonsState();
                 } else {
                     self->handleClearConfirmButtonClick();
                 }
@@ -1013,10 +1016,11 @@ void SignalsVisualizationGui::handleStillRecording(){
 
             if (self->feedbackPanel.isConfirmationAccepted(e, "Save")) {
                 self->handleRecordButtonClick(nullptr);
-                self->dataBundleManager.saveRecording();
             } else if (self->feedbackPanel.isConfirmationAccepted(e, "Discard")) {
-                self->handleRecordButtonClick("Recording discarded as requested");
-            self->dataBundleManager.discardRecording();
+                self->dataBundleManager.discardRecording();
+                self->recording = false;
+                self->showAlert("Recording discarded as requested");
+                self->updateActionButtonsState();
             } else if (code != LV_EVENT_DELETE) {
                 return;
             }

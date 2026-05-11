@@ -12,6 +12,7 @@
 #include "data_bundle_selection_gui.hpp"
 #include "../helpers.hpp"
 #include "./images/ui_images.h"
+#include <cstdlib>
 
 DataBundleSelectionGui::DataBundleSelectionGui(GuiRouter &router, DataBundleManager &dataBundleManager) : router(router), dataBundleManager(dataBundleManager)
 {
@@ -199,6 +200,7 @@ void DataBundleSelectionGui::createDataBundle(unsigned char i, const char *dataB
     lv_obj_set_y(ui_DataBundleChart[i], -6);
     lv_obj_set_align(ui_DataBundleChart[i], LV_ALIGN_CENTER);
     lv_chart_set_type(ui_DataBundleChart[i], LV_CHART_TYPE_LINE);
+    lv_chart_set_point_count(ui_DataBundleChart[i], 10);
     lv_chart_set_div_line_count(ui_DataBundleChart[i], 5, 10);
     lv_obj_set_style_radius(ui_DataBundleChart[i], 0, LV_PART_MAIN);
     lv_obj_set_style_bg_color(ui_DataBundleChart[i], lv_color_hex(0xFFFFFF), LV_PART_MAIN);
@@ -343,16 +345,17 @@ if (ui_DataBundleChart[i] && ui_DataBundleChart_series_1[i])
     {
         int minVal = 10000;
         int maxVal = -10000;
+        lv_chart_set_all_value(ui_DataBundleChart[i], ui_DataBundleChart_series_1[i], LV_CHART_POINT_NONE);
 
         for (int j = 0; j < 10; j++)
         {
             int val = 0;
 
             if(!values[j].empty()) {
-                val = atoi(values[j].c_str()); 
+                val = static_cast<int>(atof(values[j].c_str()) * 100.0);
             }
 
-            lv_chart_set_next_value(ui_DataBundleChart[i], ui_DataBundleChart_series_1[i], val);
+            lv_chart_set_value_by_id(ui_DataBundleChart[i], ui_DataBundleChart_series_1[i], j, val);
 
             if (val < minVal) minVal = val;
             if (val > maxVal) maxVal = val;

@@ -13,6 +13,7 @@
 
 #include "data_bundle_types.hpp"
 #include "storage_manager.hpp"
+#include <vector>
 
 class DataBundleManager {
 private:
@@ -22,6 +23,8 @@ private:
 
     BundleMetadata recordingBundleMetadata;      ///< Metadata of the active recording session
     std::vector<DataPoint> recordingDataPoints;  ///< Buffered signal payload of the active recording session
+    unsigned long recordingStartMs = 0;          ///< Runtime timestamp when active recording started
+    unsigned long recordingSampleCounter = 0;    ///< Monotonic sample counter for active recording
 
     const char* root = "/DataBundles/"; ///< Directory where all data bundles are stored
 
@@ -29,7 +32,7 @@ private:
 
     std::string readLine(File &file);
 
-    std::array<std::string,3> parseCSVLine(std::string line);
+    std::vector<std::string> parseCSVLine(std::string line);
 
     // GETTERS
 
@@ -78,7 +81,7 @@ public:
     // Active recording session
     // **************************
 
-    bool startRecording(std::string deviceName);
+    bool startRecording(std::string deviceName, std::string deviceUid);
 
     // Called whenever a new runtime sample arrives.
     bool saveNewDataPoint(std::string signalName, std::string value);
