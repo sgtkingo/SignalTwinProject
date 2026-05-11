@@ -85,22 +85,22 @@ bool DataBundleManager::init()
         return true;
     }
 
-    debugLogMessage("DataBundleManager::init", "init", "initializing DataBundle manager");
+    debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DataBundleManager::init", "init", "initializing DataBundle manager");
 
     if (!storageManager().isAvailable() && !storageManager().init())
     {
-        debugLogMessage("DataBundleManager::init", "storage unavailable", "storage manager failed to initialize");
+        debugLogMessage(DEBUG_VERBOSE_ERRORS, "DataBundleManager::init", "storage unavailable", "storage manager failed to initialize");
         return false;
     }
 
     if (!ensureStorageDirectories())
     {
-        debugLogMessage("DataBundleManager::init", "storage write failed", "DataBundles directory failed to create");
+        debugLogMessage(DEBUG_VERBOSE_ERRORS, "DataBundleManager::init", "storage write failed", "DataBundles directory failed to create");
     }
 
-    debugLogMessage("DataBundleManager::init", "init", "initialized successfully");
+    debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DataBundleManager::init", "init", "initialized successfully");
 
-#if ENABLE_DEBUG
+#if ENABLE_DEBUG && DEBUG_VERBOSE_LEVEL >= 3
     getStorageInfo();
     listAllBundles();
 #endif
@@ -117,7 +117,7 @@ bool DataBundleManager::ensureStorageDirectories()
 {
     if (!storageManager().ensureDirectory(root))
     {
-        debugLogMessage("DataBundleManager::ensureStorageDirectories", "storage write failed", "failed to prepare %s directory", root);
+        debugLogMessage(DEBUG_VERBOSE_ERRORS, "DataBundleManager::ensureStorageDirectories", "storage write failed", "failed to prepare %s directory", root);
         return false;
     }
 
@@ -134,7 +134,7 @@ void DataBundleManager::getStorageInfo()
 
 bool DataBundleManager::startRecording(std::string deviceName, std::string deviceUid)
 {
-    debugLogMessage("DataBundleManager::startRecording", "recording start", "deviceName=%s deviceUid=%s", deviceName.c_str(), deviceUid.c_str());
+    debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DataBundleManager::startRecording", "recording start", "deviceName=%s deviceUid=%s", deviceName.c_str(), deviceUid.c_str());
     recordingDataPoints.clear();
     recordingBundleMetadata.deviceName = deviceName;
     recordingBundleMetadata.deviceUid = deviceUid;
@@ -178,7 +178,7 @@ bool DataBundleManager::startRecording(std::string deviceName, std::string devic
     }
 
     recordingBundleMetadata.filePath = temp;
-    debugLogMessage("DataBundleManager::startRecording", "recording start", "filePath=%s startMs=%lu", temp.c_str(), recordingStartMs);
+    debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DataBundleManager::startRecording", "recording start", "filePath=%s startMs=%lu", temp.c_str(), recordingStartMs);
 
     // TODO: persist real recording start date/time metadata.
     //recordingBundleMetadata.startDate
@@ -190,7 +190,7 @@ bool DataBundleManager::saveNewDataPoint(std::string signalName, std::string val
 {
     if (recordingBundleMetadata.filePath.empty())
     {
-        debugLogMessage("DataBundleManager::saveNewDataPoint", "recording state invalid", "no active recording signal=%s", signalName.c_str());
+        debugLogMessage(DEBUG_VERBOSE_ERRORS, "DataBundleManager::saveNewDataPoint", "recording state invalid", "no active recording signal=%s", signalName.c_str());
         return false;
     }
 
@@ -221,18 +221,19 @@ bool DataBundleManager::saveRecording()
 {
     if (recordingBundleMetadata.filePath.empty())
     {
-        debugLogMessage("DataBundleManager::saveRecording", "recording state invalid", "no active recording to save");
+        debugLogMessage(DEBUG_VERBOSE_ERRORS, "DataBundleManager::saveRecording", "recording state invalid", "no active recording to save");
         return false;
     }
 
     if (recordingDataPoints.empty())
     {
-        debugLogMessage("DataBundleManager::saveRecording", "recording state invalid", "recording has no data points");
+        debugLogMessage(DEBUG_VERBOSE_ERRORS, "DataBundleManager::saveRecording", "recording state invalid", "recording has no data points");
         discardRecording();
         return false;
     }
 
     debugLogMessage(
+        DEBUG_VERBOSE_IMPORTANT,
         "DataBundleManager::saveRecording",
         "storage write",
         "saving filePath=%s samples=%u",
@@ -265,7 +266,7 @@ bool DataBundleManager::saveRecording()
             {
                 bundleFileNames.push_back(fileName);
                 bundleFileNamesLoaded = true;
-                debugLogMessage("DataBundleManager::saveRecording", "storage cache fallback", "cached saved bundle=%s", fileName.c_str());
+                debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DataBundleManager::saveRecording", "storage cache fallback", "cached saved bundle=%s", fileName.c_str());
             }
         }
 
@@ -278,7 +279,7 @@ bool DataBundleManager::saveRecording()
     }
     else
     {
-        debugLogMessage("DataBundleManager::saveRecording", "storage write failed", "failed to create %s", recordingBundleMetadata.filePath.c_str());
+        debugLogMessage(DEBUG_VERBOSE_ERRORS, "DataBundleManager::saveRecording", "storage write failed", "failed to create %s", recordingBundleMetadata.filePath.c_str());
         return false;
     }
 
@@ -296,7 +297,7 @@ void DataBundleManager::discardRecording()
 
 void DataBundleManager::clearRecordingState(const char *reason)
 {
-    debugLogMessage("DataBundleManager::clearRecordingState", "recording state", "%s filePath=%s samples=%u", reason ? reason : "clearing recording", recordingBundleMetadata.filePath.c_str(), static_cast<unsigned int>(recordingDataPoints.size()));
+    debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DataBundleManager::clearRecordingState", "recording state", "%s filePath=%s samples=%u", reason ? reason : "clearing recording", recordingBundleMetadata.filePath.c_str(), static_cast<unsigned int>(recordingDataPoints.size()));
     recordingBundleMetadata.deviceName = "";
     recordingBundleMetadata.deviceUid = "";
     recordingBundleMetadata.filePath = "";
@@ -335,7 +336,7 @@ std::array<DataBundleBuffer,6> DataBundleManager::getBundlePage(unsigned char pa
 bool DataBundleManager::deleteAllBundles()
 {
     std::vector<std::string> filesToDelete = storageManager().listFiles(root);
-    debugLogMessage("DataBundleManager::deleteAllBundles", "storage write", "delete count=%u", static_cast<unsigned int>(filesToDelete.size()));
+    debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DataBundleManager::deleteAllBundles", "storage write", "delete count=%u", static_cast<unsigned int>(filesToDelete.size()));
     if (filesToDelete.empty()) {
         return true;
     }
@@ -361,7 +362,7 @@ bool DataBundleManager::reloadBundleFileNames()
 
     const std::vector<std::string> bundlePaths = storageManager().listFiles(root);
     if (bundlePaths.empty() && !storageManager().ensureDirectory(root)) {
-        debugLogMessage("DataBundleManager::reloadBundleFileNames", "storage read failed", "failed to open %s directory", root);
+        debugLogMessage(DEBUG_VERBOSE_ERRORS, "DataBundleManager::reloadBundleFileNames", "storage read failed", "failed to open %s directory", root);
         return false;
     }
 
@@ -391,12 +392,12 @@ bool DataBundleManager::reloadBundleFileNames()
 
         if (!bundleFileNames.empty())
         {
-            debugLogMessage("DataBundleManager::reloadBundleFileNames", "storage cache fallback", "restored cached bundle filenames count=%u", static_cast<unsigned int>(bundleFileNames.size()));
+            debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DataBundleManager::reloadBundleFileNames", "storage cache fallback", "restored cached bundle filenames count=%u", static_cast<unsigned int>(bundleFileNames.size()));
         }
     }
 
     bundleFileNamesLoaded = true;
-    debugLogMessage("DataBundleManager::reloadBundleFileNames", "storage read", "loaded bundle filenames count=%u", static_cast<unsigned int>(bundleFileNames.size()));
+    debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DataBundleManager::reloadBundleFileNames", "storage read", "loaded bundle filenames count=%u", static_cast<unsigned int>(bundleFileNames.size()));
     return true;
 }
 
@@ -410,7 +411,7 @@ void DataBundleManager::pruneOldestBundle()
             continue;
         }
 
-        debugLogMessage("DataBundleManager::pruneOldestBundle", "storage write", "removing oldest=%s", bundlePath.c_str());
+        debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DataBundleManager::pruneOldestBundle", "storage write", "removing oldest=%s", bundlePath.c_str());
         storageManager().remove(bundlePath);
         return;
     }

@@ -33,6 +33,12 @@
 #define ENABLE_DEBUG 1
 #endif
 
+// Debug verbosity:
+// 1 = errors only, 2 = warnings and important operations, 3 = all debug details.
+#ifndef DEBUG_VERBOSE_LEVEL
+#define DEBUG_VERBOSE_LEVEL 2
+#endif
+
 // Storage backend selection for all persistent data access.
 #define STORAGE_OPTION_SD 1
 #define STORAGE_OPTION_SPIFFS 2

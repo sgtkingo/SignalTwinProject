@@ -821,6 +821,7 @@ bool SignalsVisualizationGui::applyEditableValue(bool isValueControl, const std:
         }
 
         debugLogMessage(
+            DEBUG_VERBOSE_IMPORTANT,
             "SignalsVisualizationGui::applyEditableValue",
             isValueControl ? "runtime control" : "runtime config",
             "device=%s key=%s value=%s",
@@ -830,6 +831,7 @@ bool SignalsVisualizationGui::applyEditableValue(bool isValueControl, const std:
 
         if (!deviceManager.ensureProtocolInitialized()) {
             debugLogMessage(
+                DEBUG_VERBOSE_ERRORS,
                 "SignalsVisualizationGui::applyEditableValue",
                 "protocol init failed",
                 "device=%s key=%s",
@@ -842,6 +844,7 @@ bool SignalsVisualizationGui::applyEditableValue(bool isValueControl, const std:
         if (!syncDevice(currentDevice)) {
             const std::string syncError = currentDevice->getError();
             debugLogMessage(
+                DEBUG_VERBOSE_ERRORS,
                 "SignalsVisualizationGui::applyEditableValue",
                 isValueControl ? "runtime control failed" : "runtime config failed",
                 "device=%s key=%s error=%s",
@@ -1126,7 +1129,7 @@ bool SignalsVisualizationGui::syncCurrentDevice()
     }
 
     if (!deviceManager.ensureProtocolInitialized()) {
-        debugLogMessage("SignalsVisualizationGui::syncCurrentDevice", "protocol init failed", "device=%s", currentDevice->UID.c_str());
+        debugLogMessage(DEBUG_VERBOSE_ERRORS, "SignalsVisualizationGui::syncCurrentDevice", "protocol init failed", "device=%s", currentDevice->UID.c_str());
         showAlert("Protocol init failed");
         return false;
     }
@@ -1134,7 +1137,7 @@ bool SignalsVisualizationGui::syncCurrentDevice()
     currentDevice->requestRuntimeUpdate();
     const bool success = syncDevice(currentDevice);
     if (!success) {
-        debugLogMessage("SignalsVisualizationGui::syncCurrentDevice", "runtime sync failed", "device=%s error=%s", currentDevice->UID.c_str(), currentDevice->getError().c_str());
+        debugLogMessage(DEBUG_VERBOSE_ERRORS, "SignalsVisualizationGui::syncCurrentDevice", "runtime sync failed", "device=%s error=%s", currentDevice->UID.c_str(), currentDevice->getError().c_str());
         showAlert(currentDevice->getError().empty() ? "Sync failed" : currentDevice->getError().c_str());
         return false;
     }
@@ -1145,7 +1148,7 @@ bool SignalsVisualizationGui::syncCurrentDevice()
     updateDeviceDataDisplay();
     updateChart();
     currentDevice->setRedrawPending(false);
-    debugLogMessage("SignalsVisualizationGui::syncCurrentDevice", "runtime sync", "device=%s manual update completed", currentDevice->UID.c_str());
+    debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "SignalsVisualizationGui::syncCurrentDevice", "runtime sync", "device=%s manual update completed", currentDevice->UID.c_str());
     return true;
 }
 

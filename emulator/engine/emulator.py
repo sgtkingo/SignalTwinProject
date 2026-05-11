@@ -37,7 +37,11 @@ DEFAULT_APP_NAME = "board"
 
 def is_firmware_log_line(line: str) -> bool:
     upper_line = line.upper()
-    return "DEBUG" in upper_line or "EXCEPTION" in upper_line
+    return "DEBUG" in upper_line or "WARNING" in upper_line or "WARN:" in upper_line or "EXCEPTION" in upper_line
+
+
+def find_vscp_request_start(line: str) -> int:
+    return line.lower().find("?type=")
 
 
 def _repo_root() -> Path:
@@ -417,12 +421,22 @@ class VSCPEmulator:
                 continue
 
             if is_firmware_log_line(line):
-                messages.append(("log", line))
+                request_index = find_vscp_request_start(line)
+                if request_index == -1:
+                    messages.append(("log", line))
+                    continue
+
+                log_line = line[:request_index].strip()
+                if log_line:
+                    messages.append(("log", log_line))
+                line = line[request_index:].strip()
+                if line:
+                    messages.append(("request", line))
                 continue
 
-            qmark_index = line.find("?")
-            if qmark_index != -1:
-                line = line[qmark_index:].strip()
+            request_index = find_vscp_request_start(line)
+            if request_index != -1:
+                line = line[request_index:].strip()
                 if line:
                     messages.append(("request", line))
         return messages, buffer

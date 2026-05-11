@@ -132,13 +132,13 @@ bool DeviceManager::init() {
     initialized = false;
     Status = ManagerStatus::ERROR;
     if (!catalog.isInitialized()) {
-        debugLogMessage("DeviceManager::init", "dependency not initialized", "device catalog must be initialized first");
+        debugLogMessage(DEBUG_VERBOSE_ERRORS, "DeviceManager::init", "dependency not initialized", "device catalog must be initialized first");
         throw DeviceInitializationFailException("DeviceManager::init", "Device catalog must be initialized before runtime manager init.");
     }
 
     Status = ManagerStatus::READY;
     resetPinMap();
-    debugLogMessage("DeviceManager::init", "init", "initialization done pinCount=%d", NUM_PINS);
+    debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DeviceManager::init", "init", "initialization done pinCount=%d", NUM_PINS);
     return initialized = true;
 }
 
@@ -153,24 +153,24 @@ bool DeviceManager::ensureProtocolInitialized()
 
 bool DeviceManager::initializeProtocolConnection()
 {
-    debugLogMessage("DeviceManager::initializeProtocolConnection", "protocol init", "initializing protocol on demand app=%s db=%s", catalog.getApplication().c_str(), catalog.getVersion().c_str());
+    debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DeviceManager::initializeProtocolConnection", "protocol init", "initializing protocol on demand app=%s db=%s", catalog.getApplication().c_str(), catalog.getVersion().c_str());
 
     ResponseStatus response {ResponseStatusEnum::ERROR, "Protocol initialization failed", {}};
     for (size_t i = 0; i < DeviceManager::MAX_INIT_ATTEMPTS; i++)
     {
-        debugLogMessage("DeviceManager::initializeProtocolConnection", "protocol init", "attempt=%u", static_cast<unsigned int>(i + 1));
+        debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DeviceManager::initializeProtocolConnection", "protocol init", "attempt=%u", static_cast<unsigned int>(i + 1));
         response = Protocol::init(catalog.getApplication(), catalog.getVersion());
         if (response.status == ResponseStatusEnum::OK)
         {
-            debugLogMessage("DeviceManager::initializeProtocolConnection", "protocol init", "initialized successfully");
+            debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DeviceManager::initializeProtocolConnection", "protocol init", "initialized successfully");
             return true;
         }
 
-        debugLogMessage("DeviceManager::initializeProtocolConnection", "protocol init failed", "retrying error=%s", response.error.c_str());
+        debugLogMessage(DEBUG_VERBOSE_ERRORS, "DeviceManager::initializeProtocolConnection", "protocol init failed", "retrying error=%s", response.error.c_str());
         delay_ms(500);
     }
 
-    debugLogMessage("DeviceManager::initializeProtocolConnection", "protocol init failed", "failed permanently error=%s", response.error.c_str());
+    debugLogMessage(DEBUG_VERBOSE_ERRORS, "DeviceManager::initializeProtocolConnection", "protocol init failed", "failed permanently error=%s", response.error.c_str());
     return false;
 }
 
@@ -202,7 +202,7 @@ bool DeviceManager::resync(BaseDevice *device)
 {
     if(!isRunning()) return false;
     if(device) {
-        debugLogMessage("DeviceManager::resync", "runtime sync", "requesting update device=%s", device->UID.c_str());
+        debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DeviceManager::resync", "runtime sync", "requesting update device=%s", device->UID.c_str());
         device->requestRuntimeUpdate();
     }
     return syncDevice(device);
@@ -210,14 +210,14 @@ bool DeviceManager::resync(BaseDevice *device)
 
 bool DeviceManager::connect() 
 {
-    debugLogMessage("DeviceManager::connect", "pin connection", "connect requested");
+    debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DeviceManager::connect", "pin connection", "connect requested");
     if (!ensureProtocolInitialized()) {
-        debugLogMessage("DeviceManager::connect", "protocol init failed", "cannot connect assigned devices");
+        debugLogMessage(DEBUG_VERBOSE_ERRORS, "DeviceManager::connect", "protocol init failed", "cannot connect assigned devices");
         return false;
     }
 
     const std::vector<BaseDevice *> assignedDevices = collectAssignedDevicesFromPinMap();
-    debugLogMessage("DeviceManager::connect", "pin connection", "assigned device count=%u", static_cast<unsigned int>(assignedDevices.size()));
+    debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DeviceManager::connect", "pin connection", "assigned device count=%u", static_cast<unsigned int>(assignedDevices.size()));
     disconnectAssignedDevices(assignedDevices);
     applyAssignedPinsToDevices();
     return connectAssignedDevices(assignedDevices);
@@ -240,12 +240,12 @@ void DeviceManager::resetPinMap() {
 bool DeviceManager::assignDeviceToPin(BaseDevice* device, int activePin) {
     VirtualPin *pin = getPinState(static_cast<size_t>(activePin));
     if (!pin) {
-        debugLogMessage("DeviceManager::assignDeviceToPin", "pin index invalid", "pin=%d", activePin);
+        debugLogMessage(DEBUG_VERBOSE_ERRORS, "DeviceManager::assignDeviceToPin", "pin index invalid", "pin=%d", activePin);
         return false;
     }
 
     const bool assigned = pin->assignDevice(device);
-    debugLogMessage("DeviceManager::assignDeviceToPin", "pin assignment", "device=%s pin=%d result=%d", device ? device->UID.c_str() : "-", activePin, assigned);
+    debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DeviceManager::assignDeviceToPin", "pin assignment", "device=%s pin=%d result=%d", device ? device->UID.c_str() : "-", activePin, assigned);
     return assigned;
 }
 

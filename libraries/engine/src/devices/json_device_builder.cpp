@@ -25,7 +25,7 @@ public:
 
     void setAllowedPinsCsv(const std::string &allowedPins)
     {
-        AllowedPins = allowedPins;
+        setAllowedPins(allowedPins);
     }
 };
 

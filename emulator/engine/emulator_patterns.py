@@ -42,7 +42,10 @@ for stream in (sys.stdout, sys.stderr):
 
 def is_firmware_log_line(line: str) -> bool:
     upper_line = line.upper()
-    return "DEBUG" in upper_line or "EXCEPTION" in upper_line
+    return "DEBUG" in upper_line or "WARNING" in upper_line or "WARN:" in upper_line or "EXCEPTION" in upper_line
+
+def find_vscp_request_start(line: str) -> int:
+    return line.lower().find("?type=")
 
 class VSCPEmulator:
     """Virtual Sensors Communication Protocol Emulator"""
@@ -649,8 +652,8 @@ class VSCPEmulator:
                     
                     if data and '\n' in buffer:
                         print(f"DEBUG: Serial data chunk received reason=serial read source=VSCPEmulator.listen_loop data={data!r}")
-                    # Process complete messages (ending with newline or containing '?')
-                    while '\n' in buffer or '?' in buffer:
+                    # Process complete messages (ending with newline or containing a VSCP request).
+                    while '\n' in buffer or find_vscp_request_start(buffer) != -1:
                         if '\n' in buffer:
                             line, buffer = buffer.split('\n', 1)
                         else:
@@ -660,14 +663,22 @@ class VSCPEmulator:
                         
                         line = line.strip()
                         if is_firmware_log_line(line):
-                            print(f"Firmware log: {line}")
-                            continue
+                            request_index = find_vscp_request_start(line)
+                            if request_index == -1:
+                                print(f"Firmware log: {line}")
+                                continue
 
-                        # Substring from ? char if exists
-                        qmark_index = line.find('?')
-                        if qmark_index != -1:
-                            line = line[qmark_index:]
-                        if line and line.startswith('?'):
+                            log_line = line[:request_index].strip()
+                            if log_line:
+                                print(f"Firmware log: {log_line}")
+                            line = line[request_index:].strip()
+                        else:
+                            # Substring from VSCP request start if exists.
+                            request_index = find_vscp_request_start(line)
+                            if request_index != -1:
+                                line = line[request_index:]
+
+                        if line and line.lower().startswith('?type='):
                             print(f"📨 Received: {line}")
                             response = self.process_request(line)
                             

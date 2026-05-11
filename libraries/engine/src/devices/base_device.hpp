@@ -26,6 +26,8 @@
 #include <array>
 #include <cstddef>
 #include <vector>
+#include <utility>
+#include <algorithm>
 
 #define HISTORY_CAP 10 ///< History capacity.
 
@@ -146,7 +148,25 @@ protected:
     std::vector<std::string> ConfigKeyOrder;                       ///< Stable UI order for config keys.
     std::vector<std::string> Pins;                                 ///< Assigned device pins.
     std::string AllowedPins;                                       ///< Allowed device pins, stored as comma separated values.
+    std::vector<int> AllowedPinsList;                              ///< Parsed allowed pin numbers for fast runtime lookup.
     DeviceRole Role = DeviceRole::SENSOR;                          ///< Runtime device role.
+
+    void setAllowedPins(std::string allowedPins)
+    {
+        AllowedPins = std::move(allowedPins);
+        AllowedPinsList.clear();
+
+        if (AllowedPins.empty()) {
+            return;
+        }
+
+        for (const auto &item : splitString(AllowedPins, ',')) {
+            if (item.empty()) {
+                continue;
+            }
+            AllowedPinsList.push_back(convertStringToType<int>(item));
+        }
+    }
 
     /**
      * @brief Set device status from protocol string.
@@ -607,18 +627,7 @@ public:
      */
     std::vector<int> getAllowedPinsList() const
     {
-        std::vector<int> pins;
-        if (AllowedPins.empty()) {
-            return pins;
-        }
-
-        for (const auto &item : splitString(AllowedPins, ',')) {
-            if (item.empty()) {
-                continue;
-            }
-            pins.push_back(convertStringToType<int>(item));
-        }
-        return pins;
+        return AllowedPinsList;
     }
 
     /**
@@ -633,8 +642,7 @@ public:
             return true;
         }
 
-        const auto allowed = getAllowedPinsList();
-        return std::find(allowed.begin(), allowed.end(), pinNumber) != allowed.end();
+        return std::find(AllowedPinsList.begin(), AllowedPinsList.end(), pinNumber) != AllowedPinsList.end();
     }
 
     /**

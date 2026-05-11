@@ -20,7 +20,10 @@ def send_message(message):
 
 def is_firmware_log_line(line):
     upper_line = line.upper()
-    return "DEBUG" in upper_line or "EXCEPTION" in upper_line
+    return "DEBUG" in upper_line or "WARNING" in upper_line or "WARN:" in upper_line or "EXCEPTION" in upper_line
+
+def find_vscp_request_start(line):
+    return line.lower().find("?type=")
 
 try:
     print("Emulator started, waiting for commands...")
@@ -29,8 +32,15 @@ try:
         if res:
             decoded = res.decode('utf-8', errors='ignore').strip()
             if is_firmware_log_line(decoded):
-                print(f"Firmware log: {decoded}")
-                continue
+                request_index = find_vscp_request_start(decoded)
+                if request_index == -1:
+                    print(f"Firmware log: {decoded}")
+                    continue
+
+                log_line = decoded[:request_index].strip()
+                if log_line:
+                    print(f"Firmware log: {log_line}")
+                decoded = decoded[request_index:].strip()
 
             print(f"Message received from bus: {decoded}")
             if "update" in decoded.lower():

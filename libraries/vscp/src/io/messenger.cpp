@@ -60,7 +60,9 @@
 
         debugLogMessage("sendMessageAsString", "protocol io write", "%s", prepMessage.c_str());
 
+        UART1_VIRTUAL.print('\n');
         UART1_VIRTUAL.println(prepMessage);
+        UART1_VIRTUAL.flush();
     }
 
     String receiveMessageAsString(int verbose, int timeout, bool strip) {
