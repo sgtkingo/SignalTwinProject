@@ -19,6 +19,7 @@ DeviceCatalog::~DeviceCatalog()
 
 void DeviceCatalog::clear()
 {
+    debugLogMessage("DeviceCatalog::clear", "runtime memory write", "deviceCount=%u", static_cast<unsigned int>(devices.size()));
     for (BaseDevice *device : devices) {
         delete device;
     }
@@ -35,7 +36,7 @@ bool DeviceCatalog::init(const std::string &configFile)
     clear();
     configFilePath = configFile.empty() ? DEFAULT_DEVICE_DB_PATH : configFile;
 
-    logMessage("Initializing device catalog via JSON DB: %s\n", configFilePath.c_str());
+    debugLogMessage("DeviceCatalog::init", "storage read", "initializing via JSON DB path=%s", configFilePath.c_str());
 
     schema = parseDeviceCatalogSchemaFromStorageFile(configFilePath);
     DeviceCatalogLoadResult catalog = buildDeviceCatalogFromSchema(schema);
@@ -44,16 +45,19 @@ bool DeviceCatalog::init(const std::string &configFile)
     application = std::move(catalog.application);
 
     if (devices.empty()) {
+        debugLogMessage("DeviceCatalog::init", "catalog invalid", "Device DB did not produce any devices path=%s", configFilePath.c_str());
         throw DeviceInitializationFailException("DeviceCatalog::init", "Device DB did not produce any devices.");
     }
 
     initialized = true;
+    debugLogMessage("DeviceCatalog::init", "catalog init", "deviceCount=%u application=%s version=%s", static_cast<unsigned int>(devices.size()), application.c_str(), version.c_str());
     return true;
 }
 
 bool DeviceCatalog::saveDraft(const DeviceDefinitionSchema &draft, const std::string &originalUid, bool isNewEntity)
 {
     DeviceCatalogSchema nextSchema = schema;
+    debugLogMessage("DeviceCatalog::saveDraft", "storage write", "uid=%s originalUid=%s isNew=%d", draft.uid.c_str(), originalUid.c_str(), isNewEntity);
     if (nextSchema.version.empty()) {
         nextSchema.version = version;
     }
@@ -77,6 +81,7 @@ bool DeviceCatalog::saveDraft(const DeviceDefinitionSchema &draft, const std::st
         }
 
         if (deviceSchema.uid == draft.uid) {
+            debugLogMessage("DeviceCatalog::saveDraft", "catalog validation failed", "duplicate uid=%s", draft.uid.c_str());
             throw InvalidConfigurationException("DeviceCatalog::saveDraft", "Device UID already exists: " + draft.uid);
         }
     }
@@ -109,6 +114,7 @@ bool DeviceCatalog::saveDraft(const DeviceDefinitionSchema &draft, const std::st
     version = schema.version;
     application = schema.application;
     initialized = true;
+    debugLogMessage("DeviceCatalog::saveDraft", "storage write", "saved uid=%s deviceCount=%u", draft.uid.c_str(), static_cast<unsigned int>(devices.size()));
     return true;
 }
 
@@ -117,6 +123,7 @@ bool DeviceCatalog::saveMetadata(const std::string &applicationValue, const std:
     DeviceCatalogSchema nextSchema = schema;
     nextSchema.application = applicationValue;
     nextSchema.version = versionValue;
+    debugLogMessage("DeviceCatalog::saveMetadata", "storage write", "application=%s version=%s", applicationValue.c_str(), versionValue.c_str());
 
     DeviceCatalogLoadResult builtCatalog = buildDeviceCatalogFromSchema(nextSchema);
 
@@ -138,6 +145,7 @@ bool DeviceCatalog::saveMetadata(const std::string &applicationValue, const std:
     version = schema.version;
     application = schema.application;
     initialized = true;
+    debugLogMessage("DeviceCatalog::saveMetadata", "storage write", "metadata saved deviceCount=%u", static_cast<unsigned int>(devices.size()));
     return true;
 }
 
@@ -149,10 +157,12 @@ bool DeviceCatalog::deleteDevice(const std::string &uid)
     });
 
     if (it == nextSchema.devices.end()) {
+        debugLogMessage("DeviceCatalog::deleteDevice", "catalog validation failed", "device not found uid=%s", uid.c_str());
         throw InvalidConfigurationException("DeviceCatalog::deleteDevice", "Device not found: " + uid);
     }
 
     if (nextSchema.devices.size() <= 1) {
+        debugLogMessage("DeviceCatalog::deleteDevice", "catalog validation failed", "cannot delete last device uid=%s", uid.c_str());
         throw InvalidConfigurationException("DeviceCatalog::deleteDevice", "Cannot delete the last device from the catalog.");
     }
 
@@ -183,6 +193,7 @@ bool DeviceCatalog::deleteDevice(const std::string &uid)
     version = schema.version;
     application = schema.application;
     initialized = true;
+    debugLogMessage("DeviceCatalog::deleteDevice", "storage write", "deleted uid=%s remaining=%u", uid.c_str(), static_cast<unsigned int>(devices.size()));
     return true;
 }
 

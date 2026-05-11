@@ -44,7 +44,7 @@ void CrashGui::init() {
         // logMessage("CrashGui initialization completed!\n");
     }
     catch (const std::exception &e) {
-        // logMessage("CrashGui initialization failed: %s\n", e.what());
+        Exception("CrashGui::init", e.what()).print();
         initialized = false;
     }
 }

@@ -19,6 +19,7 @@ import importlib
 import random
 import threading
 import time
+import traceback
 from pathlib import Path
 from typing import Any, Dict, Optional
 from urllib.parse import unquote
@@ -32,6 +33,11 @@ except ModuleNotFoundError:
 PROTOCOL_API_VERSION = "1.3"
 DEFAULT_DB_VERSION = "1.0"
 DEFAULT_APP_NAME = "board"
+
+
+def is_firmware_log_line(line: str) -> bool:
+    upper_line = line.upper()
+    return "DEBUG" in upper_line or "EXCEPTION" in upper_line
 
 
 def _repo_root() -> Path:
@@ -380,32 +386,45 @@ class VSCPEmulator:
         return self.build_message({"id": uid, "status": "1"})
 
     def process_request(self, message: str) -> str:
-        params = self.parse_message(message)
-        request_type = params.get("type", "").upper()
-        handlers = {
-            "INIT": self.handle_init,
-            "UPDATE": self.handle_update,
-            "CONFIG": self.handle_config,
-            "CONTROL": self.handle_control,
-            "RESET": self.handle_reset,
-            "CONNECT": self.handle_connect,
-            "DISCONNECT": self.handle_disconnect,
-        }
+        try:
+            params = self.parse_message(message)
+            request_type = params.get("type", "").upper()
+            handlers = {
+                "INIT": self.handle_init,
+                "UPDATE": self.handle_update,
+                "CONFIG": self.handle_config,
+                "CONTROL": self.handle_control,
+                "RESET": self.handle_reset,
+                "CONNECT": self.handle_connect,
+                "DISCONNECT": self.handle_disconnect,
+            }
 
-        handler = handlers.get(request_type)
-        if not handler:
-            return self.build_message({"status": "0", "error": f"Unknown request type: {request_type}"})
-        return handler(params)
+            handler = handlers.get(request_type)
+            if not handler:
+                return self.build_message({"status": "0", "error": f"Unknown request type: {request_type}"})
+            return handler(params)
+        except Exception as exc:
+            print(f"EXCEPTION: Emulator request handling failed reason={exc} source=VSCPEmulator.process_request")
+            traceback.print_exc()
+            return self.build_message({"status": "0", "error": f"Emulator exception: {exc}"})
 
-    def _extract_messages(self, buffer: str) -> tuple[list[str], str]:
+    def _extract_messages(self, buffer: str) -> tuple[list[tuple[str, str]], str]:
         messages = []
         while "\n" in buffer:
             line, buffer = buffer.split("\n", 1)
+            line = line.strip()
+            if not line:
+                continue
+
+            if is_firmware_log_line(line):
+                messages.append(("log", line))
+                continue
+
             qmark_index = line.find("?")
             if qmark_index != -1:
                 line = line[qmark_index:].strip()
                 if line:
-                    messages.append(line)
+                    messages.append(("request", line))
         return messages, buffer
 
     def listen_loop(self):
@@ -419,7 +438,11 @@ class VSCPEmulator:
                     buffer += data
                     messages, buffer = self._extract_messages(buffer)
 
-                    for message in messages:
+                    for kind, message in messages:
+                        if kind == "log":
+                            print(f"Firmware log: {message}")
+                            continue
+
                         print(f"Received: {message}")
                         response = self.process_request(message)
                         if response:
@@ -428,7 +451,8 @@ class VSCPEmulator:
 
                 time.sleep(0.01)
             except Exception as exc:
-                print(f"Error in listen loop: {exc}")
+                print(f"EXCEPTION: Emulator listen loop failed reason={exc} source=VSCPEmulator.listen_loop")
+                traceback.print_exc()
                 time.sleep(0.1)
 
     def run(self):

@@ -10,6 +10,7 @@
 
 #include "app_selection_gui.hpp"
 #include "./images/ui_images.h"
+#include "expt.hpp"
 
 AppSelectionGui::AppSelectionGui(GuiRouter &router)
     : router(router)
@@ -45,7 +46,7 @@ void AppSelectionGui::init()
     }
     catch (const std::exception &e)
     {
-        // // logMessage("AppSelectionGui initialization failed: %s\n", e.what());
+        Exception("AppSelectionGui::init", e.what()).print();
         initialized = false;
     }
 }

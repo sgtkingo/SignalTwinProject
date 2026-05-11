@@ -56,20 +56,23 @@ StorageManager &storageManager()
 bool StorageManager::init()
 {
     if (initialized) {
+        debugLogMessage("StorageManager::init", "storage init skipped", "already initialized available=%d", available);
         return available;
     }
 
 #if STORAGE_OPTION == STORAGE_OPTION_SD
     activeFilesystem = &SD;
     activeStorageLabel = "SD";
-    logMessage("StorageManager: mounting SD backend...");
+    debugLogMessage("StorageManager::init", "storage mount", "mounting SD backend");
     SPI.begin(STORAGE_SD_PIN_SCK, STORAGE_SD_PIN_MISO, STORAGE_SD_PIN_MOSI, STORAGE_SD_PIN_CS);
     available = SD.begin(STORAGE_SD_PIN_CS);
 #elif STORAGE_OPTION == STORAGE_OPTION_SPIFFS
     activeFilesystem = &SPIFFS;
     activeStorageLabel = "SPIFFS";
-    logMessage(
-        "StorageManager: mounting SPIFFS backend (formatOnFail=%d)...",
+    debugLogMessage(
+        "StorageManager::init",
+        "storage mount",
+        "mounting SPIFFS backend formatOnFail=%d",
         STORAGE_SPIFFS_FORMAT_ON_FAIL
     );
     available = SPIFFS.begin(STORAGE_SPIFFS_FORMAT_ON_FAIL != 0);
@@ -79,17 +82,21 @@ bool StorageManager::init()
 
     if (!available) {
 #if STORAGE_OPTION == STORAGE_OPTION_SD
-        logMessage("StorageManager: SD mount failed.");
+        debugLogMessage("StorageManager::init", "storage mount failed", "SD mount failed");
 #elif STORAGE_OPTION == STORAGE_OPTION_SPIFFS
-        logMessage(
-            "StorageManager: SPIFFS mount failed. Check that the selected partition scheme contains a SPIFFS partition."
+        debugLogMessage(
+            "StorageManager::init",
+            "storage mount failed",
+            "SPIFFS mount failed. Check that the selected partition scheme contains a SPIFFS partition."
         );
 #endif
         return false;
     }
 
-    logMessage(
-        "StorageManager: %s mounted successfully. Total=%llu Used=%llu",
+    debugLogMessage(
+        "StorageManager::init",
+        "storage mount",
+        "%s mounted successfully total=%llu used=%llu",
         activeStorageLabel,
         totalBytes(),
         usedBytes()
@@ -101,46 +108,61 @@ bool StorageManager::init()
 bool StorageManager::exists(const std::string &path) const
 {
     if (!available || !activeFilesystem) {
+        debugLogMessage("StorageManager::exists", "storage unavailable", "exists skipped path=%s", path.c_str());
         return false;
     }
 
-    return activeFilesystem->exists(ensureAbsolutePath(path).c_str());
+    const std::string absolutePath = ensureAbsolutePath(path);
+    const bool result = activeFilesystem->exists(absolutePath.c_str());
+    debugLogMessage("StorageManager::exists", "storage read", "path=%s exists=%d", absolutePath.c_str(), result);
+    return result;
 }
 
 bool StorageManager::ensureDirectory(const std::string &path)
 {
     if (!available || !activeFilesystem) {
+        debugLogMessage("StorageManager::ensureDirectory", "storage unavailable", "ensure directory skipped path=%s", path.c_str());
         return false;
     }
 
 #if STORAGE_OPTION == STORAGE_OPTION_SPIFFS
-    (void)path;
+    debugLogMessage("StorageManager::ensureDirectory", "spiffs virtual directory", "path=%s", path.c_str());
     return true;
 #else
     const std::string normalized = normalizeDirectoryPath(path);
     if (activeFilesystem->exists(normalized.c_str())) {
+        debugLogMessage("StorageManager::ensureDirectory", "storage read", "directory already exists path=%s", normalized.c_str());
         return true;
     }
-    return activeFilesystem->mkdir(normalized.c_str());
+    const bool created = activeFilesystem->mkdir(normalized.c_str());
+    debugLogMessage("StorageManager::ensureDirectory", "storage write", "mkdir path=%s result=%d", normalized.c_str(), created);
+    return created;
 #endif
 }
 
 bool StorageManager::remove(const std::string &path)
 {
     if (!available || !activeFilesystem) {
+        debugLogMessage("StorageManager::remove", "storage unavailable", "remove skipped path=%s", path.c_str());
         return false;
     }
 
-    return activeFilesystem->remove(ensureAbsolutePath(path).c_str());
+    const std::string absolutePath = ensureAbsolutePath(path);
+    const bool removed = activeFilesystem->remove(absolutePath.c_str());
+    debugLogMessage("StorageManager::remove", "storage write", "remove path=%s result=%d", absolutePath.c_str(), removed);
+    return removed;
 }
 
 File StorageManager::open(const std::string &path, const char *mode) const
 {
     if (!available || !activeFilesystem) {
+        debugLogMessage("StorageManager::open", "storage unavailable", "open skipped path=%s mode=%s", path.c_str(), mode ? mode : "-");
         return File();
     }
 
-    return activeFilesystem->open(ensureAbsolutePath(path).c_str(), mode);
+    const std::string absolutePath = ensureAbsolutePath(path);
+    debugLogMessage("StorageManager::open", "storage read/write", "open path=%s mode=%s", absolutePath.c_str(), mode ? mode : "-");
+    return activeFilesystem->open(absolutePath.c_str(), mode);
 }
 
 std::vector<std::string> StorageManager::listFiles(const std::string &directoryPath) const
@@ -148,14 +170,17 @@ std::vector<std::string> StorageManager::listFiles(const std::string &directoryP
     std::vector<std::string> filePaths;
 
     if (!available || !activeFilesystem) {
+        debugLogMessage("StorageManager::listFiles", "storage unavailable", "list skipped directory=%s", directoryPath.c_str());
         return filePaths;
     }
 
     const std::string normalizedDirectory = normalizeDirectoryPath(directoryPath);
+    debugLogMessage("StorageManager::listFiles", "storage read", "listing directory=%s", normalizedDirectory.c_str());
 
 #if STORAGE_OPTION == STORAGE_OPTION_SPIFFS
     File root = activeFilesystem->open("/", FILE_READ);
     if (!root || !root.isDirectory()) {
+        debugLogMessage("StorageManager::listFiles", "storage read failed", "cannot open SPIFFS root");
         return filePaths;
     }
 
@@ -178,6 +203,7 @@ std::vector<std::string> StorageManager::listFiles(const std::string &directoryP
 #else
     File directory = activeFilesystem->open(normalizedDirectory.c_str(), FILE_READ);
     if (!directory || !directory.isDirectory()) {
+        debugLogMessage("StorageManager::listFiles", "storage read failed", "cannot open directory=%s", normalizedDirectory.c_str());
         return filePaths;
     }
 
@@ -206,6 +232,7 @@ std::vector<std::string> StorageManager::listFiles(const std::string &directoryP
 #endif
 
     std::sort(filePaths.begin(), filePaths.end());
+    debugLogMessage("StorageManager::listFiles", "storage read", "listed directory=%s count=%u", normalizedDirectory.c_str(), static_cast<unsigned int>(filePaths.size()));
     return filePaths;
 }
 

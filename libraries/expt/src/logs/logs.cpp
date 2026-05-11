@@ -43,6 +43,26 @@ void logMessage(const char *format, ...) {
     va_end(args);
 }
 
+void debugLogMessage(const char *source, const char *reason, const char *format, ...) {
+#if ENABLE_DEBUG
+    char buffer[256];
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buffer, sizeof(buffer), format, args);
+    va_end(args);
+
+    logMessage(
+        "DEBUG: %s reason=%s source=%s",
+        buffer,
+        reason ? reason : "-",
+        source ? source : "unknown");
+#else
+    (void)source;
+    (void)reason;
+    (void)format;
+#endif
+}
+
 void initLogger(unsigned int baudrate, unsigned int timeout) {
     #ifdef ARDUINO_H
         Serial.begin(baudrate); // Initialize Serial for Arduino

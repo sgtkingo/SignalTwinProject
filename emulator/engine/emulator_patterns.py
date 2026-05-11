@@ -31,12 +31,18 @@ import threading
 import re
 import math
 import sys
+import traceback
 from urllib.parse import parse_qs, unquote
 from typing import Dict, Any, Optional
 
 for stream in (sys.stdout, sys.stderr):
     if hasattr(stream, "reconfigure"):
         stream.reconfigure(encoding="utf-8", errors="replace")
+
+
+def is_firmware_log_line(line: str) -> bool:
+    upper_line = line.upper()
+    return "DEBUG" in upper_line or "EXCEPTION" in upper_line
 
 class VSCPEmulator:
     """Virtual Sensors Communication Protocol Emulator"""
@@ -593,26 +599,34 @@ class VSCPEmulator:
     
     def process_request(self, message: str) -> str:
         """Process incoming protocol request"""
-        params = self.parse_message(message)
-        request_type = params.get('type', '').upper()
-        
-        # Route to appropriate handler
-        handlers = {
-            'INIT': self.handle_init,
-            'UPDATE': self.handle_update,
-            'CONFIG': self.handle_config,
-            'CONTROL': self.handle_control,
-            'RESET': self.handle_reset,
-            'CONNECT': self.handle_connect,
-            'DISCONNECT': self.handle_disconnect
-        }
-        
-        if request_type in handlers:
-            return handlers[request_type](params)
-        else:
+        try:
+            params = self.parse_message(message)
+            request_type = params.get('type', '').upper()
+
+            # Route to appropriate handler
+            handlers = {
+                'INIT': self.handle_init,
+                'UPDATE': self.handle_update,
+                'CONFIG': self.handle_config,
+                'CONTROL': self.handle_control,
+                'RESET': self.handle_reset,
+                'CONNECT': self.handle_connect,
+                'DISCONNECT': self.handle_disconnect
+            }
+
+            if request_type in handlers:
+                return handlers[request_type](params)
+            else:
+                return self.build_message({
+                    'status': '0',
+                    'error': f'Unknown request type: {request_type}'
+                })
+        except Exception as exc:
+            print(f"EXCEPTION: Enhanced emulator request handling failed reason={exc} source=VSCPEmulator.process_request")
+            traceback.print_exc()
             return self.build_message({
                 'status': '0',
-                'error': f'Unknown request type: {request_type}'
+                'error': f'Emulator exception: {exc}'
             })
     
     def listen_loop(self):
@@ -634,7 +648,7 @@ class VSCPEmulator:
                     buffer += data
                     
                     if data and '\n' in buffer:
-                        print(f"DEBUG: {data}") 
+                        print(f"DEBUG: Serial data chunk received reason=serial read source=VSCPEmulator.listen_loop data={data!r}")
                     # Process complete messages (ending with newline or containing '?')
                     while '\n' in buffer or '?' in buffer:
                         if '\n' in buffer:
@@ -645,6 +659,10 @@ class VSCPEmulator:
                             buffer = ""
                         
                         line = line.strip()
+                        if is_firmware_log_line(line):
+                            print(f"Firmware log: {line}")
+                            continue
+
                         # Substring from ? char if exists
                         qmark_index = line.find('?')
                         if qmark_index != -1:
@@ -661,7 +679,8 @@ class VSCPEmulator:
                 time.sleep(0.01)  # Small delay to prevent busy waiting
                 
             except Exception as e:
-                print(f"❌ Error in listen loop: {e}")
+                print(f"EXCEPTION: Enhanced emulator listen loop failed reason={e} source=VSCPEmulator.listen_loop")
+                traceback.print_exc()
                 time.sleep(0.1)
     
     def run(self):

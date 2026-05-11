@@ -2,6 +2,7 @@
 import os
 import time
 import threading
+import traceback
 from engine.emulator import VSCPEmulator, available_serial_ports, load_catalog_defaults
 from engine.sensors import load_sensors
 
@@ -31,7 +32,8 @@ class RealSensorBridge:
                         #print(f"[Sensor {s.uid}] no data found, using simulated values...")
                         pass
                 except Exception as e:
-                    print(f"[Sensor {s.uid}] error: {e}")
+                    print(f"EXCEPTION: Real sensor read failed reason={e} source=RealSensorBridge.loop sensor={s.uid}")
+                    traceback.print_exc()
             time.sleep(UPDATE_PERIOD_S)
 
     def start(self):
@@ -69,27 +71,33 @@ if __name__ == "__main__":
     print(f"Catalog app={metadata.get('application')} db={metadata.get('version')}")
     emu = VSCPEmulator(virtual_sensors, port=port, baudrate=115200)
 
-    if not emu.connect_serial():
-        raise SystemExit(1)
-    emu.running = True
-
-    threading.Thread(target=emu.listen_loop, daemon=True).start()
-
-    # The firmware initializes the protocol with:
-    # ?type=INIT&app=<catalog application>&db=<catalog version>&api=1.3
-
-    # Start real sensor bridge
-    real_sensors = load_sensors()
-    bridge = RealSensorBridge(emu, real_sensors)
-    bridge.start()
-
-    print("Real sensors active:", [f"{s.uid}({s.kind})" for s in real_sensors])
-    print("Send INIT first, then UPDATE, e.g.: ?type=UPDATE&id=mic_001 | ?type=UPDATE&id=S01")
-
     try:
+        if not emu.connect_serial():
+            raise SystemExit(1)
+        emu.running = True
+
+        threading.Thread(target=emu.listen_loop, daemon=True).start()
+
+        # The firmware initializes the protocol with:
+        # ?type=INIT&app=<catalog application>&db=<catalog version>&api=1.3
+
+        # Start real sensor bridge
+        real_sensors = load_sensors()
+        bridge = RealSensorBridge(emu, real_sensors)
+        bridge.start()
+
+        print("Real sensors active:", [f"{s.uid}({s.kind})" for s in real_sensors])
+        print("Send INIT first, then UPDATE, e.g.: ?type=UPDATE&id=mic_001 | ?type=UPDATE&id=S01")
+
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        bridge.stop()
+        print("Shutting down real sensor emulator...")
+    except Exception as exc:
+        print(f"EXCEPTION: real_runner failed reason={exc} source=real_runner")
+        traceback.print_exc()
+    finally:
+        if "bridge" in locals():
+            bridge.stop()
         emu.running = False
         emu.disconnect_serial()

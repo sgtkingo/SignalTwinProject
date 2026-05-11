@@ -4,9 +4,11 @@
 */
 
 #include "helpers.hpp"
+#include "expt.hpp"
 
 std::unordered_map<std::string, std::string> parseParamsFromString(const std::string& message, bool caseSensitive = false) {
     std::unordered_map<std::string, std::string> params;
+    debugLogMessage("parseParamsFromString", "protocol parse", "messageLength=%u caseSensitive=%d", static_cast<unsigned int>(message.size()), caseSensitive);
     
     // Remove leading '?' if present
     std::string cleanMessage = message;
@@ -33,6 +35,7 @@ std::unordered_map<std::string, std::string> parseParamsFromString(const std::st
         }
     }
     
+    debugLogMessage("parseParamsFromString", "protocol parse", "paramCount=%u", static_cast<unsigned int>(params.size()));
     return params;
 }
 
@@ -45,6 +48,7 @@ std::string getValueFromKeyValueLikeString(std::string str, std::string key, cha
         value = str.substr(pos, end - pos);
     }
 
+    debugLogMessage("getValueFromKeyValueLikeString", "protocol parse", "key=%s found=%d", key.c_str(), !value.empty());
     return value;
 }
 
@@ -62,6 +66,7 @@ std::vector<std::string> splitString(std::string str, char separator) {
     }
     result.push_back(str.substr(pos));
 
+    debugLogMessage("splitString", "string split", "inputLength=%u separator=%c count=%u", static_cast<unsigned int>(str.size()), separator, static_cast<unsigned int>(result.size()));
     return result;
 }
 
@@ -80,7 +85,9 @@ int convertStringToType<int>(const std::string &str) {
 
     try
     {
-        return std::stoi(str);
+        const int value = std::stoi(str);
+        debugLogMessage("convertStringToType<int>", "math conversion", "input=%s output=%d", str.c_str(), value);
+        return value;
     }
     catch(const std::exception& e)
     {
@@ -98,7 +105,9 @@ double convertStringToType<double>(const std::string &str) {
 
     try
     {
-        return std::stod(str);
+        const double value = std::stod(str);
+        debugLogMessage("convertStringToType<double>", "math conversion", "input=%s output=%f", str.c_str(), value);
+        return value;
     }
     catch(const std::exception& e)
     {
@@ -115,7 +124,9 @@ float convertStringToType<float>(const std::string &str) {
 
     try
     {
-        return std::stof(str);
+        const float value = std::stof(str);
+        debugLogMessage("convertStringToType<float>", "math conversion", "input=%s output=%f", str.c_str(), value);
+        return value;
     }
     catch(const std::exception& e)
     {

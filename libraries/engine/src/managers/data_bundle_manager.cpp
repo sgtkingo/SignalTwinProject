@@ -66,27 +66,30 @@ DataBundleManager::~DataBundleManager() {}
 bool DataBundleManager::init()
 {
     if (initialized)
+    {
+        debugLogMessage("DataBundleManager::init", "init skipped", "already initialized");
         return true;
+    }
 
-    logMessage("Initializing DataBundle Manager...");
+    debugLogMessage("DataBundleManager::init", "init", "initializing DataBundle manager");
 
     if (!storageManager().isAvailable() && !storageManager().init())
     {
-        logMessage("DataBundle Manager Failed to initialize");
+        debugLogMessage("DataBundleManager::init", "storage unavailable", "storage manager failed to initialize");
         return false;
     }
 
     if (!ensureStorageDirectories())
     {
-        logMessage("Error: dir DataBundles failed to create");
+        debugLogMessage("DataBundleManager::init", "storage write failed", "DataBundles directory failed to create");
     }
 
-    logMessage("DataBundle Manager initialized successfully");
+    debugLogMessage("DataBundleManager::init", "init", "initialized successfully");
 
-    #ifdef DATABUNDLE_DEBUG
+#if ENABLE_DEBUG
     getStorageInfo();
     listAllBundles();
-    #endif
+#endif
 
     initialized = true;
     return true;
@@ -100,11 +103,11 @@ bool DataBundleManager::ensureStorageDirectories()
 {
     if (!storageManager().ensureDirectory(root))
     {
-        logMessage("Error: Failed to prepare /DataBundles directory");
+        debugLogMessage("DataBundleManager::ensureStorageDirectories", "storage write failed", "failed to prepare %s directory", root);
         return false;
     }
 
-    #ifdef DATABUNDLE_DEBUG
+#if ENABLE_DEBUG
     // log.txt creation test
     File myFile = storageManager().open("/DataBundles/log.txt", FILE_WRITE);
 
@@ -112,14 +115,14 @@ bool DataBundleManager::ensureStorageDirectories()
     {
         myFile.println("Device Data: 123");
         myFile.close(); // Save and close
-        logMessage("Created log.txt successfully");
+        debugLogMessage("DataBundleManager::ensureStorageDirectories", "storage write", "created log.txt successfully");
     }
     else
     {
-        logMessage("Error: Failed to create log.txt (Check permissions/connections)");
+        debugLogMessage("DataBundleManager::ensureStorageDirectories", "storage write failed", "failed to create log.txt");
         return false;
     }       
-    #endif
+#endif
 
     return true;
 }
@@ -129,14 +132,13 @@ void DataBundleManager::getStorageInfo()
     uint64_t total = storageManager().totalBytes();
     uint64_t used = storageManager().usedBytes();
 
-    logMessage("Total Bytes: %llu", total);
-    logMessage("Used Bytes: %llu", used);
-
-    storageManager().exists("/DataBundles/log.txt") ? logMessage("log.txt exists!") : logMessage("log.txt doesnt exist");
+    debugLogMessage("DataBundleManager::getStorageInfo", "storage read", "totalBytes=%llu usedBytes=%llu", total, used);
+    debugLogMessage("DataBundleManager::getStorageInfo", "storage read", "log.txt exists=%d", storageManager().exists("/DataBundles/log.txt"));
 }
 
 bool DataBundleManager::startRecording(std::string deviceName, std::string deviceUid)
 {
+    debugLogMessage("DataBundleManager::startRecording", "recording start", "deviceName=%s deviceUid=%s", deviceName.c_str(), deviceUid.c_str());
     recordingDataPoints.clear();
     recordingBundleMetadata.deviceName = deviceName;
     recordingBundleMetadata.deviceUid = deviceUid;
@@ -149,6 +151,7 @@ bool DataBundleManager::startRecording(std::string deviceName, std::string devic
     std::string temp = root + deviceName + "_0" + std::to_string(tempOrder) + ".csv";
     while (storageManager().exists(temp))
     {
+        debugLogMessage("DataBundleManager::startRecording", "storage read", "candidate exists path=%s", temp.c_str());
         if (tempOrder < 10)
         {
             std::string toRemove = "0" + std::to_string(tempOrder) + ".csv";
@@ -179,6 +182,7 @@ bool DataBundleManager::startRecording(std::string deviceName, std::string devic
     }
 
     recordingBundleMetadata.filePath = temp;
+    debugLogMessage("DataBundleManager::startRecording", "recording start", "filePath=%s startMs=%lu", temp.c_str(), recordingStartMs);
 
     // TODO: persist real recording start date/time metadata.
     //recordingBundleMetadata.startDate
@@ -190,6 +194,7 @@ bool DataBundleManager::saveNewDataPoint(std::string signalName, std::string val
 {
     if (recordingBundleMetadata.filePath.empty())
     {
+        debugLogMessage("DataBundleManager::saveNewDataPoint", "recording state invalid", "no active recording signal=%s", signalName.c_str());
         return false;
     }
 
@@ -204,6 +209,15 @@ bool DataBundleManager::saveNewDataPoint(std::string signalName, std::string val
         value
     };
     recordingDataPoints.push_back(dataPoint);
+    debugLogMessage(
+        "DataBundleManager::saveNewDataPoint",
+        "runtime memory write",
+        "sample=%lu runtimeMs=%lu deviceUid=%s signal=%s value=%s",
+        dataPoint.sampleIndex,
+        dataPoint.runtimeMs,
+        dataPoint.deviceUid.c_str(),
+        dataPoint.signalName.c_str(),
+        dataPoint.value.c_str());
     return true;
 }
 
@@ -211,17 +225,23 @@ bool DataBundleManager::saveRecording()
 {
     if (recordingBundleMetadata.filePath.empty())
     {
-        logMessage("Error: No active recording to save");
+        debugLogMessage("DataBundleManager::saveRecording", "recording state invalid", "no active recording to save");
         return false;
     }
 
     if (recordingDataPoints.empty())
     {
-        logMessage("Error: Recording has no data points");
+        debugLogMessage("DataBundleManager::saveRecording", "recording state invalid", "recording has no data points");
         discardRecording();
         return false;
     }
 
+    debugLogMessage(
+        "DataBundleManager::saveRecording",
+        "storage write",
+        "saving filePath=%s samples=%u",
+        recordingBundleMetadata.filePath.c_str(),
+        static_cast<unsigned int>(recordingDataPoints.size()));
     File saved = storageManager().open(recordingBundleMetadata.filePath, FILE_WRITE);
 
     if (saved)
@@ -251,7 +271,7 @@ bool DataBundleManager::saveRecording()
     }
     else
     {
-        logMessage("Error: Failed to create %s", recordingBundleMetadata.filePath.c_str());
+        debugLogMessage("DataBundleManager::saveRecording", "storage write failed", "failed to create %s", recordingBundleMetadata.filePath.c_str());
         return false;
     }
 
@@ -264,6 +284,7 @@ bool DataBundleManager::saveRecording()
 
 void DataBundleManager::discardRecording()
 {
+    debugLogMessage("DataBundleManager::discardRecording", "recording state", "discarding filePath=%s samples=%u", recordingBundleMetadata.filePath.c_str(), static_cast<unsigned int>(recordingDataPoints.size()));
     recordingBundleMetadata.deviceName = "";
     recordingBundleMetadata.deviceUid = "";
     recordingBundleMetadata.filePath = "";
@@ -276,6 +297,7 @@ void DataBundleManager::discardRecording()
 std::array<DataBundleBuffer,6> DataBundleManager::getBundlePage(unsigned char page)
 {
     reloadBundleFileNames();
+    debugLogMessage("DataBundleManager::getBundlePage", "storage read", "page=%u bundleCount=%u", page, static_cast<unsigned int>(bundleFileNames.size()));
 
     std::array<DataBundleBuffer,6> buff{};
     const size_t pageStart = static_cast<size_t>(page) * 6;
@@ -298,6 +320,7 @@ std::array<DataBundleBuffer,6> DataBundleManager::getBundlePage(unsigned char pa
 bool DataBundleManager::deleteAllBundles()
 {
     std::vector<std::string> filesToDelete = storageManager().listFiles(root);
+    debugLogMessage("DataBundleManager::deleteAllBundles", "storage write", "delete count=%u", static_cast<unsigned int>(filesToDelete.size()));
     if (filesToDelete.empty()) {
         return true;
     }
@@ -318,7 +341,7 @@ bool DataBundleManager::reloadBundleFileNames()
 
     const std::vector<std::string> bundlePaths = storageManager().listFiles(root);
     if (bundlePaths.empty() && !storageManager().ensureDirectory(root)) {
-        logMessage("Error: Failed to open /DataBundles/ directory whilst getting bundle names");
+        debugLogMessage("DataBundleManager::reloadBundleFileNames", "storage read failed", "failed to open %s directory", root);
         return false;
     }
 
@@ -331,6 +354,7 @@ bool DataBundleManager::reloadBundleFileNames()
         }
     }
 
+    debugLogMessage("DataBundleManager::reloadBundleFileNames", "storage read", "loaded bundle filenames count=%u", static_cast<unsigned int>(bundleFileNames.size()));
     return true;
 }
 
@@ -340,16 +364,17 @@ void DataBundleManager::pruneOldestBundle()
     if (bundlePaths.empty())
         return;
 
+    debugLogMessage("DataBundleManager::pruneOldestBundle", "storage write", "removing oldest=%s", bundlePaths.front().c_str());
     storageManager().remove(bundlePaths.front());
 }
 
 void DataBundleManager::listAllBundles()
 {
-    logMessage("--- Listing Files in /DataBundles ---");
+    debugLogMessage("DataBundleManager::listAllBundles", "storage read", "listing %s", root);
 
     const std::vector<std::string> bundlePaths = storageManager().listFiles(root);
     if (bundlePaths.empty()) {
-        logMessage("No bundle files found in /DataBundles");
+        debugLogMessage("DataBundleManager::listAllBundles", "storage read", "no bundle files found");
         return;
     }
 
@@ -357,28 +382,26 @@ void DataBundleManager::listAllBundles()
     {
         File file = storageManager().open(bundlePath, FILE_READ);
         if (!file) {
-            logMessage("  [FILE] %s  (unavailable)", bundlePath.c_str());
+            debugLogMessage("DataBundleManager::listAllBundles", "storage read failed", "file unavailable %s", bundlePath.c_str());
             continue;
         }
 
-        logMessage("  [FILE] %s  (%u bytes)", file.name(), file.size());
+        debugLogMessage("DataBundleManager::listAllBundles", "storage read", "file=%s bytes=%u", file.name(), file.size());
         file.close();
     }
-
-    logMessage("--- End of List ---");
 }
 
 void DataBundleManager::printBundleCsv(std::string filename)
 {
     std::string fullPath = filename.rfind(root, 0) == 0 ? filename : std::string(root) + filename;
 
-    logMessage("--- Reading CSV: %s ---", fullPath.c_str());
+    debugLogMessage("DataBundleManager::printBundleCsv", "storage read", "reading csv=%s", fullPath.c_str());
 
     File file = storageManager().open(fullPath, FILE_READ);
 
     if (!file)
     {
-        logMessage("Error: Could not open file %s", fullPath.c_str());
+        debugLogMessage("DataBundleManager::printBundleCsv", "storage read failed", "could not open file %s", fullPath.c_str());
         return;
     }
 
@@ -392,7 +415,7 @@ void DataBundleManager::printBundleCsv(std::string filename)
         {
             if (!currentLine.empty())
             {
-                logMessage("%s", currentLine.c_str());
+                debugLogMessage("DataBundleManager::printBundleCsv", "storage read", "%s", currentLine.c_str());
             }
             currentLine.clear();
         }
@@ -404,11 +427,11 @@ void DataBundleManager::printBundleCsv(std::string filename)
 
     if (!currentLine.empty())
     {
-        logMessage("%s", currentLine.c_str());
+        debugLogMessage("DataBundleManager::printBundleCsv", "storage read", "%s", currentLine.c_str());
     }
 
     file.close();
-    logMessage("--- End of CSV ---");
+    debugLogMessage("DataBundleManager::printBundleCsv", "storage read", "end csv=%s", fullPath.c_str());
 }
 
 BundleMetadata DataBundleManager::getBundleMetadata(unsigned char index){
@@ -426,7 +449,7 @@ BundleMetadata DataBundleManager::getBundleMetadata(unsigned char index){
 
     if (!file)
     {
-        logMessage("Error: Could not open file %s", fullPath.c_str());
+        debugLogMessage("DataBundleManager::getBundleMetadata", "storage read failed", "could not open file %s", fullPath.c_str());
         return {deviceName,deviceUid,fullPath,""};
     }
 
@@ -449,6 +472,7 @@ BundleMetadata DataBundleManager::getBundleMetadata(unsigned char index){
     }
 
     file.close();
+    debugLogMessage("DataBundleManager::getBundleMetadata", "storage read", "file=%s deviceName=%s deviceUid=%s", fullPath.c_str(), deviceName.c_str(), deviceUid.c_str());
     return {deviceName,deviceUid,fullPath,""};
 }
 
@@ -470,7 +494,7 @@ std::array<std::string,10> DataBundleManager::getBundleValuePreview(unsigned cha
     
     if (!file)
     {
-        logMessage("Error: Could not open file %s", fullPath.c_str());
+        debugLogMessage("DataBundleManager::getBundleValuePreview", "storage read failed", "could not open file %s", fullPath.c_str());
         return temp;
     }
     
@@ -528,6 +552,7 @@ std::array<std::string,10> DataBundleManager::getBundleValuePreview(unsigned cha
     }
 
     file.close();   
+    debugLogMessage("DataBundleManager::getBundleValuePreview", "storage read", "file=%s signal=%s written=%u", fullPath.c_str(), signalName.c_str(), written);
     return temp;
 }
 

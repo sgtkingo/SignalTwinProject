@@ -69,10 +69,24 @@ Hlavni config je `libraries/engine/src/config.hpp`.
 
 Dulezite volby:
 
+- `ENABLE_DEBUG`: jednotny debug switch pro projekt, defaultne `1`.
 - `STORAGE_OPTION_SPIFFS`: vychozi dev rezim, katalog je `/DB.json`.
 - `STORAGE_OPTION_SD`: katalog je `/data/DB.json`.
 - `STORAGE_SEED_DEFAULT_DB_ON_MISSING`: ve SPIFFS rezimu umi zalozit default DB z embedded stringu.
-- `PROTOCOL_DEBUG`: zapina debug vypisy protokolu.
+
+Debug logy pouzivaji `debugLogMessage(source, reason, format, ...)` a maji tvar:
+
+```text
+DEBUG: <message> reason=<reason> source=<source>
+```
+
+Vyjimky nepouzivaji debug logging helper. Chytaji se v `catch` blocich a vypisuji
+se pres `Exception::print()`, ktery rekurzivne vypise i inner exceptions. Tento
+vypis neni vazany na `ENABLE_DEBUG` a ma tvar:
+
+```text
+(<source>) EXCEPTION: <message>
+```
 
 Instalacni a build workflow je v `docs/INSTALL.md`.
 

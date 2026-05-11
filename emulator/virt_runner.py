@@ -1,4 +1,5 @@
 from engine.emulator import VSCPEmulator, available_serial_ports, load_catalog_defaults
+import traceback
 
 def main():
     """Main entry point"""
@@ -20,8 +21,12 @@ def main():
     sensors, metadata = load_catalog_defaults()
     print(f"Using catalog {metadata.get('path', 'fallback defaults')}")
     print(f"Catalog app={metadata.get('application')} db={metadata.get('version')}")
-    emulator = VSCPEmulator(sensors, port=port, baudrate=115200)
-    emulator.run()
+    try:
+        emulator = VSCPEmulator(sensors, port=port, baudrate=115200)
+        emulator.run()
+    except Exception as exc:
+        print(f"EXCEPTION: virt_runner failed reason={exc} source=virt_runner")
+        traceback.print_exc()
 
 if __name__ == "__main__":
     main()

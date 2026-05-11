@@ -12,6 +12,7 @@
 #include "signals_visualization_gui.hpp"
 #include "../helpers.hpp"
 #include "./images/ui_images.h"
+#include "expt.hpp"
 #include <cstdint>
 #include <utility>
 
@@ -56,18 +57,21 @@ SignalsVisualizationGui::SignalsVisualizationGui(GuiRouter &router, DeviceManage
 void SignalsVisualizationGui::init()
 {
     if (initialized)
+    {
+        debugLogMessage("SignalsVisualizationGui::init", "gui init skipped", "already initialized");
         return;
+    }
 
     try
     {
-        // // logMessage("Initializing SignalsVisualizationGui...\n");
+        debugLogMessage("SignalsVisualizationGui::init", "gui init", "initializing");
         constructVisualization();
         initialized = true;
-        // // logMessage("SignalsVisualizationGui initialization completed!\n");
+        debugLogMessage("SignalsVisualizationGui::init", "gui init", "initialization completed");
     }
     catch (const std::exception &e)
     {
-        // // logMessage("SignalsVisualizationGui initialization failed: %s\n", e.what());
+        Exception("SignalsVisualizationGui::init", e.what()).print();
         initialized = false;
     }
 }
@@ -156,7 +160,7 @@ void SignalsVisualizationGui::createChartPanel()
 
 void SignalsVisualizationGui::constructVisualization()
 {
-    // // logMessage("\t>constructing device visualization...\n");
+    debugLogMessage("SignalsVisualizationGui::constructVisualization", "gui operation", "constructing visualization widgets");
 
     createMainWidget();
     createTitleLabel();
@@ -165,7 +169,7 @@ void SignalsVisualizationGui::constructVisualization()
     createToolbarPanel();
     addLogoPanelToWidget(ui_DeviceWidget);
 
-    // // logMessage("\t>device visualization constructed!\n");
+    debugLogMessage("SignalsVisualizationGui::constructVisualization", "gui operation", "visualization widgets constructed");
 }
 
 void SignalsVisualizationGui::createToolbarPanel()
@@ -277,11 +281,10 @@ void SignalsVisualizationGui::drawCurrentDevice()
 {
     if (!currentDevice)
     {
-        // // logMessage("No current device to draw\n");
+        debugLogMessage("SignalsVisualizationGui::drawCurrentDevice", "gui redraw skipped", "no current device");
         return;
     }
 
-    // // logMessage("Drawing device: %s\n", currentDevice->UID.c_str());
     if (!currentDevice->getRedrawPending())
     {
         return;
@@ -294,6 +297,7 @@ void SignalsVisualizationGui::drawCurrentDevice()
 
     updateDeviceDataDisplay();
     updateChart();
+    debugLogMessage("SignalsVisualizationGui::drawCurrentDevice", "gui redraw", "device=%s", currentDevice->UID.c_str());
     currentDevice->setRedrawPending(false);
 }
 
@@ -552,6 +556,7 @@ std::pair<lv_coord_t, lv_coord_t> SignalsVisualizationGui::computeChartRange(con
 
     const lv_coord_t span = maxValue - minValue;
     const lv_coord_t pad = (span / 10) > 1 ? (span / 10) : 1;
+    debugLogMessage("SignalsVisualizationGui::computeChartRange", "math scaling", "min=%d max=%d pad=%d", minValue, maxValue, pad);
     return std::pair<lv_coord_t, lv_coord_t>(minValue - pad, maxValue + pad);
 }
 
@@ -598,6 +603,7 @@ void SignalsVisualizationGui::panChartHistory(int steps)
     }
 
     chartHistoryOffset = nextOffset;
+    debugLogMessage("SignalsVisualizationGui::panChartHistory", "gui chart pan", "steps=%d nextOffset=%d maxOffset=%d", steps, nextOffset, maxOffset);
     updateChart(true);
 }
 
@@ -742,7 +748,7 @@ void SignalsVisualizationGui::updateChart(bool force)
     }
     catch (const std::exception &e)
     {
-        // logMessage("Error updating chart: %s\n", e.what());
+        Exception("SignalsVisualizationGui::updateChart", e.what()).print();
     }
 }
 
@@ -764,7 +770,12 @@ bool SignalsVisualizationGui::applyEditableValue(bool isValueControl, const std:
             currentDevice->setConfig(key, value);
         }
         return true;
+    } catch (const std::exception &e) {
+        Exception("SignalsVisualizationGui::applyEditableValue", e.what()).print();
+        showAlert(isValueControl ? "Failed to queue control value" : "Failed to queue config value");
+        return false;
     } catch (...) {
+        Exception("SignalsVisualizationGui::applyEditableValue", "Unknown exception").print();
         showAlert(isValueControl ? "Failed to queue control value" : "Failed to queue config value");
         return false;
     }
@@ -848,12 +859,14 @@ void SignalsVisualizationGui::handleRecordButtonClick(const char *message)
 
     if (recording)
     {
+        debugLogMessage("SignalsVisualizationGui::handleRecordButtonClick", "recording stop", "device=%s", currentDevice->UID.c_str());
         const bool saved = dataBundleManager.saveRecording();
         recording = false;
         showAlert(saved ? (message ? message : "Record was saved (view settings)") : "Recording has no data to save");
     }
     else
     {
+        debugLogMessage("SignalsVisualizationGui::handleRecordButtonClick", "recording start", "device=%s type=%s", currentDevice->UID.c_str(), currentDevice->Type.c_str());
         if (!dataBundleManager.startRecording(currentDevice->Type, currentDevice->UID))
         {
             showAlert("Failed to start recording");
@@ -908,6 +921,7 @@ void SignalsVisualizationGui::handleClearConfirmButtonClick()
 {
     if (currentDevice)
     {
+        debugLogMessage("SignalsVisualizationGui::handleClearConfirmButtonClick", "runtime memory write", "device=%s", currentDevice->UID.c_str());
         chartHistoryOffset = 0;
         chartDragAccumulatorPx = 0;
 
@@ -1070,6 +1084,7 @@ bool SignalsVisualizationGui::syncCurrentDevice()
     }
 
     if (!deviceManager.ensureProtocolInitialized()) {
+        debugLogMessage("SignalsVisualizationGui::syncCurrentDevice", "protocol init failed", "device=%s", currentDevice->UID.c_str());
         showAlert("Protocol init failed");
         return false;
     }
@@ -1077,6 +1092,7 @@ bool SignalsVisualizationGui::syncCurrentDevice()
     currentDevice->requestRuntimeUpdate();
     const bool success = syncDevice(currentDevice);
     if (!success) {
+        debugLogMessage("SignalsVisualizationGui::syncCurrentDevice", "runtime sync failed", "device=%s error=%s", currentDevice->UID.c_str(), currentDevice->getError().c_str());
         showAlert(currentDevice->getError().empty() ? "Sync failed" : currentDevice->getError().c_str());
         return false;
     }
@@ -1087,6 +1103,7 @@ bool SignalsVisualizationGui::syncCurrentDevice()
     updateDeviceDataDisplay();
     updateChart();
     currentDevice->setRedrawPending(false);
+    debugLogMessage("SignalsVisualizationGui::syncCurrentDevice", "runtime sync", "device=%s manual update completed", currentDevice->UID.c_str());
     return true;
 }
 
@@ -1100,7 +1117,7 @@ void SignalsVisualizationGui::showVisualization()
     // Refresh the display with current device data
     goToFirstDevice();
     drawCurrentDevice();
-    // logMessage("Showing device visualization\n");
+    debugLogMessage("SignalsVisualizationGui::showVisualization", "gui operation", "shown");
 }
 
 void SignalsVisualizationGui::hideVisualization()
@@ -1109,7 +1126,7 @@ void SignalsVisualizationGui::hideVisualization()
         return;
 
     lv_obj_add_flag(ui_DeviceWidget, LV_OBJ_FLAG_HIDDEN);
-    // logMessage("Hiding device visualization\n");
+    debugLogMessage("SignalsVisualizationGui::hideVisualization", "gui operation", "hidden");
 }
 
 void SignalsVisualizationGui::showAlert(const char *message){

@@ -7,6 +7,7 @@
 
 #include "../helpers.hpp"
 #include "../managers/storage_manager.hpp"
+#include "expt.hpp"
 
 const int FPS = 60;
 const int CYCLE_DRAW_MS = (1000 / FPS);
@@ -33,10 +34,11 @@ bool GuiManager::init(std::string configFile)
 {
     initialized = false;
     currentState = GuiState::NONE;
-    logMessage("Initializing GUI Manager...\n");
+    debugLogMessage("GuiManager::init", "gui init", "configFile=%s", configFile.c_str());
 
     try {
         screenRegistry.getCrashGui().init();
+        debugLogMessage("GuiManager::init", "gui init", "crash GUI initialized");
 
         if (!storageManager().init()) {
             const std::string reason =
@@ -59,6 +61,7 @@ bool GuiManager::init(std::string configFile)
 
         deviceBrowserState.clear();
         visualizationSession.clear();
+        debugLogMessage("GuiManager::init", "runtime state reset", "browser and visualization sessions cleared");
 
         if (!deviceManager.init()) {
             screenRegistry.getCrashGui().showCrash("DeviceManager initialization failed!");
@@ -67,19 +70,22 @@ bool GuiManager::init(std::string configFile)
 
         screenRegistry.initializeCoreScreens();
     } catch (const Exception &e) {
+        e.print();
         showCrashScreen(e.flush());
         return false;
     } catch (const std::exception &e) {
+        Exception("GuiManager::init", e.what()).print();
         showCrashScreen(e.what());
         return false;
     } catch (...) {
+        Exception("GuiManager::init", "Unknown exception during GUI initialization").print();
         showCrashScreen("Unknown exception during GUI initialization!");
         return false;
     }
 
     currentState = GuiState::READY;
     initialized = true;
-    logMessage("GUI Manager initialization completed!\n");
+    debugLogMessage("GuiManager::init", "gui init", "initialization completed");
     return initialized;
 }
 
@@ -90,6 +96,7 @@ bool GuiManager::init()
 
 void GuiManager::hideAllComponents()
 {
+    debugLogMessage("GuiManager::hideAllComponents", "gui operation", "hiding all components");
     screenRegistry.hideAll();
 }
 
@@ -167,6 +174,7 @@ void GuiManager::showSettings()
 
 void GuiManager::showCrashScreen(const std::string &reason)
 {
+    debugLogMessage("GuiManager::showCrashScreen", "gui crash", "%s", reason.c_str());
     if (!initialized) {
         deviceManager.setRunning(false);
         hideAllComponents();
@@ -217,6 +225,7 @@ void GuiManager::renderState(GuiState targetState)
         return;
     }
 
+    debugLogMessage("GuiManager::renderState", "gui operation", "targetState=%d", static_cast<int>(targetState));
     screenRegistry.render(targetState);
 }
 
@@ -230,6 +239,7 @@ void GuiManager::navigateTo(GuiState targetState)
         return;
     }
 
+    debugLogMessage("GuiManager::navigateTo", "gui navigation", "from=%d to=%d", static_cast<int>(currentState), static_cast<int>(targetState));
     applyRuntimePolicy(targetState);
     renderState(targetState);
     currentState = targetState;
@@ -287,6 +297,7 @@ bool GuiManager::saveLibraryDraft(const DeviceDefinitionSchema &draft,
 {
     try {
         deviceCatalog.saveDraft(draft, originalUid, isNewEntity);
+        debugLogMessage("GuiManager::saveLibraryDraft", "storage write", "uid=%s originalUid=%s isNew=%d", draft.uid.c_str(), originalUid.c_str(), isNewEntity);
         deviceManager.erase();
         visualizationSession.clear();
         deviceBrowserState.clear();
@@ -294,9 +305,11 @@ bool GuiManager::saveLibraryDraft(const DeviceDefinitionSchema &draft,
         deviceBrowserState.setLibraryDraft(draft, false);
         return true;
     } catch (const std::exception &e) {
+        Exception("GuiManager::saveLibraryDraft", e.what()).print();
         error = e.what();
         return false;
     } catch (...) {
+        Exception("GuiManager::saveLibraryDraft", "Unknown error while saving device draft.").print();
         error = "Unknown error while saving device draft.";
         return false;
     }
@@ -306,14 +319,17 @@ bool GuiManager::deleteLibraryEntity(const std::string &uid, std::string &error)
 {
     try {
         deviceCatalog.deleteDevice(uid);
+        debugLogMessage("GuiManager::deleteLibraryEntity", "storage write", "uid=%s", uid.c_str());
         deviceManager.erase();
         visualizationSession.clear();
         deviceBrowserState.clear();
         return true;
     } catch (const std::exception &e) {
+        Exception("GuiManager::deleteLibraryEntity", e.what()).print();
         error = e.what();
         return false;
     } catch (...) {
+        Exception("GuiManager::deleteLibraryEntity", "Unknown error while deleting device entity.").print();
         error = "Unknown error while deleting device entity.";
         return false;
     }
@@ -330,6 +346,7 @@ bool GuiManager::saveCatalogMetadata(const std::string &application,
         const std::string libraryUid = selectedLibraryDevice ? selectedLibraryDevice->UID : "";
 
         deviceCatalog.saveMetadata(application, version);
+        debugLogMessage("GuiManager::saveCatalogMetadata", "storage write", "application=%s version=%s", application.c_str(), version.c_str());
         deviceManager.erase();
         visualizationSession.clear();
         deviceBrowserState.clear();
@@ -341,9 +358,11 @@ bool GuiManager::saveCatalogMetadata(const std::string &application,
         }
         return true;
     } catch (const std::exception &e) {
+        Exception("GuiManager::saveCatalogMetadata", e.what()).print();
         error = e.what();
         return false;
     } catch (...) {
+        Exception("GuiManager::saveCatalogMetadata", "Unknown error while saving catalog metadata.").print();
         error = "Unknown error while saving catalog metadata.";
         return false;
     }

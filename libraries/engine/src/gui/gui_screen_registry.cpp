@@ -1,4 +1,5 @@
 #include "gui_screen_registry.hpp"
+#include "expt.hpp"
 
 GuiScreenRegistry::GuiScreenRegistry(DeviceCatalog &catalog,
                                      DeviceBrowserState &browserState,
@@ -23,6 +24,7 @@ GuiScreenRegistry::GuiScreenRegistry(DeviceCatalog &catalog,
 
 void GuiScreenRegistry::initializeCoreScreens()
 {
+    debugLogMessage("GuiScreenRegistry::initializeCoreScreens", "gui init", "initializing core screens");
     crashGui.init();
     mainMenuGui.init();
     connectionGui.init();
@@ -36,6 +38,7 @@ void GuiScreenRegistry::initializeCoreScreens()
 
 void GuiScreenRegistry::hideAll()
 {
+    debugLogMessage("GuiScreenRegistry::hideAll", "gui operation", "hiding all screens");
     mainMenuGui.hideMainMenu();
     connectionGui.hideConnection();
     visualizationGui.hideVisualization();
@@ -52,6 +55,7 @@ void GuiScreenRegistry::hideAll()
 
 void GuiScreenRegistry::render(GuiState targetState)
 {
+    debugLogMessage("GuiScreenRegistry::render", "gui operation", "targetState=%d", static_cast<int>(targetState));
     hideAll();
 
     switch (targetState) {
@@ -93,6 +97,7 @@ void GuiScreenRegistry::render(GuiState targetState)
         communicationSelectionGui.init();
         break;
     default:
+        debugLogMessage("GuiScreenRegistry::render", "gui state invalid", "unknown target state=%d", static_cast<int>(targetState));
         splashMessage("Unknown target GUI state %d, nothing to display...\n", static_cast<int>(targetState));
         break;
     }

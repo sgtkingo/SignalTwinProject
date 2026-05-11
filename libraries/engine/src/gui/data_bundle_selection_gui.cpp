@@ -12,6 +12,7 @@
 #include "data_bundle_selection_gui.hpp"
 #include "../helpers.hpp"
 #include "./images/ui_images.h"
+#include "expt.hpp"
 #include <cstdlib>
 
 DataBundleSelectionGui::DataBundleSelectionGui(GuiRouter &router, DataBundleManager &dataBundleManager) : router(router), dataBundleManager(dataBundleManager)
@@ -70,7 +71,7 @@ void DataBundleSelectionGui::init()
     }
     catch (const std::exception &e)
     {
-        // // logMessage("DataBundleSelectionGui initialization failed: %s\n", e.what());
+        Exception("DataBundleSelectionGui::init", e.what()).print();
         initialized = false;
     }
 }
@@ -795,10 +796,10 @@ void DataBundleSelectionGui::updateBundles()
     }
     catch (const std::exception& e)
     {
-        logMessage("CRASH in updateBundles: %s", e.what());
+        Exception("DataBundleSelectionGui::updateBundles", e.what()).print();
     }
     catch (...)
     {
-        logMessage("CRASH in updateBundles: Unknown Error");
+        Exception("DataBundleSelectionGui::updateBundles", "Unknown Error").print();
     }
 }

@@ -39,15 +39,17 @@ bool seedDefaultDeviceCatalogIfMissing(const std::string &resolvedPath)
         return true;
     }
 
-    logMessage(
-        "Device DB missing on %s at %s, seeding embedded default catalog...",
+    debugLogMessage(
+        "seedDefaultDeviceCatalogIfMissing",
+        "storage write",
+        "Device DB missing on %s at %s, seeding embedded default catalog",
         storageManager().getStorageLabel(),
         resolvedPath.c_str()
     );
 
     File file = storageManager().open(resolvedPath, FILE_WRITE);
     if (!file) {
-        logMessage("Failed to create default Device DB at %s", resolvedPath.c_str());
+        debugLogMessage("seedDefaultDeviceCatalogIfMissing", "storage write failed", "failed to create default Device DB at %s", resolvedPath.c_str());
         return false;
     }
 
@@ -55,11 +57,11 @@ bool seedDefaultDeviceCatalogIfMissing(const std::string &resolvedPath)
     file.close();
 
     if (written == 0) {
-        logMessage("Failed to write embedded Device DB at %s", resolvedPath.c_str());
+        debugLogMessage("seedDefaultDeviceCatalogIfMissing", "storage write failed", "failed to write embedded Device DB at %s", resolvedPath.c_str());
         return false;
     }
 
-    logMessage("Embedded default Device DB seeded successfully at %s", resolvedPath.c_str());
+    debugLogMessage("seedDefaultDeviceCatalogIfMissing", "storage write", "embedded default Device DB seeded at %s bytes=%u", resolvedPath.c_str(), static_cast<unsigned int>(written));
 #endif
     return true;
 }
@@ -472,23 +474,29 @@ DeviceCatalogSchema parseDeviceCatalogSchemaFromStorageFile(const std::string &f
     }
 
     if (resolvedPath.empty()) {
+        debugLogMessage("parseDeviceCatalogSchemaFromStorageFile", "storage read failed", "empty JSON path");
         throw FileNotFoundException("buildDeviceCatalogFromStorageFile", "Empty JSON path.");
     }
 
     if (!storageManager().isAvailable() && !storageManager().init()) {
+        debugLogMessage("parseDeviceCatalogSchemaFromStorageFile", "storage init failed", "cannot initialize selected storage backend");
         throw FileReadException("parseDeviceCatalogSchemaFromStorageFile", "Cannot initialize selected storage backend.");
     }
 
     if (!seedDefaultDeviceCatalogIfMissing(resolvedPath)) {
+        debugLogMessage("parseDeviceCatalogSchemaFromStorageFile", "storage write failed", "failed to seed default device DB path=%s", resolvedPath.c_str());
         throw FileWriteException("parseDeviceCatalogSchemaFromStorageFile", "Failed to seed default device DB: " + resolvedPath);
     }
 
     if (!storageManager().exists(resolvedPath)) {
+        debugLogMessage("parseDeviceCatalogSchemaFromStorageFile", "storage read failed", "Device DB not found path=%s", resolvedPath.c_str());
         throw FileNotFoundException("parseDeviceCatalogSchemaFromStorageFile", "Device DB not found on active storage: " + resolvedPath);
     }
 
+    debugLogMessage("parseDeviceCatalogSchemaFromStorageFile", "storage read", "reading Device DB path=%s", resolvedPath.c_str());
     File file = storageManager().open(resolvedPath, FILE_READ);
     if (!file) {
+        debugLogMessage("parseDeviceCatalogSchemaFromStorageFile", "storage read failed", "cannot open path=%s", resolvedPath.c_str());
         throw FileReadException("parseDeviceCatalogSchemaFromStorageFile", "Cannot open device DB on active storage: " + resolvedPath);
     }
 
@@ -498,10 +506,12 @@ DeviceCatalogSchema parseDeviceCatalogSchemaFromStorageFile(const std::string &f
     file.close();
 
     if (error) {
+        debugLogMessage("parseDeviceCatalogSchemaFromStorageFile", "json parse failed", "%s path=%s", error.c_str(), resolvedPath.c_str());
         throw InvalidDataFormatException("parseDeviceCatalogSchemaFromStorageFile", "JSON parsing failed: " + std::string(error.c_str()));
     }
 
     if (!doc["devices"].is<JsonObjectConst>()) {
+        debugLogMessage("parseDeviceCatalogSchemaFromStorageFile", "json schema invalid", "missing devices object path=%s", resolvedPath.c_str());
         throw InvalidDataFormatException("parseDeviceCatalogSchemaFromStorageFile", "Device DB is missing top-level 'devices' object.");
     }
 
@@ -531,9 +541,11 @@ DeviceCatalogSchema parseDeviceCatalogSchemaFromStorageFile(const std::string &f
     sortByOrder(catalog.devices);
 
     if (catalog.devices.empty()) {
+        debugLogMessage("parseDeviceCatalogSchemaFromStorageFile", "catalog invalid", "no buildable devices path=%s", resolvedPath.c_str());
         throw DeviceInitializationFailException("parseDeviceCatalogSchemaFromStorageFile", "Device DB does not contain any buildable device.");
     }
 
+    debugLogMessage("parseDeviceCatalogSchemaFromStorageFile", "storage read", "loaded devices=%u application=%s version=%s", static_cast<unsigned int>(catalog.devices.size()), catalog.application.c_str(), catalog.version.c_str());
     return catalog;
 }
 
@@ -545,6 +557,7 @@ DeviceCatalogLoadResult buildDeviceCatalogFromSchema(const DeviceCatalogSchema &
 
     try {
         for (const DeviceDefinitionSchema &deviceSchema : schemaCatalog.devices) {
+            debugLogMessage("buildDeviceCatalogFromSchema", "runtime memory write", "building uid=%s type=%s", deviceSchema.uid.c_str(), deviceSchema.type.c_str());
             catalog.devices.push_back(buildConfiguredDevice(deviceSchema));
         }
     } catch (...) {
@@ -571,10 +584,12 @@ bool saveDeviceCatalogSchemaToStorageFile(const DeviceCatalogSchema &schemaCatal
     }
 
     if (resolvedPath.empty()) {
+        debugLogMessage("saveDeviceCatalogSchemaToStorageFile", "storage write failed", "empty JSON path");
         throw FileWriteException("saveDeviceCatalogSchemaToStorageFile", "Empty JSON path.");
     }
 
     if (!storageManager().isAvailable() && !storageManager().init()) {
+        debugLogMessage("saveDeviceCatalogSchemaToStorageFile", "storage init failed", "cannot initialize selected storage backend");
         throw FileWriteException("saveDeviceCatalogSchemaToStorageFile", "Cannot initialize selected storage backend.");
     }
 
@@ -625,11 +640,13 @@ bool saveDeviceCatalogSchemaToStorageFile(const DeviceCatalogSchema &schemaCatal
     }
 
     if (storageManager().exists(resolvedPath)) {
+        debugLogMessage("saveDeviceCatalogSchemaToStorageFile", "storage write", "removing existing path=%s", resolvedPath.c_str());
         storageManager().remove(resolvedPath);
     }
 
     File file = storageManager().open(resolvedPath, FILE_WRITE);
     if (!file) {
+        debugLogMessage("saveDeviceCatalogSchemaToStorageFile", "storage write failed", "cannot open path=%s", resolvedPath.c_str());
         throw FileWriteException("saveDeviceCatalogSchemaToStorageFile", "Cannot open device DB for writing: " + resolvedPath);
     }
 
@@ -637,8 +654,10 @@ bool saveDeviceCatalogSchemaToStorageFile(const DeviceCatalogSchema &schemaCatal
     file.close();
 
     if (written == 0) {
+        debugLogMessage("saveDeviceCatalogSchemaToStorageFile", "storage write failed", "serialize wrote zero bytes path=%s", resolvedPath.c_str());
         throw FileWriteException("saveDeviceCatalogSchemaToStorageFile", "Failed to serialize device DB: " + resolvedPath);
     }
 
+    debugLogMessage("saveDeviceCatalogSchemaToStorageFile", "storage write", "saved path=%s bytes=%u devices=%u", resolvedPath.c_str(), static_cast<unsigned int>(written), static_cast<unsigned int>(schemaCatalog.devices.size()));
     return true;
 }

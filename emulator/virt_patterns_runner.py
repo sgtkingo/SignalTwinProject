@@ -1,5 +1,6 @@
 from engine.emulator import available_serial_ports
 from engine.emulator_patterns import VSCPEmulator
+import traceback
 
 def main():
     """Main entry point"""
@@ -17,8 +18,12 @@ def main():
     port = input(f"Enter serial port (default: {default_port}): ").strip()
     if not port:
         port = default_port
-    emulator = VSCPEmulator(port=port, baudrate=115200)
-    emulator.run()
+    try:
+        emulator = VSCPEmulator(port=port, baudrate=115200)
+        emulator.run()
+    except Exception as exc:
+        print(f"EXCEPTION: virt_patterns_runner failed reason={exc} source=virt_patterns_runner")
+        traceback.print_exc()
 
 if __name__ == "__main__":
     main()

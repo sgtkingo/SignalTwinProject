@@ -24,11 +24,13 @@
 
 bool configDevice(BaseDevice *device, const std::string &config) {
     if(device == nullptr) {
+        debugLogMessage("configDevice", "device pointer invalid", "device is null");
         return false;
     }
     device->clearError();
 
     try {
+        debugLogMessage("configDevice", "runtime config", "device=%s payload=%s", device->UID.c_str(), config.c_str());
         std::unordered_map<std::string, std::string> params = parseParamsFromString(config, CASE_SENSITIVE);
         device->config(params);
         return true;
@@ -40,14 +42,14 @@ bool configDevice(BaseDevice *device, const std::string &config) {
     catch (const std::exception &e)
     {
         std::string msg = buildMessage("Standard exception during synchronization: %s\n", e.what());
-        logMessage("%s", msg.c_str());
+        Exception("configDevice", msg).print();
         device->setError(msg);
         return false;
     }
     catch(...)
     {
         std::string msg = "Unknown exception during synchronization!\n";
-        logMessage("%s", msg.c_str());
+        Exception("configDevice", msg).print();
         device->setError(msg);
         return false;
     }
@@ -56,11 +58,13 @@ bool configDevice(BaseDevice *device, const std::string &config) {
 
 bool updateDevice(BaseDevice *device, const std::string &update) {
     if(device == nullptr) {
+        debugLogMessage("updateDevice", "device pointer invalid", "device is null");
         return false;
     }
     device->clearError();
 
     try {
+        debugLogMessage("updateDevice", "runtime update", "device=%s payload=%s", device->UID.c_str(), update.c_str());
         std::unordered_map<std::string, std::string> params = parseParamsFromString(update, CASE_SENSITIVE);
         device->update(params);
         return true;   
@@ -72,14 +76,14 @@ bool updateDevice(BaseDevice *device, const std::string &update) {
     catch (const std::exception &e)
     {
         std::string msg = buildMessage("Standard exception during synchronization: %s\n", e.what());
-        logMessage("%s", msg.c_str());
+        Exception("updateDevice", msg).print();
         device->setError(msg);
         return false;
     }
     catch(...)
     {
         std::string msg = "Unknown exception during synchronization!\n";
-        logMessage("%s", msg.c_str());
+        Exception("updateDevice", msg).print();
         device->setError(msg);
         return false;
     }
@@ -87,11 +91,13 @@ bool updateDevice(BaseDevice *device, const std::string &update) {
 
 bool controlDevice(BaseDevice *device, const std::string &control) {
     if(device == nullptr) {
+        debugLogMessage("controlDevice", "device pointer invalid", "device is null");
         return false;
     }
     device->clearError();
 
     try {
+        debugLogMessage("controlDevice", "runtime control", "device=%s payload=%s", device->UID.c_str(), control.c_str());
         std::unordered_map<std::string, std::string> params = parseParamsFromString(control, CASE_SENSITIVE);
         device->control(params);
         return true;
@@ -103,14 +109,14 @@ bool controlDevice(BaseDevice *device, const std::string &control) {
     catch (const std::exception &e)
     {
         std::string msg = buildMessage("Standard exception during device control: %s\n", e.what());
-        logMessage("%s", msg.c_str());
+        Exception("controlDevice", msg).print();
         device->setError(msg);
         return false;
     }
     catch(...)
     {
         std::string msg = "Unknown exception during device control!\n";
-        logMessage("%s", msg.c_str());
+        Exception("controlDevice", msg).print();
         device->setError(msg);
         return false;
     }
@@ -118,6 +124,7 @@ bool controlDevice(BaseDevice *device, const std::string &control) {
 
 void printDevice(BaseDevice *device) {
     if(device == nullptr) {
+        debugLogMessage("printDevice", "device pointer invalid", "device is null");
         return;
     }
     device->clearError();
@@ -132,14 +139,14 @@ void printDevice(BaseDevice *device) {
     catch (const std::exception &e)
     {
         std::string msg = buildMessage("Standard exception during synchronization: %s\n", e.what());
-        logMessage("%s", msg.c_str());
+        Exception("printDevice", msg).print();
         device->setError(msg);
         return;
     }
     catch(...)
     {
         std::string msg = "Unknown exception during synchronization!\n";
-        logMessage("%s", msg.c_str());
+        Exception("printDevice", msg).print();
         device->setError(msg);
         return;
     }
@@ -147,11 +154,13 @@ void printDevice(BaseDevice *device) {
 
 bool syncDevice(BaseDevice *device) {
     if(device == nullptr) {
+        debugLogMessage("syncDevice", "device pointer invalid", "device is null");
         return false;
     }
     device->clearError();
 
     try {
+        debugLogMessage("syncDevice", "runtime sync", "device=%s", device->UID.c_str());
         return device->synchronize();
     } catch (const Exception &ex) {
         ex.print();
@@ -161,14 +170,14 @@ bool syncDevice(BaseDevice *device) {
     catch (const std::exception &e)
     {
         std::string msg = buildMessage("Standard exception during synchronization: %s\n", e.what());
-        logMessage("%s", msg.c_str());
+        Exception("syncDevice", msg).print();
         device->setError(msg);
         return false;
     }
     catch(...)
     {
         std::string msg = "Unknown exception during synchronization!\n";
-        logMessage("%s", msg.c_str());
+        Exception("syncDevice", msg).print();
         device->setError(msg);
         return false;
     }
@@ -176,11 +185,13 @@ bool syncDevice(BaseDevice *device) {
 
 bool initDevice(BaseDevice *device) {
     if(device == nullptr) {
+        debugLogMessage("initDevice", "device pointer invalid", "device is null");
         return false;
     }
     device->clearError();
 
     try {
+        debugLogMessage("initDevice", "device init", "device=%s", device->UID.c_str());
         device->init();
         return true;
     } catch (const Exception &ex) {
@@ -191,14 +202,14 @@ bool initDevice(BaseDevice *device) {
     catch (const std::exception &e)
     {
         std::string msg = buildMessage("Standard exception during synchronization: %s\n", e.what());
-        logMessage("%s", msg.c_str());
+        Exception("initDevice", msg).print();
         device->setError(msg);
         return false;
     }
     catch(...)
     {
         std::string msg = "Unknown exception during synchronization!\n";
-        logMessage("%s", msg.c_str());
+        Exception("initDevice", msg).print();
         device->setError(msg);
         return false;
     }
@@ -206,15 +217,18 @@ bool initDevice(BaseDevice *device) {
 
 bool connectDevice(BaseDevice *device) {
     if(device == nullptr) {
+        debugLogMessage("connectDevice", "device pointer invalid", "device is null");
         return false;
     }
     device->clearError();
 
     if(device->getPins().empty()) {
+        debugLogMessage("connectDevice", "pin assignment", "device=%s has no pins assigned", device->UID.c_str());
         return false; // No pins assigned, nothing to connect
     }
 
     try {
+        debugLogMessage("connectDevice", "device connect", "device=%s pins=%s", device->UID.c_str(), device->getPins().c_str());
         return device->connect();  
     } catch (const Exception &ex) {
         ex.print();
@@ -224,14 +238,14 @@ bool connectDevice(BaseDevice *device) {
     catch (const std::exception &e)
     {
         std::string msg = buildMessage("Standard exception during synchronization: %s\n", e.what());
-        logMessage("%s", msg.c_str());
+        Exception("connectDevice", msg).print();
         device->setError(msg);
         return false;
     }
     catch(...)
     {
         std::string msg = "Unknown exception during synchronization!\n";
-        logMessage("%s", msg.c_str());
+        Exception("connectDevice", msg).print();
         device->setError(msg);
         return false;
     }
@@ -239,15 +253,18 @@ bool connectDevice(BaseDevice *device) {
 
 bool disconnectDevice(BaseDevice *device) {
     if(device == nullptr) {
+        debugLogMessage("disconnectDevice", "device pointer invalid", "device is null");
         return false;
     }
     device->clearError();
 
     if(device->getPins().empty()) {
+        debugLogMessage("disconnectDevice", "pin assignment", "device=%s has no pins assigned", device->UID.c_str());
         return true; // No pins assigned, nothing to disconnect
     }
 
     try {
+        debugLogMessage("disconnectDevice", "device disconnect", "device=%s pins=%s", device->UID.c_str(), device->getPins().c_str());
         return device->disconnect();
     } catch (const Exception &ex) {
         ex.print();
@@ -257,14 +274,14 @@ bool disconnectDevice(BaseDevice *device) {
     catch (const std::exception &e)
     {
         std::string msg = buildMessage("Standard exception during synchronization: %s\n", e.what());
-        logMessage("%s", msg.c_str());
+        Exception("disconnectDevice", msg).print();
         device->setError(msg);
         return false;
     }
     catch(...)
     {
         std::string msg = "Unknown exception during synchronization!\n";
-        logMessage("%s", msg.c_str());
+        Exception("disconnectDevice", msg).print();
         device->setError(msg);
         return false;
     }

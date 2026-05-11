@@ -28,9 +28,10 @@
 // Uncomment to enable ESP32 platform
 //#define ESP_PLATFORM
 
-// For debugging and testing purposes, you can enable the following macros:
-// #define DATABUNDLE_DEBUG  // For debugging DataBundleManager operations
-#define PROTOCOL_DEBUG    // For debugging Protocol operations
+// Unified project debug logging switch. Exceptions are printed by their catch handlers.
+#ifndef ENABLE_DEBUG
+#define ENABLE_DEBUG 1
+#endif
 
 // Storage backend selection for all persistent data access.
 #define STORAGE_OPTION_SD 1

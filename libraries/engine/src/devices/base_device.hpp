@@ -205,6 +205,7 @@ protected:
         {
             configMap[pair.first] = pair.second.Value;
         }
+        debugLogMessage("BaseDevice::syncConfigs", "runtime config", "device=%s paramCount=%u", UID.c_str(), static_cast<unsigned int>(configMap.size()));
         auto response = Protocol::config(UID, configMap);
         if (response.status == ResponseStatusEnum::ERROR)
         {
@@ -233,6 +234,7 @@ protected:
                 throw DeviceSynchronizationFailException("BaseDevice::syncValues", response.error);
             }
 
+            debugLogMessage("BaseDevice::syncValues", "runtime update", "device=%s paramCount=%u", UID.c_str(), static_cast<unsigned int>(response.params.size()));
             update(response.params); // Update runtime values from response parameters.
 
             isValuesSync = response.status == ResponseStatusEnum::OK; // Set flag to indicate runtime values are synchronized with the real device.
@@ -262,6 +264,7 @@ protected:
             {
                 double min = convertStringToType<double>(restrictions.Min);
                 double val = convertStringToType<double>(value);
+                debugLogMessage("BaseDevice::checkRestrictions", "math validation", "value=%s min=%s", value.c_str(), restrictions.Min.c_str());
                 if (val < min)
                 {
                     return false;
@@ -272,6 +275,7 @@ protected:
             {
                 double max = convertStringToType<double>(restrictions.Max);
                 double val = convertStringToType<double>(value);
+                debugLogMessage("BaseDevice::checkRestrictions", "math validation", "value=%s max=%s", value.c_str(), restrictions.Max.c_str());
                 if (val > max)
                 {
                     return false;
@@ -281,6 +285,7 @@ protected:
             if (!restrictions.Options.empty())
             {
                 std::vector<std::string> options = splitString(restrictions.Options, ',');
+                debugLogMessage("BaseDevice::checkRestrictions", "option validation", "value=%s options=%s", value.c_str(), restrictions.Options.c_str());
                 if (std::find(options.begin(), options.end(), value) == options.end())
                 {
                     return false;
@@ -454,6 +459,7 @@ public:
             throw DeviceSynchronizationFailException("BaseDevice::syncControls", response.error);
         }
 
+        debugLogMessage("BaseDevice::syncControls", "runtime control", "device=%s paramCount=%u", UID.c_str(), static_cast<unsigned int>(valueMap.size()));
         isControlsSync = response.status == ResponseStatusEnum::OK;
         redrawPending = isControlsSync;
     }
@@ -552,8 +558,10 @@ public:
     void assignPin(std::string pin) 
     {
         if (isInVector(Pins, pin)) {
+            debugLogMessage("BaseDevice::assignPin", "pin assignment", "device=%s pin=%s already assigned", UID.c_str(), pin.c_str());
             return; // Pin already assigned
         }
+        debugLogMessage("BaseDevice::assignPin", "pin assignment", "device=%s pin=%s", UID.c_str(), pin.c_str());
         Pins.push_back(pin);
     }
 
@@ -566,6 +574,7 @@ public:
     {
         auto it = std::find(Pins.begin(), Pins.end(), pin);
         if (it != Pins.end()) {
+            debugLogMessage("BaseDevice::unassignPin", "pin assignment", "device=%s pin=%s", UID.c_str(), pin.c_str());
             Pins.erase(it);
         }
     }
@@ -645,6 +654,7 @@ public:
             throw DeviceConnectionFailException("BaseDevice::connect", response.error);
         }
 
+        debugLogMessage("BaseDevice::connect", "protocol connect", "device=%s pins=%s", UID.c_str(), pins.c_str());
         return response.status == ResponseStatusEnum::OK;
     }
 
@@ -661,6 +671,7 @@ public:
         }
 
         if (response.status == ResponseStatusEnum::OK) {
+            debugLogMessage("BaseDevice::disconnect", "protocol disconnect", "device=%s pins=%s", UID.c_str(), getPins().c_str());
             Pins.clear();
         }
 
@@ -714,6 +725,7 @@ public:
             {
                 throw InvalidValueException("BaseDevice::setConfig", "Value " + value + " for key " + key + " does not meet restrictions.");
             }
+            debugLogMessage("BaseDevice::setConfig", "runtime memory write", "device=%s key=%s value=%s", UID.c_str(), key.c_str(), value.c_str());
             Configs[key].Value = value;
         }
         else
@@ -772,6 +784,7 @@ public:
             {
                 throw InvalidValueException("BaseDevice::setValue", "Value " + value + " for key " + key + " does not meet restrictions.");
             }
+            debugLogMessage("BaseDevice::setValue", "runtime memory write", "device=%s key=%s value=%s historyIndex=%d", UID.c_str(), key.c_str(), value.c_str(), Values[key].lastHistoryIndex);
             Values[key].Value = value;
             Values[key].History[Values[key].lastHistoryIndex++] = value;
             if (Values[key].lastHistoryIndex >= HISTORY_CAP)
@@ -888,6 +901,7 @@ public:
     {
         for (auto &v : Values)
         {
+            debugLogMessage("BaseDevice::clearHistory", "runtime memory write", "device=%s key=%s", UID.c_str(), v.first.c_str());
             for(int i=0;i<HISTORY_CAP;i++){
                 v.second.History[i] = "0";
                 //logMessage("Clearing history value %s for key %s\n", v.second.History[i], v.first.c_str());
@@ -906,6 +920,14 @@ public:
         const bool syncConfigsChannel = usesConfigChannel();
         const bool syncValuesChannel = usesUpdateChannel();
         const bool syncControlChannel = usesControlChannel();
+        debugLogMessage(
+            "BaseDevice::synchronize",
+            "runtime sync",
+            "device=%s configChannel=%d updateChannel=%d controlChannel=%d",
+            UID.c_str(),
+            syncConfigsChannel,
+            syncValuesChannel,
+            syncControlChannel);
 
         if (!syncConfigsChannel)
         {
@@ -977,6 +999,7 @@ public:
             if (!isInVector(ConfigKeyOrder, key)) {
                 ConfigKeyOrder.push_back(key);
             }
+            debugLogMessage("BaseDevice::addConfigParameter", "runtime memory write", "device=%s key=%s", UID.c_str(), key.c_str());
         }
         catch (const std::exception &e)
         {
@@ -1014,6 +1037,7 @@ public:
                     c.second.Value = value;
 
                     c.second.History[c.second.lastHistoryIndex++] = value;
+                    debugLogMessage("BaseDevice::config", "runtime memory write", "device=%s key=%s value=%s", UID.c_str(), c.first.c_str(), value.c_str());
                     if (c.second.lastHistoryIndex >= HISTORY_CAP)
                     {
                         c.second.lastHistoryIndex = 0;
@@ -1044,6 +1068,7 @@ public:
             if (!isInVector(ValueKeyOrder, key)) {
                 ValueKeyOrder.push_back(key);
             }
+            debugLogMessage("BaseDevice::addValueParameter", "runtime memory write", "device=%s key=%s", UID.c_str(), key.c_str());
         }
         catch (const std::exception &e)
         {
@@ -1091,6 +1116,7 @@ public:
                     }
                     c.second.Value = value;
                     c.second.History[c.second.lastHistoryIndex++] = value;
+                    debugLogMessage("BaseDevice::update", "runtime memory write", "device=%s key=%s value=%s", UID.c_str(), c.first.c_str(), value.c_str());
                     if (c.second.lastHistoryIndex >= HISTORY_CAP)
                     {
                         c.second.lastHistoryIndex = 0;
@@ -1145,6 +1171,7 @@ public:
         isControlsSync = true; // Control payload is synchronized until the user changes it locally.
 
         clearError();
+        debugLogMessage("BaseDevice::init", "device init", "device=%s", UID.c_str());
     };
 };
 
@@ -1174,14 +1201,21 @@ T *createDevice(std::string uid)
     {
         device = new T(uid);
     }
+    catch (const Exception &ex)
+    {
+        ex.print();
+        const std::string detail = ex.flush(0);
+        delete device;
+        throw DeviceInitializationFailException("createDevice", "Error during device initialization. " + detail);
+    }
     catch (const std::exception &ex)
     {
-        logMessage("Error during device initialization: %s\n", ex.what());
+        Exception("createDevice", ex.what()).print();
         delete device;
         throw DeviceInitializationFailException("createDevice", "Error during device initialization.", new Exception(ex));
     }
 
-    logMessage("Device [%s]:%s created successfully.\n", device->UID.c_str(), device->Type.c_str());
+    debugLogMessage("createDevice", "device init", "device=%s type=%s created successfully", device->UID.c_str(), device->Type.c_str());
     return device;
 }
 

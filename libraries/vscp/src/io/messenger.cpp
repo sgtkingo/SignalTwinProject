@@ -10,6 +10,7 @@
  * Ing. Jiri Konecny
  */
 #include "messenger.hpp"
+#include <expt.hpp>
 
 #ifdef ARDUINO_H
     #include <Arduino.h>  ///< Include Arduino 
@@ -57,10 +58,7 @@
         if (strip) 
             prepMessage = stripMessage(message, true);
 
-        if (verbose >= 2) {
-            Serial.print("[SEND] ");
-            Serial.println(prepMessage);
-        }
+        debugLogMessage("sendMessageAsString", "protocol io write", "%s", prepMessage.c_str());
 
         UART1_VIRTUAL.println(prepMessage);
     }
@@ -77,13 +75,10 @@
             msg = stripMessage(msg, true);
 
         if (msg.length()==0 && verbose>0) {
-            Serial.println("[RECV] No message received (timeout?)");
+            debugLogMessage("receiveMessageAsString", "protocol io read timeout", "timeout=%d", timeout);
         }
 
-        if (verbose >= 2) {
-            Serial.print("[RECV] ");
-            Serial.println(msg);
-        }
+        debugLogMessage("receiveMessageAsString", "protocol io read", "%s", msg.c_str());
 
         return msg;
     }
@@ -104,6 +99,7 @@
         UART1_VIRTUAL = HardwareSerial(port);
         UART1_VIRTUAL.begin(baudrate, mode, rx, tx);
         UART1_VIRTUAL.setTimeout(UART1_TIMEOUT);
+        debugLogMessage("initMessenger", "protocol io init", "baudrate=%lu port=%u rx=%d tx=%d timeout=%d", baudrate, port, rx, tx, UART1_TIMEOUT);
         return uart1_initialized = true;
     }
 

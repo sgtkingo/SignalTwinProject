@@ -134,6 +134,7 @@ private:
             if(recording && appendSample){
                 dataBundleManager.saveNewDataPoint(key, s);
             }   
+            debugLogMessage("SignalsVisualizationGui::buildDeviceHistory", "math conversion", "device=%s key=%s raw=%s chartValue=%d append=%d", device->UID.c_str(), key.c_str(), s.c_str(), curr, appendSample);
         }
         catch (const std::exception &e)
         {
