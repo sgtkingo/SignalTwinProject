@@ -1,0 +1,73 @@
+Problemy s HMI:
+
+PR:
+Když už jsme u těch oprav - v runtime je button Settings, což bych očekávsl že bude spíše nastavení pro graf a vizuál. Místo toho tam je odkaz na databundles, delete all data budle a icons policy. What?  Takže, pojdme tam udělat přípravu pro nějaký vizual setting, třeba barvu lines, vynucení nějakého manuálního scale apod. Určitě chceme přesunout tlačítko "Delete all databudles" do Databanky (pravý horní roh). Odkaz na Databundles tam (v runtime settings) být může. Icon policy posuneme do nového mainmenu itemu "About", kde bude krátký text o aplikaci samotné + autoři + icon policy.   Dále, vzhledem k tomu že se u float chart scaluje, bylo by fajnn tuto informaci uvést: ideálně malým červeným fontem pod graf, napsat uroven scalingu (např. Scaling 1x. Scaling x100 apod).
+
+PR:
+Dále, při pauznutém device runtimu se nepřekreslí screen na další device po klinutí na talčítko next/prev. Zjevně musíš vynutit dispay redraw, protože ted je pravdepodobně spjatý s needRedraw. 
+
+Pozor at se při přepnutí překreslí i graf - použij HISTORY které má každý device.
+
+PR:
+Při změně Config hodnoty v runtime se nepošle CONFIG protocol message
+
+PR:
+Zavést "verbose" level pro logování? Od 1-3? 1 jen chyby; 2 chyby, warningy a důležité operace (výsledky procesů); 3 vše (včetně třeba math conversion source), výchozí hodnota je 2
+
+PR:
+Při výběru pinu u Aktuátoru, který má dané piny které smí použit, je obrazovka Pin Selection pomalá - je i dlouhá odezva i při klinutí na pin. U Sensors to nědělá. Zdá se log vypisuje mnoho konverzí:
+Firmware log: DEBUG: inputLength=13 separator=, count=6 reason=string split source=splitString
+Firmware log: DEBUG: input=3 output=3 reason=math conversion source=convertStringToType<int>
+Firmware log: DEBUG: input=5 output=5 reason=math conversion source=convertStringToType<int>
+Firmware log: DEBUG: input=6 output=6 reason=math conversion source=convertStringToType<int>
+Firmware log: DEBUG: input=9 output=9 reason=math conversion source=convertStringToType<int>
+Firmware log: DEBUG: input=10 output=10 reason=math conversion source=convertStringToType<int>
+Firmware log: DEBUG: input=11 output=11 reason=math conversion source=convertStringToType<int>
+Firmware log: DEBUG: inputLength=13 separator=, count=6 reason=string split source=splitString
+Firmware log: DEBUG: input=3 output=3 reason=math conversion source=convertStringToType<int>
+Firmware log: DEBUG: input=5 output=5 reason=math conversion source=convertStringToType<int>
+Firmware log: DEBUG: input=6 output=6 reason=math conversion source=convertStringToType<int>
+Firmware log: DEBUG: input=9 output=9 reason=math conversion source=convertStringToType<int>
+Firmware log: DEBUG: input=10 output=10 reason=math conversion source=convertStringToType<int>
+Firmware log: DEBUG: input=11 output=11 reason=math conversion source=convertStringToType<int>
+Firmware log: DEBUG: inputLength=13 separator=, count=6 reason=string split source=splitString
+Firmware log: DEBUG: input=3 output=3 reason=math conversion source=convertStringToType<int>
+Firmware log: DEBUG: input=5 output=5 reason=math conversion source=convertStringToType<int>
+Firmware log: DEBUG: input=6 output=6 reason=math conversion source=convertStringToType<int>
+Firmware log: DEBUG: input=9 output=9 reason=math conversion source=convertStringToType<int>
+Firmware log: DEBUG: input=10 output=10 reason=math conversion source=convertStringToType<int>
+Firmware log: DEBUG: input=11 output=11 reason=math conversion source=convertStringToType<int>
+
+Možná to bude právě logem, otázka je proč se tam děje tolik convertStringToType<int> konverze? Je to kvůli tomu že Allowed pins jsou jako strings?
+
+PR:
+V DeviceSelection screen bych u tlačítka Configure očekával otevření konfigurace device v rámci Library (Edit Entity). Pro připojení k pinům by bylo výstižnější tlačítko "Pins" nebo "Pins Assign". Preferuji mít tak obě tlačítka. Taktéž list "Configured devices" by měl být spíše "Pinned Devices". Otázka jestli není list zbytečný, a neodstranit ho - preferuji. Místo toho udělat více místa pro DevicesList a pro DeviceInfo box. Zařízení která už mají připojené všechny piny (proběhlo Assign) označit v DevicesList zeleně. Ty které mají přiřazené některé piny ale ne všechny které potřebuje, žlutě. A ty které ještě nebyly assignuty tak nechat bílé. Tato logika navazuje na to že každý device by měl mít stanovený počet pinů které vyžaduje k provozu - je nutné tohle dodělat do BaseDivice a DB.json + parseru a poté i do Pins manageru a vizualizace. Vizualizace i engine pak musí hlídat jestli uživatel přiřadil všechny piny a nedovolit mu jich přiřadit více. Pokuud uživatel klikne Connect, upozornit ho že mu chybí přiřazení X pinů z N. Devices kterým budou takto chybět nějaké piny, bud do runtime devices listu vubec nepřidat, nebo to povolit ale v runtime tak dát výstražný trojuhelík -> ten by se měl zobrazit i pokud device nedpovídá na volání, takže ho udělat clickable -> vyvolá splhash s výpise problémů.  Tlačítko "Remove" v Selection Screen přejmenovat na "Disconnect".  
+Nakonec DeviceSelection screen přidat tlačítko "Show Pins map" které jen zobrazí mapu pinů, jako při "Configure", ale bez vybraného device - takže jen náhled, zablokovat connect a kliknutí na pin nic neudělá. Tlačítko dát do pravého horního rohu. 
+
+PR:
+Connect screen je fajn ale: 
+- Při kliknutí na jakýkoliv Connect bych očekával nějakou animaci či krátký loading, který zablokuje dočasně (500 ms minimum, jinak dokud se úspěšně nepřipojí) ovládání. 
+- Wireless manual tlačítko dáme vedle Wireless Auto, jako ozubené kolo bez textu. V budoucnu to bude odkaz na Screen s Wireless settings a wireless explore obrazovkou. (přidej komentáře TODO)
+
+Po připojení se také zobrazí splash box "Connecting" jako legacy artefakt - nezobrazovat. Dole v Connection screen je text "Cable starts VSCP..." - takový text není uživatelský, raději piš "For cable connection (UART), please check if cable is in place."
+
+PR:
+V Library -> Edit Entity se neukáže klávesnice když kliknu na Text Area. Ani pro přidání Values / Configs. Navíc, Edit Entity screen nemá dobře vyřešené poměry mezi prvky. Values a Configs blokují co je nad nimi, posunout je níže. Dále listy uvnitř Values a Configs trošku zmenšit, přetékají přes velikost svého kontejneru. Také doporučují v Library rozšířit šířku DEviceListu, asi o 20%.
+
+PR: 
+V Setting bych očekával Default Communication jako enum roletku. 
+U Catalog Metadata sejný problém jako u Entit - nelze psát. 
+V Main menu přesunout Settings jako ikonku ozubeného kola - pravý horní roh. Vedle něj ikonka (i) pro About. 
+
+PR:
+DataBundle už se ukládájí do databanky a jsou vidět. Ale po klinutí na ně se neotevřou v prohlížeči DataBundles. 
+Export funkce píše že není dostupná, to zatím ponecháme. 
+
+PR:
+Hodila by se komunikace s PC na souborové úrovni. Má představa:
+FileTransfer screen, který spustí FileTransfer service a ověří zda je HMI připojeno k PC přes USB. Pokud ne, řekne uživateli at připojí kabel a ukáže ikonu rozpojeného kabelu. Po připojení kabelu by se mělo HMI začít chovat jako externí uložiště dat a zpřístupnit storage pro R/W. Prakticky tak aby se Windows objevil jako "fleška". Je tohle možné? 
+
+Odkaz na file transfer screen dát do Main Menu, vlevo nahoru. Ikona: cable connect.
+
+
+  

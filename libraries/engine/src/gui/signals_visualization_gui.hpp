@@ -75,7 +75,7 @@ private:
     SignalsListPanel signalListPanel; ///< Scrollable panel for live values and editable controls
     SignalsChartPanel chartPanel;     ///< Chart panel for numeric signal history
     SignalsFeedbackPanel feedbackPanel; ///< Transient alerts and modal shadow overlay
-    SignalsSettingsPanel settingsPanel; ///< Settings overlay panel for databundle and credits actions
+    SignalsSettingsPanel settingsPanel; ///< Settings overlay panel for runtime visualization actions
     SignalsToolbarPanel toolbarPanel; ///< Bottom navigation and recording toolbar
 
     // --- NAVIGATION AND CONTROL MEMBERS ---
@@ -107,8 +107,9 @@ private:
         if (!history || !device)
             return;
 
-        auto it = device->getValues().find(key);
-        if (it == device->getValues().end())
+        const auto values = device->getValues();
+        auto it = values.find(key);
+        if (it == values.end())
             return;
 
         const std::string historyKey = makeHistoryBufferKey(device, key);
@@ -131,9 +132,6 @@ private:
                 curr = static_cast<lv_coord_t>(value);
             }
 
-            if(recording && appendSample){
-                dataBundleManager.saveNewDataPoint(key, s);
-            }   
             debugLogMessage("SignalsVisualizationGui::buildDeviceHistory", "math conversion", "device=%s key=%s raw=%s chartValue=%d append=%d", device->UID.c_str(), key.c_str(), s.c_str(), curr, appendSample);
         }
         catch (const std::exception &e)
@@ -143,11 +141,29 @@ private:
 
         if (!inited)
         {
-            // First call: fill the visible window with the current value.
+            // First call: seed the chart buffer from the device-owned history.
             for (int i = 0; i < CHART_HISTORY_CAP; ++i)
             {
                 buf[i] = curr;
             }
+
+            std::string *deviceHistory = device->getHistory(key);
+            const int nextHistoryIndex = it->second.lastHistoryIndex;
+            for (int i = 0; i < HISTORY_CAP; ++i)
+            {
+                const int sourceIndex = (nextHistoryIndex + i) % HISTORY_CAP;
+                const std::string &rawHistoryValue = deviceHistory[sourceIndex];
+                if (rawHistoryValue.empty())
+                {
+                    continue;
+                }
+
+                const T historyValue = convertStringToType<T>(rawHistoryValue);
+                buf[i] = std::is_floating_point<T>::value
+                             ? static_cast<lv_coord_t>(std::lround(historyValue * 100.0))
+                             : static_cast<lv_coord_t>(historyValue);
+            }
+
             count = HISTORY_CAP;
             inited = true;
         }
@@ -237,6 +253,7 @@ private:
     void ensureControlEditor(size_t controlIndex, const DeviceParam &param);
     void syncControlEditorValue(size_t controlIndex, const DeviceParam &param);
     bool buildNumericHistoryForKey(const std::string &key, lv_coord_t *history, bool appendSample);
+    void recordCurrentSamples(const std::vector<std::string> &valueKeys);
     std::vector<std::string> getChartableValueKeys() const;
     void showEmptyChartState(const char *message);
     void hideEmptyChartState();
@@ -294,7 +311,7 @@ public:
     /**
      * @brief Draw/update the currently selected device visualization
      */
-    void drawCurrentDevice();
+    void drawCurrentDevice(bool force = false);
 
     /**
      * @brief Go to the previous device in the list
@@ -328,7 +345,7 @@ public:
 
     /**
      * @brief Handle record button click event
-     * @param message Message to display on alert (this handle is called in different ways). Can be empty (default is "Record was saved (view settings)")
+     * @param message Message to display on alert (this handle is called in different ways). Can be empty (default is "Record was saved")
      */
     void handleRecordButtonClick(const char *message);
 
@@ -353,16 +370,6 @@ public:
      * @brief Handle data bundle show button click event
      */
     void handleDataBundleShowButtonClick();
-
-    /**
-     * @brief Handle data bundle delete all button click event
-     */
-    void handleDataBundleDeleteAllButtonClick();
-
-    /**
-     * @brief Handle credits button click event
-     */
-    void handleCreditsButtonClick();
 
     /**
      * @brief User should be stopped when recording is still ongoing and they want to click on any bundle related buttons

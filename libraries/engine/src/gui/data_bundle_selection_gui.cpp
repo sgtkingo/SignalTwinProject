@@ -13,12 +13,14 @@
 #include "../helpers.hpp"
 #include "./images/ui_images.h"
 #include "expt.hpp"
+#include <cstring>
 #include <cstdlib>
 
 DataBundleSelectionGui::DataBundleSelectionGui(GuiRouter &router, DataBundleManager &dataBundleManager) : router(router), dataBundleManager(dataBundleManager)
 {
     ui_DataBundlesWidget = nullptr;
     ui_DataBundlePageWatcher = nullptr;
+    ui_DeleteAllButtonGroup = nullptr;
     for (int i = 0; i < 5; ++i) 
         ui_DataBundlePageWatcherCell[i] = nullptr;
     for (int i = 0; i < 6; ++i) {
@@ -523,6 +525,30 @@ void DataBundleSelectionGui::addControlButtonsToWidget(lv_obj_t *parentWidget)
     lv_obj_center(ui_btnBackLabel);
     lv_obj_set_style_text_font(ui_btnBackLabel, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
 
+    ui_DeleteAllButtonGroup = lv_obj_create(parentWidget);
+    lv_obj_remove_style_all(ui_DeleteAllButtonGroup);
+    lv_obj_set_width(ui_DeleteAllButtonGroup, 120);
+    lv_obj_set_height(ui_DeleteAllButtonGroup, 34);
+    lv_obj_align(ui_DeleteAllButtonGroup, LV_ALIGN_TOP_RIGHT, -18, 16);
+    lv_obj_clear_flag(ui_DeleteAllButtonGroup, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t *ui_btnDeleteAll = lv_btn_create(ui_DeleteAllButtonGroup);
+    lv_obj_set_width(ui_btnDeleteAll, 120);
+    lv_obj_set_height(ui_btnDeleteAll, 34);
+    lv_obj_set_align(ui_btnDeleteAll, LV_ALIGN_CENTER);
+    lv_obj_set_style_radius(ui_btnDeleteAll, 5, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui_btnDeleteAll, lv_color_hex(0xE55858), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_btnDeleteAll, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_add_event_cb(ui_btnDeleteAll, [](lv_event_t *e)
+                        {
+        auto self = static_cast<DataBundleSelectionGui*>(lv_event_get_user_data(e));
+        self->handleDeleteAllButtonClick(); }, LV_EVENT_CLICKED, this);
+
+    lv_obj_t *ui_btnDeleteAllLabel = lv_label_create(ui_btnDeleteAll);
+    lv_label_set_text(ui_btnDeleteAllLabel, "Delete All");
+    lv_obj_center(ui_btnDeleteAllLabel);
+    lv_obj_set_style_text_font(ui_btnDeleteAllLabel, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
+
     // // logMessage("Control buttons added to widget\n");
 }
 
@@ -593,6 +619,43 @@ void DataBundleSelectionGui::handleClearButtonClick(unsigned char index)
 void DataBundleSelectionGui::handleClearConfirmButtonClick(unsigned char index)
 {
     dataBundleManager.deleteBundle(currentPage * 6 + index);
+    updateBundles();
+}
+
+void DataBundleSelectionGui::handleDeleteAllButtonClick()
+{
+    static const char *btns[] = {"Yes", ""};
+    showShadowOverlay();
+    lv_obj_t *confirmDialog = lv_msgbox_create(lv_scr_act(), "Confirm Deletion", "Delete all data bundles?", btns, true);
+    lv_obj_set_width(confirmDialog, 250);
+    lv_obj_center(confirmDialog);
+    lv_obj_move_foreground(confirmDialog);
+    lv_obj_add_event_cb(confirmDialog, [](lv_event_t *e)
+                        {
+        auto self = static_cast<DataBundleSelectionGui*>(lv_event_get_user_data(e));
+        lv_event_code_t code = lv_event_get_code(e);
+
+        if (code == LV_EVENT_VALUE_CHANGED)
+        {
+            lv_obj_t *msgbox = lv_event_get_current_target(e);
+            const char *btnText = lv_msgbox_get_active_btn_text(msgbox);
+            if (btnText && strcmp(btnText, "Yes") == 0)
+            {
+                self->handleDeleteAllConfirmButtonClick();
+            }
+            self->hideShadowOverlay();
+            lv_obj_del(msgbox);
+        }
+        else if (code == LV_EVENT_DELETE)
+        {
+            self->hideShadowOverlay();
+        } }, LV_EVENT_ALL, this);
+}
+
+void DataBundleSelectionGui::handleDeleteAllConfirmButtonClick()
+{
+    dataBundleManager.deleteAllBundles();
+    currentPage = 0;
     updateBundles();
 }
 
@@ -725,8 +788,9 @@ void DataBundleSelectionGui::hideSpecificDataBundle(unsigned char index){
 }
 
 void DataBundleSelectionGui::goToNextPage(){
-    if((dataBundleManager.getDataBundleAmount()-1)/6 != 0){
-        unsigned char availablePages = ((dataBundleManager.getDataBundleAmount()-1)/6);
+    const unsigned char amount = dataBundleManager.getDataBundleAmount();
+    if(amount > 6){
+        unsigned char availablePages = ((amount-1)/6);
         currentPage = (currentPage+1)%(availablePages+1);
     }
     //logMessage("Current page is: %d", currentPage);
@@ -734,8 +798,9 @@ void DataBundleSelectionGui::goToNextPage(){
 }
 
 void DataBundleSelectionGui::goToPreviousPage(){
-    if((dataBundleManager.getDataBundleAmount()-1)/6 != 0){
-        unsigned char availablePages = ((dataBundleManager.getDataBundleAmount()-1)/6);
+    const unsigned char amount = dataBundleManager.getDataBundleAmount();
+    if(amount > 6){
+        unsigned char availablePages = ((amount-1)/6);
         currentPage = (currentPage == 0) ? availablePages : currentPage - 1;
     }
     //logMessage("Current page is: %d", currentPage);
@@ -743,13 +808,15 @@ void DataBundleSelectionGui::goToPreviousPage(){
 }
 
 void DataBundleSelectionGui::updateWatcherCells(){
+    const unsigned char amount = dataBundleManager.getDataBundleAmount();
+    const unsigned char availablePages = amount == 0 ? 0 : static_cast<unsigned char>((amount - 1) / 6);
     for(unsigned char i=0;i<5;i++){
         if(i == currentPage){
             lv_obj_set_style_bg_color(ui_DataBundlePageWatcherCell[i], lv_color_hex(0x009BFF), LV_PART_MAIN);
             lv_obj_set_style_border_color(ui_DataBundlePageWatcherCell[i], lv_color_hex(0x009BFF), LV_PART_MAIN);
             continue;
         }
-        else if(i <= ((dataBundleManager.getDataBundleAmount()-1)/6)){
+        else if(amount > 0 && i <= availablePages){
             lv_obj_set_style_bg_color(ui_DataBundlePageWatcherCell[i], lv_color_hex(0xFFFFFF), LV_PART_MAIN);
             lv_obj_set_style_border_color(ui_DataBundlePageWatcherCell[i], lv_color_hex(0x009BFF), LV_PART_MAIN);
             continue;
@@ -766,6 +833,13 @@ void DataBundleSelectionGui::updateBundles()
 {
     try 
     {
+        const unsigned char amount = dataBundleManager.getDataBundleAmount();
+        const unsigned char availablePages = amount == 0 ? 0 : static_cast<unsigned char>((amount - 1) / 6);
+        if (currentPage > availablePages)
+        {
+            currentPage = availablePages;
+        }
+
         std::array<DataBundleBuffer, 6> currentDataBundles = dataBundleManager.getBundlePage(currentPage);
 
         for (unsigned char i = 0; i < 6; i++)

@@ -18,6 +18,7 @@
 class DataBundleManager {
 private:
     bool initialized = false;                 ///< Initialization state flag
+    bool bundleFileNamesLoaded = false;       ///< True when bundleFileNames mirrors storage
     
     std::vector<std::string> bundleFileNames;  ///< All saved bundle filenames (for example DHT11_01.csv)
 
@@ -33,6 +34,8 @@ private:
     std::string readLine(File &file);
 
     std::vector<std::string> parseCSVLine(std::string line);
+
+    void clearRecordingState(const char *reason);
 
     // GETTERS
 
@@ -85,6 +88,8 @@ public:
 
     // Called whenever a new runtime sample arrives.
     bool saveNewDataPoint(std::string signalName, std::string value);
+
+    bool hasRecordingData() const { return !recordingDataPoints.empty(); }
 
     bool saveRecording();
 
@@ -139,7 +144,9 @@ public:
     // public GETTERS
 
     unsigned char getDataBundleAmount() {
-        reloadBundleFileNames();
+        if (!bundleFileNamesLoaded) {
+            reloadBundleFileNames();
+        }
         return bundleFileNames.size();
     }
 };

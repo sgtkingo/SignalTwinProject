@@ -9,9 +9,7 @@ void SignalsSettingsPanel::show(lv_obj_t *parentWidget,
                                 uint32_t bundleAmount,
                                 bool isBundleFull,
                                 lv_event_cb_t closeCallback,
-                                lv_event_cb_t showBundlesCallback,
-                                lv_event_cb_t deleteAllCallback,
-                                lv_event_cb_t creditsCallback)
+                                lv_event_cb_t showBundlesCallback)
 {
     if (!parentWidget || isVisible()) {
         return;
@@ -101,20 +99,88 @@ void SignalsSettingsPanel::show(lv_obj_t *parentWidget,
     lv_obj_set_style_text_color(ui_SettingsHeaderLabel, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_SettingsHeaderLabel, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
+    ui_SettingsScaleModeLabel = lv_label_create(ui_SettingsGroup);
+    lv_obj_set_width(ui_SettingsScaleModeLabel, LV_SIZE_CONTENT);
+    lv_obj_set_height(ui_SettingsScaleModeLabel, LV_SIZE_CONTENT);
+    lv_obj_set_x(ui_SettingsScaleModeLabel, 10);
+    lv_obj_set_y(ui_SettingsScaleModeLabel, -38);
+    lv_obj_set_align(ui_SettingsScaleModeLabel, LV_ALIGN_LEFT_MID);
+    lv_label_set_text(ui_SettingsScaleModeLabel, "Scale mode:");
+    lv_obj_set_style_text_color(ui_SettingsScaleModeLabel, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ui_SettingsScaleModeValueLabel = lv_label_create(ui_SettingsGroup);
+    lv_obj_set_width(ui_SettingsScaleModeValueLabel, LV_SIZE_CONTENT);
+    lv_obj_set_height(ui_SettingsScaleModeValueLabel, LV_SIZE_CONTENT);
+    lv_obj_set_x(ui_SettingsScaleModeValueLabel, -20);
+    lv_obj_set_y(ui_SettingsScaleModeValueLabel, -38);
+    lv_obj_set_align(ui_SettingsScaleModeValueLabel, LV_ALIGN_RIGHT_MID);
+    lv_label_set_text(ui_SettingsScaleModeValueLabel, "Auto");
+    lv_obj_set_style_text_color(ui_SettingsScaleModeValueLabel, lv_color_hex(0x009BFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ui_SettingsSeriesColorLabel = lv_label_create(ui_SettingsGroup);
+    lv_obj_set_width(ui_SettingsSeriesColorLabel, LV_SIZE_CONTENT);
+    lv_obj_set_height(ui_SettingsSeriesColorLabel, LV_SIZE_CONTENT);
+    lv_obj_set_x(ui_SettingsSeriesColorLabel, 10);
+    lv_obj_set_y(ui_SettingsSeriesColorLabel, -12);
+    lv_obj_set_align(ui_SettingsSeriesColorLabel, LV_ALIGN_LEFT_MID);
+    lv_label_set_text(ui_SettingsSeriesColorLabel, "Line colors:");
+    lv_obj_set_style_text_color(ui_SettingsSeriesColorLabel, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ui_SettingsPrimarySwatch = lv_obj_create(ui_SettingsGroup);
+    lv_obj_remove_style_all(ui_SettingsPrimarySwatch);
+    lv_obj_set_size(ui_SettingsPrimarySwatch, 28, 16);
+    lv_obj_set_x(ui_SettingsPrimarySwatch, -58);
+    lv_obj_set_y(ui_SettingsPrimarySwatch, -12);
+    lv_obj_set_align(ui_SettingsPrimarySwatch, LV_ALIGN_RIGHT_MID);
+    lv_obj_clear_flag(ui_SettingsPrimarySwatch, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_radius(ui_SettingsPrimarySwatch, 4, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui_SettingsPrimarySwatch, lv_color_hex(0x009BFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_SettingsPrimarySwatch, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ui_SettingsSecondarySwatch = lv_obj_create(ui_SettingsGroup);
+    lv_obj_remove_style_all(ui_SettingsSecondarySwatch);
+    lv_obj_set_size(ui_SettingsSecondarySwatch, 28, 16);
+    lv_obj_set_x(ui_SettingsSecondarySwatch, -20);
+    lv_obj_set_y(ui_SettingsSecondarySwatch, -12);
+    lv_obj_set_align(ui_SettingsSecondarySwatch, LV_ALIGN_RIGHT_MID);
+    lv_obj_clear_flag(ui_SettingsSecondarySwatch, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_radius(ui_SettingsSecondarySwatch, 4, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui_SettingsSecondarySwatch, lv_color_hex(0xFF6B35), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_SettingsSecondarySwatch, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ui_SettingsManualScaleButton = lv_btn_create(ui_SettingsGroup);
+    lv_obj_set_width(ui_SettingsManualScaleButton, 200);
+    lv_obj_set_height(ui_SettingsManualScaleButton, 20);
+    lv_obj_set_x(ui_SettingsManualScaleButton, 17);
+    lv_obj_set_y(ui_SettingsManualScaleButton, 16);
+    lv_obj_set_align(ui_SettingsManualScaleButton, LV_ALIGN_LEFT_MID);
+    lv_obj_add_flag(ui_SettingsManualScaleButton, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
+    lv_obj_clear_flag(ui_SettingsManualScaleButton, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_state(ui_SettingsManualScaleButton, LV_STATE_DISABLED);
+    lv_obj_set_style_radius(ui_SettingsManualScaleButton, 5, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui_SettingsManualScaleButton, lv_color_hex(0xA8B3BF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_SettingsManualScaleButton, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ui_SettingsManualScaleButtonLabel = lv_label_create(ui_SettingsManualScaleButton);
+    lv_obj_set_width(ui_SettingsManualScaleButtonLabel, LV_SIZE_CONTENT);
+    lv_obj_set_height(ui_SettingsManualScaleButtonLabel, LV_SIZE_CONTENT);
+    lv_obj_set_align(ui_SettingsManualScaleButtonLabel, LV_ALIGN_CENTER);
+    lv_label_set_text(ui_SettingsManualScaleButtonLabel, "Manual Scale");
+
     ui_SettingsDataBundleLabel = lv_label_create(ui_SettingsGroup);
     lv_obj_set_width(ui_SettingsDataBundleLabel, LV_SIZE_CONTENT);
     lv_obj_set_height(ui_SettingsDataBundleLabel, LV_SIZE_CONTENT);
     lv_obj_set_x(ui_SettingsDataBundleLabel, 10);
-    lv_obj_set_y(ui_SettingsDataBundleLabel, -40);
+    lv_obj_set_y(ui_SettingsDataBundleLabel, 47);
     lv_obj_set_align(ui_SettingsDataBundleLabel, LV_ALIGN_LEFT_MID);
-    lv_label_set_text(ui_SettingsDataBundleLabel, "Data bundle:");
+    lv_label_set_text(ui_SettingsDataBundleLabel, "Data Bundles:");
     lv_obj_set_style_text_color(ui_SettingsDataBundleLabel, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_SettingsDataBundleCountLabel = lv_label_create(ui_SettingsGroup);
     lv_obj_set_width(ui_SettingsDataBundleCountLabel, LV_SIZE_CONTENT);
     lv_obj_set_height(ui_SettingsDataBundleCountLabel, LV_SIZE_CONTENT);
     lv_obj_set_x(ui_SettingsDataBundleCountLabel, -20);
-    lv_obj_set_y(ui_SettingsDataBundleCountLabel, -40);
+    lv_obj_set_y(ui_SettingsDataBundleCountLabel, 47);
     lv_obj_set_align(ui_SettingsDataBundleCountLabel, LV_ALIGN_RIGHT_MID);
     const std::string bundleCountText = "[" + std::to_string(bundleAmount) + "/30]";
     lv_label_set_text(ui_SettingsDataBundleCountLabel, bundleCountText.c_str());
@@ -127,7 +193,7 @@ void SignalsSettingsPanel::show(lv_obj_t *parentWidget,
     lv_obj_set_width(ui_SettingsDataBundleShowButton, 200);
     lv_obj_set_height(ui_SettingsDataBundleShowButton, 20);
     lv_obj_set_x(ui_SettingsDataBundleShowButton, 17);
-    lv_obj_set_y(ui_SettingsDataBundleShowButton, -17);
+    lv_obj_set_y(ui_SettingsDataBundleShowButton, 72);
     lv_obj_set_align(ui_SettingsDataBundleShowButton, LV_ALIGN_LEFT_MID);
     lv_obj_add_flag(ui_SettingsDataBundleShowButton, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
     lv_obj_clear_flag(ui_SettingsDataBundleShowButton, LV_OBJ_FLAG_SCROLLABLE);
@@ -138,49 +204,7 @@ void SignalsSettingsPanel::show(lv_obj_t *parentWidget,
     lv_obj_set_width(ui_SettingsDataBundleShowButtonLabel, LV_SIZE_CONTENT);
     lv_obj_set_height(ui_SettingsDataBundleShowButtonLabel, LV_SIZE_CONTENT);
     lv_obj_set_align(ui_SettingsDataBundleShowButtonLabel, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_SettingsDataBundleShowButtonLabel, "Show Data Bundles");
-
-    ui_SettingsDataBundleDeleteAllButton = lv_btn_create(ui_SettingsGroup);
-    lv_obj_set_width(ui_SettingsDataBundleDeleteAllButton, 200);
-    lv_obj_set_height(ui_SettingsDataBundleDeleteAllButton, 20);
-    lv_obj_set_x(ui_SettingsDataBundleDeleteAllButton, 17);
-    lv_obj_set_y(ui_SettingsDataBundleDeleteAllButton, 10);
-    lv_obj_set_align(ui_SettingsDataBundleDeleteAllButton, LV_ALIGN_LEFT_MID);
-    lv_obj_add_flag(ui_SettingsDataBundleDeleteAllButton, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
-    lv_obj_clear_flag(ui_SettingsDataBundleDeleteAllButton, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_radius(ui_SettingsDataBundleDeleteAllButton, 5, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_SettingsDataBundleDeleteAllButton, lv_color_hex(0xE55858), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_SettingsDataBundleDeleteAllButton, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_add_event_cb(ui_SettingsDataBundleDeleteAllButton, deleteAllCallback, LV_EVENT_CLICKED, userData);
-
-    ui_SettingsDataBundleDeleteAllButtonLabel = lv_label_create(ui_SettingsDataBundleDeleteAllButton);
-    lv_obj_set_width(ui_SettingsDataBundleDeleteAllButtonLabel, LV_SIZE_CONTENT);
-    lv_obj_set_height(ui_SettingsDataBundleDeleteAllButtonLabel, LV_SIZE_CONTENT);
-    lv_obj_set_align(ui_SettingsDataBundleDeleteAllButtonLabel, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_SettingsDataBundleDeleteAllButtonLabel, "Delete All Data Bundles!!");
-
-    ui_SettingsCreditsLabel = lv_label_create(ui_SettingsGroup);
-    lv_obj_set_width(ui_SettingsCreditsLabel, LV_SIZE_CONTENT);
-    lv_obj_set_height(ui_SettingsCreditsLabel, LV_SIZE_CONTENT);
-    lv_obj_set_x(ui_SettingsCreditsLabel, 10);
-    lv_obj_set_y(ui_SettingsCreditsLabel, 37);
-    lv_obj_set_align(ui_SettingsCreditsLabel, LV_ALIGN_LEFT_MID);
-    lv_label_set_text(ui_SettingsCreditsLabel, "About Icons:");
-
-    ui_SettingsCreditsButton = lv_btn_create(ui_SettingsGroup);
-    lv_obj_set_width(ui_SettingsCreditsButton, 200);
-    lv_obj_set_height(ui_SettingsCreditsButton, 20);
-    lv_obj_set_x(ui_SettingsCreditsButton, 17);
-    lv_obj_set_y(ui_SettingsCreditsButton, 60);
-    lv_obj_set_align(ui_SettingsCreditsButton, LV_ALIGN_LEFT_MID);
-    lv_obj_set_style_radius(ui_SettingsCreditsButton, 5, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_add_event_cb(ui_SettingsCreditsButton, creditsCallback, LV_EVENT_CLICKED, userData);
-
-    ui_SettingsCreditsButtonLabel = lv_label_create(ui_SettingsCreditsButton);
-    lv_obj_set_width(ui_SettingsCreditsButtonLabel, LV_SIZE_CONTENT);
-    lv_obj_set_height(ui_SettingsCreditsButtonLabel, LV_SIZE_CONTENT);
-    lv_obj_set_align(ui_SettingsCreditsButtonLabel, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_SettingsCreditsButtonLabel, "View About Icons");
+    lv_label_set_text(ui_SettingsDataBundleShowButtonLabel, "Open Databank");
 }
 
 void SignalsSettingsPanel::hide()
@@ -201,13 +225,15 @@ void SignalsSettingsPanel::hide()
     ui_SettingsOutlay = nullptr;
     ui_SettingsHeaderLine = nullptr;
     ui_SettingsHeaderLabel = nullptr;
+    ui_SettingsScaleModeLabel = nullptr;
+    ui_SettingsScaleModeValueLabel = nullptr;
+    ui_SettingsSeriesColorLabel = nullptr;
+    ui_SettingsPrimarySwatch = nullptr;
+    ui_SettingsSecondarySwatch = nullptr;
+    ui_SettingsManualScaleButton = nullptr;
+    ui_SettingsManualScaleButtonLabel = nullptr;
     ui_SettingsDataBundleLabel = nullptr;
     ui_SettingsDataBundleCountLabel = nullptr;
     ui_SettingsDataBundleShowButton = nullptr;
     ui_SettingsDataBundleShowButtonLabel = nullptr;
-    ui_SettingsDataBundleDeleteAllButton = nullptr;
-    ui_SettingsDataBundleDeleteAllButtonLabel = nullptr;
-    ui_SettingsCreditsLabel = nullptr;
-    ui_SettingsCreditsButton = nullptr;
-    ui_SettingsCreditsButtonLabel = nullptr;
 }

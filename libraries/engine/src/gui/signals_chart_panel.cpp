@@ -39,6 +39,14 @@ void SignalsChartPanel::create(lv_obj_t *parent)
     lv_obj_center(emptyLabel);
     lv_obj_set_style_text_color(emptyLabel, lv_color_hex(0x5F6B7A), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_add_flag(emptyLabel, LV_OBJ_FLAG_HIDDEN);
+
+    scalingLabel = lv_label_create(parent);
+    lv_label_set_text(scalingLabel, "Scaling 1x");
+    lv_obj_set_width(scalingLabel, LV_SIZE_CONTENT);
+    lv_obj_set_height(scalingLabel, LV_SIZE_CONTENT);
+    lv_obj_align_to(scalingLabel, chart, LV_ALIGN_OUT_TOP_LEFT, 0, -5);
+    lv_obj_set_style_text_color(scalingLabel, lv_color_hex(0xD32F2F), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(scalingLabel, &lv_font_montserrat_10, LV_PART_MAIN | LV_STATE_DEFAULT);
 }
 
 void SignalsChartPanel::showEmptyState(const char *message)
@@ -59,6 +67,13 @@ void SignalsChartPanel::hideEmptyState()
 {
     if (emptyLabel) {
         lv_obj_add_flag(emptyLabel, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+void SignalsChartPanel::setScalingText(const char *text)
+{
+    if (scalingLabel) {
+        lv_label_set_text(scalingLabel, text ? text : "");
     }
 }
 

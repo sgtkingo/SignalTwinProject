@@ -17,6 +17,7 @@ private:
     lv_obj_t *ui_btnLibrary = nullptr;
     lv_obj_t *ui_btnDatabank = nullptr;
     lv_obj_t *ui_btnSettings = nullptr;
+    lv_obj_t *ui_btnAbout = nullptr;
 
     void build();
     lv_obj_t *createMenuButton(lv_obj_t *parent, const char *text, lv_align_t align, lv_coord_t x_ofs, lv_coord_t y_ofs);

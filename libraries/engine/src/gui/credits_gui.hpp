@@ -3,7 +3,7 @@
  * @brief Header file for the CreditsGui class
  *
  * This header file declares and defines the CreditsGui class responsible for
- * displaying the static Third-Party Credits page.
+ * displaying the static About page.
  *
  * @copyright 2025 MTA
  * @author Ondřej Wrubel
@@ -43,20 +43,23 @@ private:
     lv_style_t style_footer;
 
     // --- Static Text Assets (Stored in Flash/RODATA) ---
-    static constexpr const char *txt_title = "Third-Party Credits";
+    static constexpr const char *txt_title = "About Signal Twin";
 
     static constexpr const char *txt_intro =
-        "This software is built using high-quality open-source assets and resources from the creative community. "
-        "To maintain the high visual standard of this interface while following legal licensing requirements, "
-        "we credit the following creators for their work.";
+        "Signal Twin is an embedded HMI for VSCP device connection, live signal visualization, recording and DataBundle review.";
+
+    static constexpr const char *txt_section_authors =
+        "Authors:\n"
+        "Ing. Jiri Konecny\n"
+        "Ondrej Wrubel";
 
     static constexpr const char *txt_section_icons =
-        "Icons & Graphics:\n"
+        "Icon Policy:\n"
         "Bluetooth Icon by Icons8 (icons8.com)\n"
         "General Icons by Flaticon (flaticon.com)";
 
     static constexpr const char *txt_footer =
-        "Although this device is not connected to the internet, you can find these creators and their full license terms at the addresses above.\n"
+        "Full icon license terms are available from the providers above.\n"
         "All trademarks and registered trademarks are the property of their respective owners.";
 
     /**
@@ -125,7 +128,7 @@ private:
     void handleBackButtonClick()
     {
         hideCredits();
-        router.showVisualization();
+        router.showMainMenu();
     }
 
 public:
@@ -153,7 +156,6 @@ public:
 
         lv_style_init(&style_title);
         lv_style_set_text_font(&style_title, &lv_font_montserrat_20);
-        lv_style_set_text_decor(&style_title, LV_TEXT_DECOR_UNDERLINE);
 
         lv_style_init(&style_section);
         lv_style_set_text_font(&style_section, &lv_font_montserrat_14);
@@ -192,6 +194,10 @@ public:
         lv_obj_t *line = lv_obj_create(ui_CreditsScreen);
         lv_obj_set_size(line, lv_pct(100), 2);
         lv_obj_set_style_bg_color(line, lv_palette_lighten(LV_PALETTE_GREY, 2), 0);
+
+        // Authors Section
+        lv_obj_t *lbl_authors = create_static_label(txt_section_authors);
+        lv_obj_add_style(lbl_authors, &style_section, 0);
 
         // Icons Section
         lv_obj_t *lbl_icons = create_static_label(txt_section_icons);

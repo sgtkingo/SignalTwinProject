@@ -37,6 +37,20 @@ int findColumnIndex(const std::vector<std::string> &columns, const char *name)
     }
     return -1;
 }
+
+bool isCsvBundlePath(const std::string &path)
+{
+    return path.size() >= 4 && path.substr(path.size() - 4) == ".csv";
+}
+
+std::string getBundleFileNameFromPath(const std::string &path)
+{
+    const size_t separator = path.find_last_of('/');
+    if (separator == std::string::npos) {
+        return path;
+    }
+    return path.substr(separator + 1);
+}
 }
 
 // Pin definitions for SPI communication
@@ -107,23 +121,6 @@ bool DataBundleManager::ensureStorageDirectories()
         return false;
     }
 
-#if ENABLE_DEBUG
-    // log.txt creation test
-    File myFile = storageManager().open("/DataBundles/log.txt", FILE_WRITE);
-
-    if (myFile)
-    {
-        myFile.println("Device Data: 123");
-        myFile.close(); // Save and close
-        debugLogMessage("DataBundleManager::ensureStorageDirectories", "storage write", "created log.txt successfully");
-    }
-    else
-    {
-        debugLogMessage("DataBundleManager::ensureStorageDirectories", "storage write failed", "failed to create log.txt");
-        return false;
-    }       
-#endif
-
     return true;
 }
 
@@ -133,7 +130,6 @@ void DataBundleManager::getStorageInfo()
     uint64_t used = storageManager().usedBytes();
 
     debugLogMessage("DataBundleManager::getStorageInfo", "storage read", "totalBytes=%llu usedBytes=%llu", total, used);
-    debugLogMessage("DataBundleManager::getStorageInfo", "storage read", "log.txt exists=%d", storageManager().exists("/DataBundles/log.txt"));
 }
 
 bool DataBundleManager::startRecording(std::string deviceName, std::string deviceUid)
@@ -262,6 +258,17 @@ bool DataBundleManager::saveRecording()
         saved.close(); // Save and close
 
         reloadBundleFileNames();
+        if (bundleFileNames.empty())
+        {
+            const std::string fileName = getBundleFileNameFromPath(recordingBundleMetadata.filePath);
+            if (!fileName.empty())
+            {
+                bundleFileNames.push_back(fileName);
+                bundleFileNamesLoaded = true;
+                debugLogMessage("DataBundleManager::saveRecording", "storage cache fallback", "cached saved bundle=%s", fileName.c_str());
+            }
+        }
+
         if(isBundleStorageFull()){
             pruneOldestBundle();
             reloadBundleFileNames();
@@ -277,14 +284,19 @@ bool DataBundleManager::saveRecording()
 
     listAllBundles();
     printBundleCsv(recordingBundleMetadata.filePath);
-    discardRecording();
+    clearRecordingState("saved recording state");
 
     return true;
 }
 
 void DataBundleManager::discardRecording()
 {
-    debugLogMessage("DataBundleManager::discardRecording", "recording state", "discarding filePath=%s samples=%u", recordingBundleMetadata.filePath.c_str(), static_cast<unsigned int>(recordingDataPoints.size()));
+    clearRecordingState("discarding unsaved recording");
+}
+
+void DataBundleManager::clearRecordingState(const char *reason)
+{
+    debugLogMessage("DataBundleManager::clearRecordingState", "recording state", "%s filePath=%s samples=%u", reason ? reason : "clearing recording", recordingBundleMetadata.filePath.c_str(), static_cast<unsigned int>(recordingDataPoints.size()));
     recordingBundleMetadata.deviceName = "";
     recordingBundleMetadata.deviceUid = "";
     recordingBundleMetadata.filePath = "";
@@ -296,7 +308,10 @@ void DataBundleManager::discardRecording()
 
 std::array<DataBundleBuffer,6> DataBundleManager::getBundlePage(unsigned char page)
 {
-    reloadBundleFileNames();
+    if (!bundleFileNamesLoaded)
+    {
+        reloadBundleFileNames();
+    }
     debugLogMessage("DataBundleManager::getBundlePage", "storage read", "page=%u bundleCount=%u", page, static_cast<unsigned int>(bundleFileNames.size()));
 
     std::array<DataBundleBuffer,6> buff{};
@@ -327,16 +342,21 @@ bool DataBundleManager::deleteAllBundles()
 
     for (const auto &file : filesToDelete)
     {
-        storageManager().remove(file);
+        if (isCsvBundlePath(file))
+        {
+            storageManager().remove(file);
+        }
     }
 
     bundleFileNames.clear();
+    bundleFileNamesLoaded = true;
 
     return true;
 }
 
 bool DataBundleManager::reloadBundleFileNames()
 {
+    const std::vector<std::string> previousBundleFileNames = bundleFileNames;
     bundleFileNames.clear();
 
     const std::vector<std::string> bundlePaths = storageManager().listFiles(root);
@@ -347,6 +367,10 @@ bool DataBundleManager::reloadBundleFileNames()
 
     const std::string rootPath = root;
     for (const std::string &fullPath : bundlePaths) {
+        if (!isCsvBundlePath(fullPath)) {
+            continue;
+        }
+
         if (fullPath.rfind(rootPath, 0) == 0) {
             bundleFileNames.push_back(fullPath.substr(rootPath.length()));
         } else {
@@ -354,6 +378,24 @@ bool DataBundleManager::reloadBundleFileNames()
         }
     }
 
+    if (bundleFileNames.empty() && !previousBundleFileNames.empty())
+    {
+        for (const std::string &fileName : previousBundleFileNames)
+        {
+            const std::string fullPath = fileName.rfind(rootPath, 0) == 0 ? fileName : rootPath + fileName;
+            if (isCsvBundlePath(fullPath) && storageManager().exists(fullPath))
+            {
+                bundleFileNames.push_back(getBundleFileNameFromPath(fullPath));
+            }
+        }
+
+        if (!bundleFileNames.empty())
+        {
+            debugLogMessage("DataBundleManager::reloadBundleFileNames", "storage cache fallback", "restored cached bundle filenames count=%u", static_cast<unsigned int>(bundleFileNames.size()));
+        }
+    }
+
+    bundleFileNamesLoaded = true;
     debugLogMessage("DataBundleManager::reloadBundleFileNames", "storage read", "loaded bundle filenames count=%u", static_cast<unsigned int>(bundleFileNames.size()));
     return true;
 }
@@ -361,11 +403,17 @@ bool DataBundleManager::reloadBundleFileNames()
 void DataBundleManager::pruneOldestBundle()
 {
     const std::vector<std::string> bundlePaths = storageManager().listFiles(root);
-    if (bundlePaths.empty())
-        return;
+    for (const std::string &bundlePath : bundlePaths)
+    {
+        if (!isCsvBundlePath(bundlePath))
+        {
+            continue;
+        }
 
-    debugLogMessage("DataBundleManager::pruneOldestBundle", "storage write", "removing oldest=%s", bundlePaths.front().c_str());
-    storageManager().remove(bundlePaths.front());
+        debugLogMessage("DataBundleManager::pruneOldestBundle", "storage write", "removing oldest=%s", bundlePath.c_str());
+        storageManager().remove(bundlePath);
+        return;
+    }
 }
 
 void DataBundleManager::listAllBundles()
@@ -380,6 +428,10 @@ void DataBundleManager::listAllBundles()
 
     for (const std::string &bundlePath : bundlePaths)
     {
+        if (!isCsvBundlePath(bundlePath)) {
+            continue;
+        }
+
         File file = storageManager().open(bundlePath, FILE_READ);
         if (!file) {
             debugLogMessage("DataBundleManager::listAllBundles", "storage read failed", "file unavailable %s", bundlePath.c_str());
@@ -567,6 +619,7 @@ void DataBundleManager::deleteBundle(unsigned char index){
     std::string fullPath = std::string(root) + bundleFileNames[index];
     storageManager().remove(fullPath);
     bundleFileNames.erase(bundleFileNames.begin() + index);
+    bundleFileNamesLoaded = true;
 }
 
 std::string DataBundleManager::readLine(File &file) {

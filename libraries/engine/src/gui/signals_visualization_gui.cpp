@@ -277,7 +277,7 @@ void SignalsVisualizationGui::addLogoPanelToWidget(lv_obj_t *parentWidget)
     lv_img_set_zoom(ui_LogoImage, 70);
 }
 
-void SignalsVisualizationGui::drawCurrentDevice()
+void SignalsVisualizationGui::drawCurrentDevice(bool force)
 {
     if (!currentDevice)
     {
@@ -285,19 +285,19 @@ void SignalsVisualizationGui::drawCurrentDevice()
         return;
     }
 
-    if (!currentDevice->getRedrawPending())
+    if (!force && !currentDevice->getRedrawPending())
     {
         return;
     }
 
-    if (paused)
+    if (!force && paused)
     {
         return;
     }
 
     updateDeviceDataDisplay();
-    updateChart();
-    debugLogMessage("SignalsVisualizationGui::drawCurrentDevice", "gui redraw", "device=%s", currentDevice->UID.c_str());
+    updateChart(force);
+    debugLogMessage("SignalsVisualizationGui::drawCurrentDevice", "gui redraw", "device=%s force=%d", currentDevice->UID.c_str(), force);
     currentDevice->setRedrawPending(false);
 }
 
@@ -496,6 +496,37 @@ bool SignalsVisualizationGui::buildNumericHistoryForKey(const std::string &key, 
     }
 }
 
+void SignalsVisualizationGui::recordCurrentSamples(const std::vector<std::string> &valueKeys)
+{
+    if (!recording || !currentDevice)
+    {
+        return;
+    }
+
+    const auto values = currentDevice->getValues();
+    unsigned int recordedCount = 0;
+    for (const auto &key : valueKeys)
+    {
+        auto it = values.find(key);
+        if (it == values.end() || !isNumericType(it->second.DType))
+        {
+            continue;
+        }
+
+        if (dataBundleManager.saveNewDataPoint(key, it->second.Value))
+        {
+            ++recordedCount;
+        }
+    }
+
+    debugLogMessage(
+        "SignalsVisualizationGui::recordCurrentSamples",
+        "recording sample",
+        "device=%s sampleCount=%u",
+        currentDevice->UID.c_str(),
+        recordedCount);
+}
+
 std::vector<std::string> SignalsVisualizationGui::getChartableValueKeys() const
 {
     std::vector<std::string> chartKeys;
@@ -669,6 +700,7 @@ void SignalsVisualizationGui::finishDeviceNavigation(bool wasRunning, BaseDevice
 
     delay_ms(10);
     deviceManager.setRunning(wasRunning);
+    drawCurrentDevice(true);
 }
 
 void SignalsVisualizationGui::updateDeviceDataDisplay()
@@ -699,6 +731,7 @@ void SignalsVisualizationGui::updateChart(bool force)
     const auto chartKeys = getChartableValueKeys();
     if (chartKeys.empty())
     {
+        chartPanel.setScalingText("");
         showEmptyChartState(currentDevice->getRole() == DeviceRole::ACTUATOR
                                 ? "Control-only device"
                                 : "No numeric signal available");
@@ -709,6 +742,18 @@ void SignalsVisualizationGui::updateChart(bool force)
     {
         hideEmptyChartState();
         const bool appendSample = !force && currentDevice->getRedrawPending();
+        const auto values = currentDevice->getValues();
+        bool usesFloatScaling = false;
+        for (size_t i = 0; i < chartKeys.size() && i < 2; ++i)
+        {
+            auto valueIt = values.find(chartKeys[i]);
+            if (valueIt != values.end() &&
+                (valueIt->second.DType == DeviceDataType::FLOAT || valueIt->second.DType == DeviceDataType::DOUBLE))
+            {
+                usesFloatScaling = true;
+            }
+        }
+        chartPanel.setScalingText(usesFloatScaling ? "Scaling x100" : "Scaling 1x");
 
         lv_coord_t historyPrimary[HISTORY_CAP];
         if (!buildNumericHistoryForKey(chartKeys[0], historyPrimary, appendSample)) {
@@ -742,6 +787,11 @@ void SignalsVisualizationGui::updateChart(bool force)
             chartPanel.populateSecondarySeries(historySecondary);
         } else {
             chartPanel.hideSecondarySeries();
+        }
+
+        if (appendSample)
+        {
+            recordCurrentSamples(chartKeys);
         }
 
         chartPanel.refresh();
@@ -860,9 +910,13 @@ void SignalsVisualizationGui::handleRecordButtonClick(const char *message)
     if (recording)
     {
         debugLogMessage("SignalsVisualizationGui::handleRecordButtonClick", "recording stop", "device=%s", currentDevice->UID.c_str());
+        if (!dataBundleManager.hasRecordingData())
+        {
+            recordCurrentSamples(getChartableValueKeys());
+        }
         const bool saved = dataBundleManager.saveRecording();
         recording = false;
-        showAlert(saved ? (message ? message : "Record was saved (view settings)") : "Recording has no data to save");
+        showAlert(saved ? (message ? message : "Record was saved") : "Recording has no data to save");
     }
     else
     {
@@ -955,14 +1009,6 @@ void SignalsVisualizationGui::handleSettingsButtonClick(lv_obj_t *recordGroup, l
         [](lv_event_t *e) {
             auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
             self->handleDataBundleShowButtonClick();
-        },
-        [](lv_event_t *e) {
-            auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
-            self->handleDataBundleDeleteAllButtonClick();
-        },
-        [](lv_event_t *e) {
-            auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
-            self->handleCreditsButtonClick();
         });
 }
 
@@ -974,45 +1020,6 @@ void SignalsVisualizationGui::handleDataBundleShowButtonClick(){
     hideSettingsPanel();
     
     router.openDatabankFromVisualization();
-}
-
-void SignalsVisualizationGui::handleDataBundleDeleteAllButtonClick(){
-    static const char *btns[] = {"Yes", ""};
-    feedbackPanel.showConfirmationDialog(
-        "Confirm Clear (Bundles)",
-        "Are you sure you want DELETE ALL BUNDLES?",
-        btns,
-        this,
-        [](lv_event_t *e) {
-            auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
-            const lv_event_code_t code = lv_event_get_code(e);
-
-            if (self->feedbackPanel.isConfirmationAccepted(e, "Yes")) {
-                self->feedbackPanel.closeConfirmationDialog(e);
-
-                if (self->recording) {
-                    self->handleStillRecording();
-                    return;
-                }
-
-                self->hideSettingsPanel();
-            self->dataBundleManager.deleteAllBundles();
-                return;
-            }
-
-            if (code == LV_EVENT_DELETE) {
-                self->feedbackPanel.closeConfirmationDialog(e);
-            }
-        });
-}
-
-void SignalsVisualizationGui::handleCreditsButtonClick(){
-    if(recording){
-        handleStillRecording();
-        return;
-    }
-    hideSettingsPanel();
-    router.showCreditsScreen();
 }
 
 void SignalsVisualizationGui::handleStillRecording(){
@@ -1113,10 +1120,12 @@ void SignalsVisualizationGui::showVisualization()
         return;
 
     lv_obj_clear_flag(ui_DeviceWidget, LV_OBJ_FLAG_HIDDEN);
+    toolbarPanel.setPaused(paused);
 
     // Refresh the display with current device data
     goToFirstDevice();
-    drawCurrentDevice();
+    deviceManager.setRunning(!paused);
+    debugLogMessage("SignalsVisualizationGui::showVisualization", "runtime pause state", "paused=%d running=%d", paused, deviceManager.isRunning());
     debugLogMessage("SignalsVisualizationGui::showVisualization", "gui operation", "shown");
 }
 

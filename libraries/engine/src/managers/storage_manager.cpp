@@ -40,6 +40,60 @@ std::string ensureAbsolutePath(std::string path)
 
     return path;
 }
+
+std::string buildListedPath(const char *rawName, const std::string &currentDirectory)
+{
+    if (!rawName || rawName[0] == '\0') {
+        return "";
+    }
+
+    std::string path = rawName;
+    if (path.front() == '/') {
+        return ensureAbsolutePath(path);
+    }
+
+    return normalizeDirectoryPath(currentDirectory) + path;
+}
+
+std::string fileNamePart(const std::string &path)
+{
+    const size_t separator = path.find_last_of('/');
+    if (separator == std::string::npos) {
+        return path;
+    }
+    return path.substr(separator + 1);
+}
+
+void collectMatchingFilesRecursive(File &directory,
+                                   const std::string &currentDirectory,
+                                   const std::string &matchPrefix,
+                                   fs::FS *filesystem,
+                                   std::vector<std::string> &filePaths)
+{
+    directory.rewindDirectory();
+    while (true) {
+        File entry = directory.openNextFile();
+        if (!entry) {
+            break;
+        }
+
+        const std::string fullPath = buildListedPath(entry.name(), currentDirectory);
+        if (entry.isDirectory()) {
+            const std::string childDirectory = normalizeDirectoryPath(fullPath);
+            collectMatchingFilesRecursive(entry, childDirectory, matchPrefix, filesystem, filePaths);
+        } else if (!fullPath.empty() && fullPath.rfind(matchPrefix, 0) == 0) {
+            filePaths.push_back(fullPath);
+        } else if (filesystem && matchPrefix != "/") {
+            const std::string prefixedPath = normalizeDirectoryPath(matchPrefix) + fileNamePart(fullPath);
+            if (filesystem->exists(prefixedPath.c_str())) {
+                debugLogMessage("StorageManager::listFiles", "storage path normalized", "raw=%s normalized=%s", fullPath.c_str(), prefixedPath.c_str());
+                filePaths.push_back(prefixedPath);
+            }
+        }
+
+        entry.close();
+    }
+}
 }
 
 StorageManager &StorageManager::instance()
@@ -178,28 +232,27 @@ std::vector<std::string> StorageManager::listFiles(const std::string &directoryP
     debugLogMessage("StorageManager::listFiles", "storage read", "listing directory=%s", normalizedDirectory.c_str());
 
 #if STORAGE_OPTION == STORAGE_OPTION_SPIFFS
-    File root = activeFilesystem->open("/", FILE_READ);
-    if (!root || !root.isDirectory()) {
-        debugLogMessage("StorageManager::listFiles", "storage read failed", "cannot open SPIFFS root");
-        return filePaths;
+    File directory = activeFilesystem->open(normalizedDirectory.c_str(), FILE_READ);
+    if (directory && directory.isDirectory()) {
+        collectMatchingFilesRecursive(directory, normalizedDirectory, normalizedDirectory, activeFilesystem, filePaths);
+        directory.close();
+    } else if (directory) {
+        directory.close();
     }
 
-    root.rewindDirectory();
-    while (true) {
-        File entry = root.openNextFile();
-        if (!entry) {
-            break;
+    if (filePaths.empty()) {
+        File root = activeFilesystem->open("/", FILE_READ);
+        if (!root || !root.isDirectory()) {
+            if (root) {
+                root.close();
+            }
+            debugLogMessage("StorageManager::listFiles", "storage read failed", "cannot open SPIFFS root");
+            return filePaths;
         }
 
-        const char *rawName = entry.name();
-        const std::string fullPath = rawName ? ensureAbsolutePath(rawName) : std::string();
-        if (!fullPath.empty() && !entry.isDirectory() && fullPath.rfind(normalizedDirectory, 0) == 0) {
-            filePaths.push_back(fullPath);
-        }
-
-        entry.close();
+        collectMatchingFilesRecursive(root, "/", normalizedDirectory, activeFilesystem, filePaths);
+        root.close();
     }
-    root.close();
 #else
     File directory = activeFilesystem->open(normalizedDirectory.c_str(), FILE_READ);
     if (!directory || !directory.isDirectory()) {
@@ -232,6 +285,7 @@ std::vector<std::string> StorageManager::listFiles(const std::string &directoryP
 #endif
 
     std::sort(filePaths.begin(), filePaths.end());
+    filePaths.erase(std::unique(filePaths.begin(), filePaths.end()), filePaths.end());
     debugLogMessage("StorageManager::listFiles", "storage read", "listed directory=%s count=%u", normalizedDirectory.c_str(), static_cast<unsigned int>(filePaths.size()));
     return filePaths;
 }

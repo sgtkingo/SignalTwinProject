@@ -69,6 +69,7 @@ private:
     lv_obj_t *ui_DataBundleFooterButtonClear[6];            ///< Clear button [6]
     lv_obj_t *ui_DataBundleFooterButtonClearImage[6];       ///< Clear button image [6]
     lv_obj_t *ui_ShadowOverlay;                             ///< Shadow overlay for popups
+    lv_obj_t *ui_DeleteAllButtonGroup;                      ///< Delete all bundles button group
     lv_obj_t *ui_LogoGroup;                                 ///< Logo group container
     lv_obj_t *ui_LogoCornerBottomLeft;                      ///< Logo corner bottom-left
     lv_obj_t *ui_LogoCornerFillBottomLeft;                  ///< Logo corner fill bottom-left
@@ -174,6 +175,16 @@ public:
      * @param index the bundle that will be cleared
      */
     void handleClearConfirmButtonClick(unsigned char index);
+
+    /**
+     * @brief opens a confirmation dialog to clear all data bundles
+     */
+    void handleDeleteAllButtonClick();
+
+    /**
+     * @brief clears all data bundles upon confirmation
+     */
+    void handleDeleteAllConfirmButtonClick();
 
     /**
      * @brief Show the data bundle selection screen
