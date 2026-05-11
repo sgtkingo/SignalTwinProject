@@ -1,5 +1,35 @@
 # RELEASE_NOTES
 
+## Current development changes
+
+### Runtime, VSCP and DB schema
+
+* Added explicit `access` semantics for runtime values:
+  * `read` values are fetched through `UPDATE`.
+  * `write` values are sent through `CONTROL`.
+  * `configs` continue to be sent through `CONFIG`.
+* Runtime visualization now separates `Values` and `Configs` with a toggle.
+* Writable/control values are shown as editable orange controls; config controls remain blue.
+* Added hybrid test device `H00` / `Temperature Regulator`:
+  * `temp` is a read value returned by `UPDATE`.
+  * `set_point` is a write value sent by `CONTROL`.
+  * `speed` is a config value sent by `CONFIG`.
+* Updated the emulator and pattern emulator so `H00.temp` gradually follows `set_point`; `speed` controls the update step.
+
+### Developer tooling and diagnostics
+
+* Debug logging is centralized behind `ENABLE_DEBUG`.
+* Added `DEBUG_VERBOSE_LEVEL` with levels `1..3`; default level is `2`.
+* Emulator log parsing recognizes firmware `DEBUG`, `WARNING` and `EXCEPTION` lines while keeping VSCP command parsing separate.
+
+### DataBundle and visualization fixes
+
+* DataBundle CSV includes `DeviceName`, `DeviceUid`, `SampleIndex`, `RuntimeMs`, `SignalName`, `Value`.
+* Recording uses runtime-relative milliseconds, so no RTC/NTP dependency is required.
+* Runtime chart supports autoscaling, history browsing and visible scaling labels.
+
+---
+
 ## 🥳 SignalTwin — First Release (v1.0.0) — 2026-01-20
 
 This is the first public “deploy-ready” release of **SignalTwin Display**: an ESP32-S3 HMI client for real-time sensor visualization, inspection, and logging over **VSCP**. The display itself is intentionally module-agnostic; educational modules live above it (e.g., EduBoxHub / PC emulator / custom HW).

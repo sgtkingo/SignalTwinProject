@@ -59,11 +59,26 @@ Beyond passive viewing, SignalTwin Display supports operational control via the 
   - 🎚️ actuator control (sending values/commands),
   - 🛠️ configuration pushes (calibration, sampling, modes).
 
+Runtime values can be explicitly marked as **read** or **write** in `DB.json`:
+
+- `access: "read"` values are fetched through `UPDATE` and can be charted/recorded.
+- `access: "write"` values are sent through `CONTROL` and shown as editable orange controls.
+- `configs` are sent through `CONFIG` and shown separately from values in the runtime panel.
+
+This enables true hybrid devices that combine telemetry, control and configuration in one device entry.
+The bundled test catalog includes `H00` / **Temperature Regulator**:
+
+- `temp`: read value returned by `UPDATE`,
+- `set_point`: write value sent by `CONTROL`,
+- `speed`: config value sent by `CONFIG`, controlling how quickly the emulated temperature reaches the set point.
+
 ---
 
 ## 📖 Documentation
 
 - 🧩 **Installation & deployment** are in **INSTALL.md** (toolchain, flashing, SD layout, emulator wiring).
+- 🧭 **Developer map** is in `DEV_MAP.md` (architecture, VSCP flow, DB schema, emulator notes).
+- 📝 **Release notes** are in `RELEASE_NOTES.md`.
 - Recommended (optional) docs to add:
   - 🧱 `docs/ARCHITECTURE.md` — dataflow & message types (VSCP mapping)
   - 🗃️ `docs/FORMATS.md` — DataBundle + CSV schema

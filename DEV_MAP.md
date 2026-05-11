@@ -70,6 +70,10 @@ Hlavni config je `libraries/engine/src/config.hpp`.
 Dulezite volby:
 
 - `ENABLE_DEBUG`: jednotny debug switch pro projekt, defaultne `1`.
+- `DEBUG_VERBOSE_LEVEL`: uroven detailu debug logu, defaultne `2`.
+  - `1`: chyby a kriticke debug informace.
+  - `2`: chyby, warningy a dulezite operace / vysledky procesu.
+  - `3`: vse, vcetne detailnich konverzi a nizkourovnovych debug stop.
 - `STORAGE_OPTION_SPIFFS`: vychozi dev rezim, katalog je `/DB.json`.
 - `STORAGE_OPTION_SD`: katalog je `/data/DB.json`.
 - `STORAGE_SEED_DEFAULT_DB_ON_MISSING`: ve SPIFFS rezimu umi zalozit default DB z embedded stringu.
@@ -161,9 +165,33 @@ Podporovane `dtype`:
 - `double`
 - `string`
 
-`values` jsou runtime hodnoty ctene pres `UPDATE`.
+`values` jsou runtime hodnoty. Kazda hodnota muze mit marker `access`:
+
+- `access: "read"` nebo chybejici `access`: hodnota se cte pres `UPDATE`.
+- `access: "write"`: hodnota se zapisuje pres `CONTROL`.
+
+Aliasove hodnoty pro write smer jsou `out`, `output` a `control`; pro read smer
+`in` a `input`. Parser je normalizuje na `read`/`write`.
+
 `configs` jsou persistentni/konfiguracni hodnoty posilane pres `CONFIG`.
-U actuatoru se runtime control payload posila pres `CONTROL`.
+Hybridni zarizeni muze mit soucasne read values, write values i configs.
+
+Priklad hybridniho testovaciho zarizeni:
+
+```json
+"H00": {
+  "uid": "H00",
+  "role": "hybrid",
+  "type": "Temperature Regulator",
+  "values": {
+    "set_point": { "value": 25, "unit": "C", "dtype": "int", "access": "write" },
+    "temp": { "value": 20, "unit": "C", "dtype": "int", "access": "read" }
+  },
+  "configs": {
+    "speed": { "value": 2, "dtype": "int", "restrictions": { "min": 1, "max": 5, "step": 1 } }
+  }
+}
+```
 
 ## Device model
 
@@ -176,6 +204,7 @@ Dulezite veci:
 
 - `UID`, `Type`, `Description`, `Role`
 - `Values` a `Configs`
+- `DeviceParamAccess` pro rozliseni `READ`/`WRITE` runtime hodnot
 - pin assignment (`assignPin`, `unassignPin`)
 - sync flags:
   - `isValuesSync`
@@ -184,6 +213,8 @@ Dulezite veci:
   - `redrawPending`
 - `requestRuntimeUpdate()` oznaci runtime hodnoty jako stale, aby dalsi sync poslal `UPDATE`.
 - `syncValues()`, `syncConfigs()`, `syncControls()` volaji VSCP protocol layer.
+- `usesUpdateChannel()` vraci true, pokud device ma alespon jednu readable value.
+- `usesControlChannel()` vraci true, pokud device ma writable value a neni cisty sensor.
 
 Globalni helper `syncDevice(BaseDevice*)` obaluje `device->synchronize()` do exception-safe API.
 
@@ -243,7 +274,7 @@ Podporovane typy requestu:
 - `INIT`: handshake app/db/api.
 - `UPDATE`: cteni runtime hodnot.
 - `CONFIG`: zapis konfigurace.
-- `CONTROL`: zapis runtime control hodnot pro actuator.
+- `CONTROL`: zapis runtime control hodnot pro actuator/hybrid writable values.
 - `RESET`: reset zarizeni.
 - `CONNECT`: pripojeni zarizeni na piny.
 - `DISCONNECT`: odpojeni zarizeni.
@@ -332,8 +363,14 @@ Chovani:
 
 - Normal running: GUI manager periodicky vola `DeviceManager::resync()`, ktery posila `UPDATE`.
 - Pause: zastavi running flag. Manual update button posle jeden `UPDATE`.
+- Values/Configs panel:
+  - runtime obrazovka ma prepinac mezi `Values` a `Configs`,
+  - read `Values` jsou live karty,
+  - write `Values` jsou editory posilane pres `CONTROL` a maji oranzovy podklad,
+  - `Configs` jsou editory posilane pres `CONFIG` a maji modry podklad.
 - Chart:
   - float/double hodnoty se pro LVGL integer chart skaluji `x100`,
+  - u grafu je label aktualniho scalingu (`Scaling 1x`, `Scaling x100`),
   - zapisy do grafu pouzivaji `lv_chart_set_value_by_id`,
   - range se prepocitava podle aktualniho okna.
 - Record:
@@ -427,6 +464,29 @@ Emulator nacita device defaults z:
 2. fallback `ui/data/DB.json`
 3. fallback hardcoded katalog
 
+Emulator respektuje `access` u values:
+
+- `UPDATE` vraci pouze readable values.
+- `CONTROL` prijima pouze writable values.
+- `CONFIG` uklada config parametry pro dalsi simulaci.
+
+Specialni testovaci device `H00` / `Temperature Regulator` simuluje realny hybridni tok:
+
+```text
+?type=UPDATE&id=H00
+?id=H00&status=1&temp=22
+
+?type=CONTROL&id=H00&set_point=35
+?id=H00&status=1
+
+?type=CONFIG&id=H00&speed=5
+?id=H00&status=1
+```
+
+Pri dalsich `UPDATE` se `temp` postupne priblizuje k `set_point`. `speed` v rozsahu
+`1..5` urcuje krok ve stupnich na jeden update. Stejne chovani je v
+`emulator/engine/emulator.py` i `emulator/engine/emulator_patterns.py`.
+
 Instalace:
 
 ```bash
@@ -457,14 +517,19 @@ Sent: ?id=cpu_temp&status=1&temp=0.21
 ### Pridat nove zarizeni
 
 1. Upravit `data/DB.json` a `ui/data/DB.json`.
-2. Pridat device entry s `uid`, `role`, `type`, `values`, `configs`, `default`.
-3. Pokud emulator nema specialni senzor, default hodnoty se nactou automaticky z DB.
-4. Otestovat selection, connection, visualization.
+2. Upravit `libraries/engine/src/devices/default_json_db.hpp`, pokud ma byt device soucasti embedded fallback DB.
+3. Pridat device entry s `uid`, `role`, `type`, `values`, `configs`, `default`.
+4. U write hodnot nastavit `access: "write"`, jinak zustanou read/UPDATE.
+5. U hybridnich zarizeni overit, ze readable values, writable values a configs davaji smysl pro runtime UI.
+6. Pokud emulator nema specialni senzor, default hodnoty se nactou automaticky z DB.
+7. Otestovat selection, connection, visualization.
 
 ### Pridat novy runtime value/control editor
 
 - Hodnoty jsou definovane v DB jako `values`.
 - Konfigurace jsou v DB jako `configs`.
+- Read values se vykresluji jako live cards; write values se vykresluji jako CONTROL editory.
+- Runtime panel lze prepnout mezi `Values` a `Configs`.
 - UI editor logika je v `SignalsVisualizationGui`:
   - `ensureControlEditor`
   - `syncControlEditorValue`
