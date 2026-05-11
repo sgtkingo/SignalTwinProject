@@ -60,17 +60,22 @@ private:
     bool initialized = false; ///< Initialization state flag
     bool paused = false;      ///< Pause state flag
     bool recording = false;   ///< Recording state flag
+    bool showingConfigPanel = false;
     int chartHistoryOffset = 0;
     int chartDragAccumulatorPx = 0;
 
     void createMainWidget();
     void createTitleLabel();
     void createSignalScrollPanel();
+    void createListModeToggle();
     void createChartPanel();
 
     // --- DEVICE VISUALIZATION MEMBERS ---
     lv_obj_t *ui_DeviceWidget; ///< Widget for device visualisation
     lv_obj_t *ui_DeviceLabel;  ///< Label for device name
+    lv_obj_t *ui_ListModeButton = nullptr;
+    lv_obj_t *ui_ListModeButtonLabel = nullptr;
+    lv_obj_t *ui_ListModeTitle = nullptr;
 
     SignalsListPanel signalListPanel; ///< Scrollable panel for live values and editable controls
     SignalsChartPanel chartPanel;     ///< Chart panel for numeric signal history
@@ -241,15 +246,14 @@ private:
     void ensureSignalCards(size_t count);
     void clearUnusedSignalCards(size_t usedCount);
     void updateSignalCards(const std::unordered_map<std::string, DeviceParam> &values,
-                           const std::vector<std::string> &valueKeys,
-                           bool useValueControls);
+                           const std::vector<std::string> &valueKeys);
     void ensureConfigControls(size_t count);
     void clearUnusedConfigControls(size_t usedCount);
-    void updateEditableControls(const std::unordered_map<std::string, DeviceParam> &values,
-                                const std::vector<std::string> &valueKeys,
-                                const std::unordered_map<std::string, DeviceParam> &configs,
-                                const std::vector<std::string> &configKeys,
-                                bool useValueControls);
+    void updateEditableControls(const std::unordered_map<std::string, DeviceParam> &params,
+                                const std::vector<std::string> &keys,
+                                bool isValueControl);
+    void updateListModeToggleState();
+    void toggleListMode();
     void ensureControlEditor(size_t controlIndex, const DeviceParam &param);
     void syncControlEditorValue(size_t controlIndex, const DeviceParam &param);
     bool buildNumericHistoryForKey(const std::string &key, lv_coord_t *history, bool appendSample);

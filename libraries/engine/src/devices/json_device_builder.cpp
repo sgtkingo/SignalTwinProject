@@ -130,6 +130,17 @@ const char *deviceDataTypeToString(DeviceDataType dtype)
     }
 }
 
+const char *deviceParamAccessToString(DeviceParamAccess access)
+{
+    switch (access) {
+    case DeviceParamAccess::WRITE:
+        return "write";
+    case DeviceParamAccess::READ:
+    default:
+        return "read";
+    }
+}
+
 void writeTypedJsonValue(JsonVariant target, const std::string &value, DeviceDataType dtype)
 {
     try {
@@ -230,6 +241,19 @@ DeviceRole parseDeviceRole(const std::string &role)
     throw InvalidDataFormatException("parseDeviceRole", "Unknown device role: " + role);
 }
 
+DeviceParamAccess parseDeviceParamAccess(const std::string &access)
+{
+    const std::string normalized = toLowerCopy(access);
+    if (normalized.empty() || normalized == "read" || normalized == "in" || normalized == "input") {
+        return DeviceParamAccess::READ;
+    }
+    if (normalized == "write" || normalized == "out" || normalized == "output" || normalized == "control") {
+        return DeviceParamAccess::WRITE;
+    }
+
+    throw InvalidDataFormatException("parseDeviceParamAccess", "Unknown value access: " + access);
+}
+
 DeviceRestrictions parseRestrictions(JsonObjectConst restrictionsJson)
 {
     DeviceRestrictions restrictions;
@@ -269,6 +293,11 @@ DeviceParam parseParameter(JsonObjectConst paramJson, JsonVariantConst defaultVa
     }
     if (!paramJson["dtype"].isNull()) {
         param.DType = parseDeviceDataType(jsonVariantToString(paramJson["dtype"]));
+    }
+    if (!paramJson["access"].isNull()) {
+        param.Access = parseDeviceParamAccess(jsonVariantToString(paramJson["access"]));
+    } else if (!paramJson["direction"].isNull()) {
+        param.Access = parseDeviceParamAccess(jsonVariantToString(paramJson["direction"]));
     }
     if (paramJson["restrictions"].is<JsonObjectConst>()) {
         param.Restrictions = parseRestrictions(paramJson["restrictions"].as<JsonObjectConst>());
@@ -444,13 +473,16 @@ void writeRestrictions(JsonObject restrictionsJson, const DeviceRestrictions &re
     }
 }
 
-void writeParamsObject(JsonObject paramsJson, JsonObject defaultsJson, const std::vector<DeviceParamSchema> &params)
+void writeParamsObject(JsonObject paramsJson, JsonObject defaultsJson, const std::vector<DeviceParamSchema> &params, bool includeAccess)
 {
     for (const DeviceParamSchema &schema : params) {
         JsonObject paramJson = paramsJson[schema.key].to<JsonObject>();
         writeTypedJsonValue(paramJson["value"], schema.param.Value, schema.param.DType);
         paramJson["unit"] = schema.param.Unit;
         paramJson["dtype"] = deviceDataTypeToString(schema.param.DType);
+        if (includeAccess) {
+            paramJson["access"] = deviceParamAccessToString(schema.param.Access);
+        }
 
         const bool hasRestrictions = !schema.param.Restrictions.Min.empty() ||
                                      !schema.param.Restrictions.Max.empty() ||
@@ -611,8 +643,8 @@ bool saveDeviceCatalogSchemaToStorageFile(const DeviceCatalogSchema &schemaCatal
         JsonObject defaultValuesJson = defaultJson["values"].to<JsonObject>();
         JsonObject defaultConfigsJson = defaultJson["configs"].to<JsonObject>();
 
-        writeParamsObject(valuesJson, defaultValuesJson, deviceSchema.values);
-        writeParamsObject(configsJson, defaultConfigsJson, deviceSchema.configs);
+        writeParamsObject(valuesJson, defaultValuesJson, deviceSchema.values, true);
+        writeParamsObject(configsJson, defaultConfigsJson, deviceSchema.configs, false);
 
         if (!deviceSchema.allowedPinsCsv.empty()) {
             JsonArray allowedPinsJson = deviceJson["allowedPins"].to<JsonArray>();

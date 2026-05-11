@@ -85,6 +85,16 @@ enum class DeviceDataType
 };
 
 /**
+ * @enum DeviceParamAccess
+ * @brief Declares whether a runtime value is read from hardware or written through CONTROL.
+ */
+enum class DeviceParamAccess
+{
+    READ,
+    WRITE
+};
+
+/**
  * @enum DeviceRole
  * @brief Declares whether the runtime device behaves as a sensor, actuator, or both.
  */
@@ -122,6 +132,7 @@ struct DeviceParam
     std::string Value;                ///< Parameter value.
     std::string Unit;                 ///< Parameter unit.
     DeviceDataType DType;                   ///< Parameter data type.
+    DeviceParamAccess Access = DeviceParamAccess::READ; ///< Runtime value access direction.
     int lastHistoryIndex;             ///< Last history index.
     std::string History[HISTORY_CAP]; ///< Parameter history.
     DeviceRestrictions Restrictions;  ///< Parameter restrictions.
@@ -470,7 +481,10 @@ public:
         std::unordered_map<std::string, std::string> valueMap;
         for (const auto &pair : Values)
         {
-            valueMap[pair.first] = pair.second.Value;
+            if (pair.second.Access == DeviceParamAccess::WRITE)
+            {
+                valueMap[pair.first] = pair.second.Value;
+            }
         }
 
         auto response = Protocol::control(UID, valueMap);
@@ -490,6 +504,26 @@ public:
      * @return true when at least one value exists.
      */
     bool hasValues() const { return !Values.empty(); }
+
+    bool hasReadableValues() const
+    {
+        for (const auto &pair : Values) {
+            if (pair.second.Access == DeviceParamAccess::READ) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool hasWritableValues() const
+    {
+        for (const auto &pair : Values) {
+            if (pair.second.Access == DeviceParamAccess::WRITE) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     /**
      * @brief Check whether the device exposes configurable parameters.
@@ -515,7 +549,7 @@ public:
      */
     bool usesUpdateChannel() const
     {
-        return hasValues() && Role != DeviceRole::ACTUATOR;
+        return hasReadableValues();
     }
 
     /**
@@ -525,7 +559,7 @@ public:
      */
     bool usesControlChannel() const
     {
-        return hasValues() && Role != DeviceRole::SENSOR;
+        return hasWritableValues() && Role != DeviceRole::SENSOR;
     }
 
     /**

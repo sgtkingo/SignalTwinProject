@@ -89,11 +89,20 @@ def load_catalog_defaults(path: Optional[str | Path] = None) -> tuple[Dict[str, 
     for uid, device in catalog.get("devices", {}).items():
         defaults = device.get("default", {})
         payload: Dict[str, Any] = {}
+        value_access: Dict[str, str] = {}
+        control_defaults: Dict[str, Any] = {}
+        default_values = defaults.get("values", {})
 
         for key, schema in device.get("values", {}).items():
-            default_values = defaults.get("values", {})
             value = default_values.get(key, schema.get("value", 0))
             payload[key] = value
+            access = str(schema.get("access", schema.get("direction", "read"))).lower()
+            if access in {"write", "out", "output", "control"}:
+                access = "write"
+                control_defaults[key] = value
+            else:
+                access = "read"
+            value_access[key] = access
 
         restrictions = {}
         for key, schema in device.get("values", {}).items():
@@ -102,6 +111,10 @@ def load_catalog_defaults(path: Optional[str | Path] = None) -> tuple[Dict[str, 
                 restrictions[key] = schema_restrictions
         if restrictions:
             payload["_restrictions"] = restrictions
+        if value_access:
+            payload["_value_access"] = value_access
+        if control_defaults:
+            payload["_control_values"] = control_defaults
 
         payload["type"] = device.get("type", uid)
 
@@ -134,9 +147,26 @@ def default_sensor_values() -> Dict[str, Dict[str, Any]]:
         "S01": {"temp": 0, "humi": 0, "type": "DHT11", "_configs": {"Unit": "C"}, "_role": "sensor"},
         "S15": {"intensity": 0, "type": "PhotoResistor", "_configs": {"Res": 5}, "_role": "sensor"},
         "A00": {
+            "Brightness": 40,
             "type": "PWM LED Driver",
-            "_configs": {"Enabled": "1", "Brightness": 40},
+            "_configs": {"Enabled": "1"},
+            "_control_values": {"Brightness": 40},
+            "_restrictions": {"Brightness": {"min": 0, "max": 100, "step": 5}},
+            "_value_access": {"Brightness": "write"},
             "_role": "actuator",
+        },
+        "H00": {
+            "set_point": 25,
+            "temp": 20,
+            "type": "Temperature Regulator",
+            "_configs": {"speed": 2},
+            "_control_values": {"set_point": 25},
+            "_restrictions": {
+                "set_point": {"min": 5, "max": 80, "step": 1},
+                "temp": {"min": -40, "max": 120},
+            },
+            "_value_access": {"set_point": "write", "temp": "read"},
+            "_role": "hybrid",
         },
     }
 
@@ -179,6 +209,9 @@ class VSCPEmulator:
             configs = payload.get("_configs", {})
             if isinstance(configs, dict):
                 self.sensor_configs[uid] = {key: _stringify(value) for key, value in configs.items()}
+            control_defaults = payload.get("_control_values", {})
+            if isinstance(control_defaults, dict):
+                self.control_values[uid] = {key: _stringify(value) for key, value in control_defaults.items()}
 
     def connect_serial(self) -> bool:
         if serial is None:
@@ -254,11 +287,54 @@ class VSCPEmulator:
         self.initialized = True
         return self.build_message({"status": "1"})
 
+    @staticmethod
+    def _to_float(value: Any, fallback: float) -> float:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return fallback
+
+    @staticmethod
+    def _to_int(value: Any, fallback: int) -> int:
+        try:
+            return int(float(value))
+        except (TypeError, ValueError):
+            return fallback
+
+    def _advance_temperature_regulator(self, uid: str) -> bool:
+        device = self.sensor_data.get(uid, {})
+        value_access = device.get("_value_access", {})
+        if value_access.get("set_point") != "write" or value_access.get("temp", "read") != "read":
+            return False
+        if "set_point" not in device or "temp" not in device:
+            return False
+
+        current_temp = self._to_float(device.get("temp"), 20.0)
+        set_point = self._to_float(self.control_values.get(uid, {}).get("set_point", device.get("set_point")), current_temp)
+        speed = self._to_int(self.sensor_configs.get(uid, {}).get("speed", device.get("_configs", {}).get("speed", 2)), 2)
+        speed = max(1, min(5, speed))
+
+        delta = set_point - current_temp
+        if abs(delta) <= speed:
+            next_temp = set_point
+        else:
+            next_temp = current_temp + (speed if delta > 0 else -speed)
+
+        device["temp"] = int(round(next_temp))
+        return True
+
     def _runtime_payload(self, uid: str) -> Dict[str, Any]:
         payload = {}
         restrictions = self.sensor_data[uid].get("_restrictions", {})
+        value_access = self.sensor_data[uid].get("_value_access", {})
+        regulator_updated = self._advance_temperature_regulator(uid)
         for key, value in self.sensor_data[uid].items():
             if key.startswith("_") or key == "type":
+                continue
+            if value_access.get(key, "read") == "write":
+                continue
+            if regulator_updated and key == "temp":
+                payload[key] = int(round(self._to_float(value, 0.0)))
                 continue
             if isinstance(value, (int, float)):
                 jitter = random.randint(-2, 2) if isinstance(value, int) else random.uniform(-0.5, 0.5)
@@ -313,8 +389,21 @@ class VSCPEmulator:
         if error:
             return error
 
+        value_access = self.sensor_data[uid].get("_value_access", {})
         control_params = {key: value for key, value in params.items() if key not in {"type", "id"}}
+        if value_access:
+            invalid = [key for key in control_params if value_access.get(key) != "write"]
+            if invalid:
+                return self.build_message({
+                    "id": uid,
+                    "status": "0",
+                    "error": f"Values are not writable through CONTROL: {','.join(invalid)}",
+                })
+
         self.control_values.setdefault(uid, {}).update(control_params)
+        for key, value in control_params.items():
+            if key in self.sensor_data[uid]:
+                self.sensor_data[uid][key] = value
         print(f"CONTROL {uid}: {control_params}")
         return self.build_message({"id": uid, "status": "1"})
 

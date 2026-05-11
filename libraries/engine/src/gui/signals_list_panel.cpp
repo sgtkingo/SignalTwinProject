@@ -226,6 +226,8 @@ void SignalsListPanel::setControlVisual(size_t index,
 
     control->key = key;
     control->isValueControl = isValueControl;
+    lv_obj_set_style_bg_color(control->container, lv_color_hex(isValueControl ? 0xFFF4E6 : 0xF3F9FF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_color(control->container, lv_color_hex(isValueControl ? 0xF08C00 : 0x8FBDE8), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_color(control->accent, lv_color_hex(accentColor), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_label_set_text(control->nameLabel, name.c_str());
     lv_label_set_text(control->valueLabel, value.c_str());

@@ -202,7 +202,9 @@ bool DeviceManager::resync(BaseDevice *device)
 {
     if(!isRunning()) return false;
     if(device) {
-        debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DeviceManager::resync", "runtime sync", "requesting update device=%s", device->UID.c_str());
+        if (device->usesUpdateChannel()) {
+            debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DeviceManager::resync", "runtime sync", "requesting update device=%s", device->UID.c_str());
+        }
         device->requestRuntimeUpdate();
     }
     return syncDevice(device);

@@ -123,8 +123,20 @@
       "uid": "A00",
       "role": "actuator",
       "type": "PWM LED Driver",
-      "description": "Simple actuator for testing runtime CONFIG-based control.",
-      "values": {},
+      "description": "Simple actuator for testing runtime CONTROL-based brightness.",
+      "values": {
+        "Brightness": {
+          "value": 40,
+          "unit": "%",
+          "dtype": "int",
+          "access": "write",
+          "restrictions": {
+            "min": 0,
+            "max": 100,
+            "step": 5
+          }
+        }
+      },
       "configs": {
         "Enabled": {
           "value": "1",
@@ -133,23 +145,67 @@
           "restrictions": {
             "options": ["0", "1"]
           }
+        }
+      },
+      "allowedPins": [3, 5, 6, 9, 10, 11],
+      "default": {
+        "values": {
+          "Brightness": 40
         },
-        "Brightness": {
-          "value": 40,
-          "unit": "%",
+        "configs": {
+          "Enabled": "1"
+        },
+        "pins": ""
+      }
+    },
+    "H00": {
+      "uid": "H00",
+      "role": "hybrid",
+      "type": "Temperature Regulator",
+      "description": "Hybrid temperature regulator for testing UPDATE, CONTROL and CONFIG.",
+      "values": {
+        "set_point": {
+          "value": 25,
+          "unit": "C",
+          "dtype": "int",
+          "access": "write",
+          "restrictions": {
+            "min": 5,
+            "max": 80,
+            "step": 1
+          }
+        },
+        "temp": {
+          "value": 20,
+          "unit": "C",
+          "dtype": "int",
+          "access": "read",
+          "restrictions": {
+            "min": -40,
+            "max": 120
+          }
+        }
+      },
+      "configs": {
+        "speed": {
+          "value": 2,
+          "unit": "",
           "dtype": "int",
           "restrictions": {
-            "min": 0,
-            "max": 100,
-            "step": 5
+            "min": 1,
+            "max": 5,
+            "step": 1
           }
         }
       },
       "allowedPins": [3, 5, 6, 9, 10, 11],
       "default": {
+        "values": {
+          "set_point": 25,
+          "temp": 20
+        },
         "configs": {
-          "Enabled": "1",
-          "Brightness": 40
+          "speed": 2
         },
         "pins": ""
       }

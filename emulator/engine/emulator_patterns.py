@@ -128,6 +128,21 @@ class VSCPEmulator:
             "cpu_temp": {
                 "temp": {"base": 55.3, "range": 25, "trend": 0.2, "noise": 1.2},
                 "type": "CPU Temp" 
+            },
+            "A00": {
+                "Brightness": {"base": 40, "range": 0, "trend": 0, "noise": 0},
+                "type": "PWM LED Driver",
+                "_configs": {"Enabled": "1"},
+                "_control_values": {"Brightness": 40},
+                "_value_access": {"Brightness": "write"}
+            },
+            "H00": {
+                "set_point": {"base": 25, "range": 0, "trend": 0, "noise": 0},
+                "temp": {"base": 20, "range": 0, "trend": 0, "noise": 0},
+                "type": "Temperature Regulator",
+                "_configs": {"speed": 2},
+                "_control_values": {"set_point": 25},
+                "_value_access": {"set_point": "write", "temp": "read"}
             }
         }
         
@@ -141,6 +156,12 @@ class VSCPEmulator:
                 "trend_accumulator": 0,
                 "spike_countdown": random.randint(50, 200)
             }
+            configs = self.sensor_data[uid].get("_configs", {})
+            if isinstance(configs, dict):
+                self.sensor_configs[uid] = {key: str(value) for key, value in configs.items()}
+            control_defaults = self.sensor_data[uid].get("_control_values", {})
+            if isinstance(control_defaults, dict):
+                self.control_values[uid] = {key: str(value) for key, value in control_defaults.items()}
         
     def connect_serial(self) -> bool:
         """Connect to serial port"""
@@ -348,6 +369,46 @@ class VSCPEmulator:
         
         return final_value
 
+    @staticmethod
+    def _to_float(value: Any, fallback: float) -> float:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return fallback
+
+    @staticmethod
+    def _to_int(value: Any, fallback: int) -> int:
+        try:
+            return int(float(value))
+        except (TypeError, ValueError):
+            return fallback
+
+    def advance_temperature_regulator(self, uid: str) -> bool:
+        sensor_config = self.sensor_data.get(uid, {})
+        value_access = sensor_config.get("_value_access", {})
+        if value_access.get("set_point") != "write" or value_access.get("temp", "read") != "read":
+            return False
+
+        temp_config = sensor_config.get("temp")
+        if not isinstance(temp_config, dict) or "base" not in temp_config:
+            return False
+
+        set_point_config = sensor_config.get("set_point", {})
+        fallback_set_point = set_point_config.get("base", temp_config.get("base", 20)) if isinstance(set_point_config, dict) else temp_config.get("base", 20)
+        current_temp = self._to_float(temp_config.get("base"), 20.0)
+        set_point = self._to_float(self.control_values.get(uid, {}).get("set_point", fallback_set_point), current_temp)
+        speed = self._to_int(self.sensor_configs.get(uid, {}).get("speed", sensor_config.get("_configs", {}).get("speed", 2)), 2)
+        speed = max(1, min(5, speed))
+
+        delta = set_point - current_temp
+        if abs(delta) <= speed:
+            next_temp = set_point
+        else:
+            next_temp = current_temp + (speed if delta > 0 else -speed)
+
+        temp_config["base"] = int(round(next_temp))
+        return True
+
     def handle_update(self, params: Dict[str, str]) -> str:
         """Handle UPDATE method - return realistic sensor data"""
         uid = params.get('id', '')
@@ -360,9 +421,15 @@ class VSCPEmulator:
             # Get sensor configuration
             sensor_config = self.sensor_data[uid]
             sensor_info = {}
+            value_access = sensor_config.get("_value_access", {})
+            regulator_updated = self.advance_temperature_regulator(uid)
             
             # Generate realistic values for each parameter
             for key, config in sensor_config.items():
+                if key.startswith('_'):
+                    continue
+                if value_access.get(key, "read") == "write":
+                    continue
                 if key == 'type':
                     sensor_info[key] = config  # Type is static
                 elif isinstance(config, dict) and 'base' in config:
@@ -370,7 +437,7 @@ class VSCPEmulator:
                     value = self.simulate_realistic_value(uid, key, config)
                     
                     # Format appropriately (int vs float)
-                    if key in ["Button", "Detected", "X", "Y"]:
+                    if key in ["Button", "Detected", "X", "Y"] or (regulator_updated and key == "temp"):
                         sensor_info[key] = int(round(value))
                     else:
                         sensor_info[key] = round(value, 2)
@@ -473,7 +540,17 @@ class VSCPEmulator:
         control_params = {k: v for k, v in params.items() if k not in ['type', 'id']}
 
         if uid and uid in self.sensor_data:
-            self.control_values[uid] = control_params
+            value_access = self.sensor_data[uid].get("_value_access", {})
+            if value_access:
+                invalid = [key for key in control_params if value_access.get(key) != "write"]
+                if invalid:
+                    return self.build_message({
+                        'id': uid,
+                        'status': '0',
+                        'error': f"Values are not writable through CONTROL: {','.join(invalid)}"
+                    })
+
+            self.control_values.setdefault(uid, {}).update(control_params)
             response_params = {
                 'id': uid,
                 'status': '1'

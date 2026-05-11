@@ -45,6 +45,9 @@ SignalsVisualizationGui::SignalsVisualizationGui(GuiRouter &router, DeviceManage
     // Initialize all GUI pointers to nullptr
     ui_DeviceWidget = nullptr;
     ui_DeviceLabel = nullptr;
+    ui_ListModeButton = nullptr;
+    ui_ListModeButtonLabel = nullptr;
+    ui_ListModeTitle = nullptr;
     ui_LogoGroup = nullptr;
     ui_LogoCornerBottomLeft = nullptr;
     ui_LogoCornerFillBottomLeft = nullptr;
@@ -145,6 +148,31 @@ void SignalsVisualizationGui::createSignalScrollPanel()
         });
 }
 
+void SignalsVisualizationGui::createListModeToggle()
+{
+    ui_ListModeTitle = lv_label_create(ui_DeviceWidget);
+    lv_obj_set_width(ui_ListModeTitle, 160);
+    lv_obj_align(ui_ListModeTitle, LV_ALIGN_TOP_LEFT, 36, 56);
+    lv_obj_set_style_text_font(ui_ListModeTitle, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ui_ListModeTitle, lv_color_hex(0x24415E), LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ui_ListModeButton = lv_btn_create(ui_DeviceWidget);
+    lv_obj_set_size(ui_ListModeButton, 34, 30);
+    lv_obj_align(ui_ListModeButton, LV_ALIGN_TOP_LEFT, 198, 50);
+    lv_obj_add_event_cb(ui_ListModeButton, [](lv_event_t *e) {
+        if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
+            return;
+        }
+
+        auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
+        self->toggleListMode();
+    }, LV_EVENT_ALL, this);
+
+    ui_ListModeButtonLabel = lv_label_create(ui_ListModeButton);
+    lv_label_set_text(ui_ListModeButtonLabel, LV_SYMBOL_LOOP);
+    lv_obj_center(ui_ListModeButtonLabel);
+}
+
 void SignalsVisualizationGui::createChartPanel()
 {
     chartPanel.create(ui_DeviceWidget);
@@ -165,6 +193,7 @@ void SignalsVisualizationGui::constructVisualization()
     createMainWidget();
     createTitleLabel();
     createSignalScrollPanel();
+    createListModeToggle();
     createChartPanel();
     createToolbarPanel();
     addLogoPanelToWidget(ui_DeviceWidget);
@@ -339,6 +368,19 @@ bool SignalsVisualizationGui::currentDeviceSupportsRecording() const
            !getChartableValueKeys().empty();
 }
 
+void SignalsVisualizationGui::updateListModeToggleState()
+{
+    if (ui_ListModeTitle) {
+        lv_label_set_text(ui_ListModeTitle, showingConfigPanel ? "Configs" : "Values");
+    }
+}
+
+void SignalsVisualizationGui::toggleListMode()
+{
+    showingConfigPanel = !showingConfigPanel;
+    updateDeviceDataDisplay();
+}
+
 void SignalsVisualizationGui::ensureSignalCards(size_t count)
 {
     signalListPanel.ensureSignalCards(count);
@@ -370,14 +412,8 @@ void SignalsVisualizationGui::updateDeviceTitle()
 }
 
 void SignalsVisualizationGui::updateSignalCards(const std::unordered_map<std::string, DeviceParam> &values,
-                                                const std::vector<std::string> &valueKeys,
-                                                bool useValueControls)
+                                                const std::vector<std::string> &valueKeys)
 {
-    if (useValueControls) {
-        clearUnusedSignalCards(0);
-        return;
-    }
-
     ensureSignalCards(valueKeys.size());
 
     for (size_t i = 0; i < valueKeys.size(); ++i) {
@@ -432,40 +468,36 @@ void SignalsVisualizationGui::syncControlEditorValue(size_t controlIndex, const 
     ensureControlEditor(controlIndex, param);
 }
 
-void SignalsVisualizationGui::updateEditableControls(const std::unordered_map<std::string, DeviceParam> &values,
-                                                     const std::vector<std::string> &valueKeys,
-                                                     const std::unordered_map<std::string, DeviceParam> &configs,
-                                                     const std::vector<std::string> &configKeys,
-                                                     bool useValueControls)
+void SignalsVisualizationGui::updateEditableControls(const std::unordered_map<std::string, DeviceParam> &params,
+                                                     const std::vector<std::string> &keys,
+                                                     bool isValueControl)
 {
-    const auto &editableKeys = useValueControls ? valueKeys : configKeys;
-    ensureConfigControls(editableKeys.size());
+    ensureConfigControls(keys.size());
 
-    for (size_t i = 0; i < editableKeys.size(); ++i) {
-        const auto &key = editableKeys[i];
-        const auto editableIt = useValueControls ? values.find(key) : configs.find(key);
-        if (editableIt == (useValueControls ? values.end() : configs.end()) || i >= signalListPanel.getConfigControlCount()) {
+    for (size_t i = 0; i < keys.size(); ++i) {
+        const auto &key = keys[i];
+        const auto editableIt = params.find(key);
+        if (editableIt == params.end() || i >= signalListPanel.getConfigControlCount()) {
             continue;
         }
 
         const DeviceParam &param = editableIt->second;
-        const uint32_t accentColor = getSignalAccentColor(i + (useValueControls ? 0 : valueKeys.size()));
         signalListPanel.setControlVisual(
             i,
-            accentColor,
+            getSignalAccentColor(i),
             key,
             param.Value,
             buildUnitText(
-                useValueControls ? currentDevice->getValueUnits(key) : currentDevice->getConfigUnits(key),
-                useValueControls ? "Queued via CONTROL" : "Queued via CONFIG"),
+                isValueControl ? currentDevice->getValueUnits(key) : currentDevice->getConfigUnits(key),
+                isValueControl ? "Queued via CONTROL" : "Queued via CONFIG"),
             key,
-            useValueControls);
+            isValueControl);
 
         ensureControlEditor(i, param);
         syncControlEditorValue(i, param);
     }
 
-    clearUnusedConfigControls(editableKeys.size());
+    clearUnusedConfigControls(keys.size());
 }
 
 bool SignalsVisualizationGui::buildNumericHistoryForKey(const std::string &key, lv_coord_t *history, bool appendSample)
@@ -545,7 +577,7 @@ std::vector<std::string> SignalsVisualizationGui::getChartableValueKeys() const
             continue;
         }
 
-        if (isNumericType(it->second.DType)) {
+        if (it->second.Access == DeviceParamAccess::READ && isNumericType(it->second.DType)) {
             chartKeys.push_back(key);
         }
 
@@ -712,11 +744,35 @@ void SignalsVisualizationGui::updateDeviceDataDisplay()
     const auto valueKeys = currentDevice->getValuesKeys();
     const auto configs = currentDevice->getConfigs();
     const auto configKeys = currentDevice->getConfigsKeys();
-    const bool useValueControls = currentDevice->getRole() == DeviceRole::ACTUATOR;
+    std::vector<std::string> readableValueKeys;
+    std::vector<std::string> writableValueKeys;
+    for (const auto &key : valueKeys) {
+        auto it = values.find(key);
+        if (it == values.end()) {
+            continue;
+        }
+        if (it->second.Access == DeviceParamAccess::WRITE && currentDevice->getRole() != DeviceRole::SENSOR) {
+            writableValueKeys.push_back(key);
+        } else {
+            readableValueKeys.push_back(key);
+        }
+    }
+
+    if (showingConfigPanel && configKeys.empty() && !valueKeys.empty()) {
+        showingConfigPanel = false;
+    } else if (!showingConfigPanel && valueKeys.empty() && !configKeys.empty()) {
+        showingConfigPanel = true;
+    }
 
     updateDeviceTitle();
-    updateSignalCards(values, valueKeys, useValueControls);
-    updateEditableControls(values, valueKeys, configs, configKeys, useValueControls);
+    updateListModeToggleState();
+    if (showingConfigPanel) {
+        clearUnusedSignalCards(0);
+        updateEditableControls(configs, configKeys, false);
+    } else {
+        updateSignalCards(values, readableValueKeys);
+        updateEditableControls(values, writableValueKeys, true);
+    }
     updateActionButtonsState();
 }
 
