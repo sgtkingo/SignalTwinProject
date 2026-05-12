@@ -56,10 +56,12 @@ private:
     ManagerStatus Status = ManagerStatus::STOPPED; ///< Current status of the manager
 
     std::vector<BaseDevice *> collectAssignedDevicesFromPinMap() const;
+    std::vector<BaseDevice *> filterCompleteDevices(const std::vector<BaseDevice *> &devices) const;
+    std::vector<BaseDevice *> filterConnectedDevices(const std::vector<BaseDevice *> &devices) const;
     void resetPinState(size_t pinIndex);
     void applyAssignedPinsToDevices() const;
     void disconnectAssignedDevices(const std::vector<BaseDevice *> &devices) const;
-    bool connectAssignedDevices(const std::vector<BaseDevice *> &devices) const;
+    bool connectAssignedDevices(const std::vector<BaseDevice *> &devices);
     bool isValidPinIndex(size_t pinIndex) const;
     VirtualPin *getPinState(size_t pinIndex);
     const VirtualPin *getPinState(size_t pinIndex) const;
@@ -171,6 +173,13 @@ public:
     bool connect();
 
     /**
+     * @brief Connect one fully assigned device to its selected pins through VSCP.
+     * @param device Device selected on the pin connection screen.
+     * @return True when VSCP CONNECT acknowledged the assignment.
+     */
+    bool connectAssignedDevice(BaseDevice *device);
+
+    /**
      * @brief Erase all devices and pin assignments.
      */
     void erase();
@@ -194,6 +203,13 @@ public:
      * @return True if at least one pin was unassigned
      */
     bool unassignAllPinsForDevice(BaseDevice *device);
+
+    /**
+     * @brief Disconnect a device through VSCP and update local pin state only after acknowledgement.
+     * @param device Pointer to the device to disconnect.
+     * @return True when the protocol disconnect succeeded and local pins were cleared.
+     */
+    bool disconnectAndUnassignDevice(BaseDevice *device);
 
     /**
      * @brief Get the device assigned to a specific pin.
@@ -228,6 +244,31 @@ public:
      * @return True if there is at least one assigned device.
      */
     bool hasAssignedDevices() const;
+
+    /**
+     * @brief Check if at least one assigned device has all required pins.
+     */
+    bool hasCompleteAssignedDevices() const;
+
+    /**
+     * @brief Check if at least one assigned device has acknowledged pin connection.
+     */
+    bool hasConnectedAssignedDevices() const;
+
+    /**
+     * @brief Collect assigned devices that have all required pins.
+     */
+    std::vector<BaseDevice *> getCompleteAssignedDevices() const;
+
+    /**
+     * @brief Collect assigned devices that have all required pins and VSCP CONNECT ack.
+     */
+    std::vector<BaseDevice *> getConnectedAssignedDevices() const;
+
+    /**
+     * @brief Collect assigned devices that are missing required pins.
+     */
+    std::vector<BaseDevice *> getIncompleteAssignedDevices() const;
 
     /**
      * @brief Collect currently assigned devices from the pin map.

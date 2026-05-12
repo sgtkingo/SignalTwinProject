@@ -152,14 +152,18 @@ protected:
     bool isConfigsSync = false; ///< Flag to indicate if config state is synchronized with the real device.
     bool isValuesSync = false;  ///< Flag to indicate if runtime values are synchronized with the real device.
     bool isControlsSync = true; ///< Flag to indicate if control payload is synchronized with real device.
+    bool pinConnectionActive = false; ///< True after the assigned pins are acknowledged by VSCP CONNECT.
 
     std::unordered_map<std::string, DeviceParam> Values;            ///< Runtime values.
     std::unordered_map<std::string, DeviceParam> Configs;           ///< Persistent configuration values.
     std::vector<std::string> ValueKeyOrder;                        ///< Stable UI order for value keys.
     std::vector<std::string> ConfigKeyOrder;                       ///< Stable UI order for config keys.
     std::vector<std::string> Pins;                                 ///< Assigned device pins.
+    std::vector<std::string> PinDefinitions;                       ///< Logical device pin names from the datasheet/schema.
+    std::map<std::string, std::string> PinAssignments;             ///< Logical pin name to assigned hardware pin number.
     std::string AllowedPins;                                       ///< Allowed device pins, stored as comma separated values.
     std::vector<int> AllowedPinsList;                              ///< Parsed allowed pin numbers for fast runtime lookup.
+    std::string Picture = "placeholder:device";                    ///< Optional picture asset reference.
     DeviceRole Role = DeviceRole::SENSOR;                          ///< Runtime device role.
 
     void setAllowedPins(std::string allowedPins)
@@ -177,6 +181,17 @@ protected:
             }
             AllowedPinsList.push_back(convertStringToType<int>(item));
         }
+    }
+
+    void setPinDefinitions(std::vector<std::string> pinDefinitions)
+    {
+        PinDefinitions = std::move(pinDefinitions);
+        pinConnectionActive = false;
+    }
+
+    void setPicture(std::string picture)
+    {
+        Picture = picture.empty() ? "placeholder:device" : std::move(picture);
     }
 
     /**
@@ -615,7 +630,46 @@ public:
             debugLogMessage("BaseDevice::assignPin", "pin assignment", "device=%s pin=%s already assigned", UID.c_str(), pin.c_str());
             return; // Pin already assigned
         }
+        if (!canAssignMorePins()) {
+            debugLogMessage("BaseDevice::assignPin", "pin assignment limit", "device=%s pin=%s assigned=%u required=%u", UID.c_str(), pin.c_str(), static_cast<unsigned int>(Pins.size()), static_cast<unsigned int>(getRequiredPinCount()));
+            return;
+        }
         debugLogMessage("BaseDevice::assignPin", "pin assignment", "device=%s pin=%s", UID.c_str(), pin.c_str());
+        pinConnectionActive = false;
+        Pins.push_back(pin);
+        if (!PinDefinitions.empty()) {
+            for (const std::string &tag : PinDefinitions) {
+                if (PinAssignments.find(tag) == PinAssignments.end()) {
+                    PinAssignments[tag] = pin;
+                    break;
+                }
+            }
+        }
+    }
+
+    void assignPin(std::string pinTag, std::string pin)
+    {
+        if (pinTag.empty()) {
+            assignPin(std::move(pin));
+            return;
+        }
+
+        if (PinAssignments.find(pinTag) != PinAssignments.end()) {
+            debugLogMessage("BaseDevice::assignPin", "pin assignment", "device=%s tag=%s already assigned", UID.c_str(), pinTag.c_str());
+            return;
+        }
+        if (isInVector(Pins, pin)) {
+            debugLogMessage("BaseDevice::assignPin", "pin assignment", "device=%s pin=%s already assigned", UID.c_str(), pin.c_str());
+            return;
+        }
+        if (!canAssignMorePins()) {
+            debugLogMessage("BaseDevice::assignPin", "pin assignment limit", "device=%s tag=%s pin=%s assigned=%u required=%u", UID.c_str(), pinTag.c_str(), pin.c_str(), static_cast<unsigned int>(Pins.size()), static_cast<unsigned int>(getRequiredPinCount()));
+            return;
+        }
+
+        debugLogMessage("BaseDevice::assignPin", "pin assignment", "device=%s tag=%s pin=%s", UID.c_str(), pinTag.c_str(), pin.c_str());
+        pinConnectionActive = false;
+        PinAssignments[pinTag] = pin;
         Pins.push_back(pin);
     }
 
@@ -629,7 +683,14 @@ public:
         auto it = std::find(Pins.begin(), Pins.end(), pin);
         if (it != Pins.end()) {
             debugLogMessage("BaseDevice::unassignPin", "pin assignment", "device=%s pin=%s", UID.c_str(), pin.c_str());
+            pinConnectionActive = false;
             Pins.erase(it);
+            for (auto assignmentIt = PinAssignments.begin(); assignmentIt != PinAssignments.end(); ++assignmentIt) {
+                if (assignmentIt->second == pin) {
+                    PinAssignments.erase(assignmentIt);
+                    break;
+                }
+            }
         }
     }
 
@@ -641,8 +702,21 @@ public:
     std::string getPins() const 
     {
         std::string pins;
-        for (const auto &pin : Pins)
-        {
+        if (!PinDefinitions.empty()) {
+            for (const std::string &tag : PinDefinitions) {
+                auto it = PinAssignments.find(tag);
+                if (it == PinAssignments.end() || it->second.empty()) {
+                    continue;
+                }
+                if (!pins.empty()) {
+                    pins += ",";
+                }
+                pins += it->second;
+            }
+            return pins;
+        }
+
+        for (const auto &pin : Pins) {
             if (!pins.empty())
             {
                 pins += ",";
@@ -650,6 +724,47 @@ public:
             pins += pin;
         }
         return pins;
+    }
+
+    size_t getAssignedPinCount() const
+    {
+        return Pins.size();
+    }
+
+    size_t getRequiredPinCount() const
+    {
+        return PinDefinitions.size();
+    }
+
+    size_t getMissingPinCount() const
+    {
+        const size_t requiredPins = getRequiredPinCount();
+        return Pins.size() >= requiredPins ? 0 : requiredPins - Pins.size();
+    }
+
+    bool isPinAssignmentComplete() const
+    {
+        return getMissingPinCount() == 0;
+    }
+
+    bool isPinConnectionActive() const
+    {
+        return pinConnectionActive;
+    }
+
+    void setPinConnectionActive(bool active)
+    {
+        pinConnectionActive = active;
+    }
+
+    bool hasPartialPinAssignment() const
+    {
+        return !Pins.empty() && !isPinAssignmentComplete();
+    }
+
+    bool canAssignMorePins() const
+    {
+        return Pins.size() < getRequiredPinCount();
     }
 
     /**
@@ -679,6 +794,42 @@ public:
         return std::find(AllowedPinsList.begin(), AllowedPinsList.end(), pinNumber) != AllowedPinsList.end();
     }
 
+    std::vector<std::string> getPinDefinitions() const
+    {
+        return PinDefinitions;
+    }
+
+    std::string getPinTag(int pinNumber) const
+    {
+        const std::string pinText = std::to_string(pinNumber);
+        for (const auto &assignment : PinAssignments) {
+            if (assignment.second == pinText) {
+                return assignment.first;
+            }
+        }
+        return "";
+    }
+
+    std::string getNextUnassignedPinTag() const
+    {
+        for (const std::string &tag : PinDefinitions) {
+            if (PinAssignments.find(tag) == PinAssignments.end()) {
+                return tag;
+            }
+        }
+        return "";
+    }
+
+    std::map<std::string, std::string> getPinAssignments() const
+    {
+        return PinAssignments;
+    }
+
+    std::string getPicture() const
+    {
+        return Picture;
+    }
+
     /**
      * @brief Connect the device to its assigned pins.
      * 
@@ -689,6 +840,9 @@ public:
         if(pins.empty()) {
             throw DevicePinAssignmentException("connectDevice", "No pins assigned to device.");
         }
+        if (!isPinAssignmentComplete()) {
+            throw DevicePinAssignmentException("connectDevice", "Missing " + std::to_string(getMissingPinCount()) + " of " + std::to_string(getRequiredPinCount()) + " required pins.");
+        }
 
         auto response = Protocol::connect(UID, pins);
         if (response.status == ResponseStatusEnum::ERROR)
@@ -697,7 +851,8 @@ public:
         }
 
         debugLogMessage("BaseDevice::connect", "protocol connect", "device=%s pins=%s", UID.c_str(), pins.c_str());
-        return response.status == ResponseStatusEnum::OK;
+        pinConnectionActive = response.status == ResponseStatusEnum::OK;
+        return pinConnectionActive;
     }
 
     /**
@@ -715,6 +870,8 @@ public:
         if (response.status == ResponseStatusEnum::OK) {
             debugLogMessage("BaseDevice::disconnect", "protocol disconnect", "device=%s pins=%s", UID.c_str(), getPins().c_str());
             Pins.clear();
+            PinAssignments.clear();
+            pinConnectionActive = false;
         }
 
         return response.status == ResponseStatusEnum::OK;
@@ -1186,6 +1343,7 @@ public:
         logMessage("\tDevice Description: %s\n", Description.c_str());
         logMessage("\tDevice Status: %d\n", Status);
         logMessage("\tDevice Error: %s\n", getError().c_str());
+        logMessage("\tDevice Picture: %s\n", Picture.c_str());
         logMessage("\tDevice Configurations:\n");
         for (auto &c : Configs)
         {
@@ -1197,6 +1355,13 @@ public:
             logMessage("\t\t%s: %s %s\n", v.first.c_str(), v.second.Value.c_str(), v.second.Unit.c_str());
         }
         logMessage("\tDevice Pins: %s\n", getPins().c_str());
+        if (!PinDefinitions.empty()) {
+            logMessage("\tDevice Pin Map:\n");
+            for (const std::string &tag : PinDefinitions) {
+                auto it = PinAssignments.find(tag);
+                logMessage("\t\t%s: %s\n", tag.c_str(), it == PinAssignments.end() ? "-" : it->second.c_str());
+            }
+        }
         logMessage("**************************************\n");
     }
 

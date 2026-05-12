@@ -29,6 +29,22 @@ std::string buildAllowedPinsText(const BaseDevice *device)
     return allowedPinsText;
 }
 
+std::string buildPinsText(const BaseDevice *device)
+{
+    if (!device || device->getPinDefinitions().empty()) {
+        return "None";
+    }
+
+    std::string pinsText;
+    for (const auto &pin : device->getPinDefinitions()) {
+        if (!pinsText.empty()) {
+            pinsText += ", ";
+        }
+        pinsText += pin;
+    }
+    return pinsText;
+}
+
 std::string buildValuesText(const BaseDevice *device)
 {
     if (!device) {
@@ -114,6 +130,8 @@ std::string DeviceCatalogBrowserFormatter::buildSelectionInfoText(const BaseDevi
     }
 
     info += "\nRole: " + device->getRoleLabel();
+    info += "\nPicture: " + device->getPicture();
+    info += "\nPins: " + buildPinsText(device);
     info += "\n\nAllowed Pins: " + buildAllowedPinsText(device);
     return info;
 }
@@ -140,7 +158,9 @@ std::string DeviceCatalogBrowserFormatter::buildLibraryDetailText(const BaseDevi
     std::string detail = "Entity\n";
     detail += device->getName() + "\n\n";
     detail += "Role:\n" + device->getRoleLabel() + "\n\n";
+    detail += "Picture:\n" + device->getPicture() + "\n\n";
     detail += "Description:\n" + device->getDescription() + "\n\n";
+    detail += "Pins:\n" + buildPinsText(device) + "\n\n";
     detail += "Allowed Pins:\n" + buildAllowedPinsText(device) + "\n\n";
     detail += "Values:\n";
     detail += buildValuesText(device);
@@ -170,7 +190,7 @@ DeviceCatalogBrowserLayout DeviceCatalogBrowserLayoutFactory::createLayout(const
     lv_obj_set_style_text_font(layout.titleLabel, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     layout.primaryList = lv_list_create(layout.root);
-    lv_obj_set_size(layout.primaryList, 210, 285);
+    lv_obj_set_size(layout.primaryList, 250, 285);
     lv_obj_set_pos(layout.primaryList, 10, 50);
 
     layout.detailPanel = lv_obj_create(layout.root);
@@ -178,8 +198,8 @@ DeviceCatalogBrowserLayout DeviceCatalogBrowserLayoutFactory::createLayout(const
         lv_obj_set_size(layout.detailPanel, 300, 285);
         lv_obj_set_pos(layout.detailPanel, 230, 50);
     } else {
-        lv_obj_set_size(layout.detailPanel, 450, 320);
-        lv_obj_align(layout.detailPanel, LV_ALIGN_RIGHT_MID, -15, 18);
+        lv_obj_set_size(layout.detailPanel, 410, 320);
+        lv_obj_align(layout.detailPanel, LV_ALIGN_TOP_LEFT, -15, 18);
     }
 
     layout.detailLabel = lv_label_create(layout.detailPanel);

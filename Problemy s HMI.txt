@@ -40,6 +40,7 @@ Firmware log: DEBUG: input=11 output=11 reason=math conversion source=convertStr
 
 Možná to bude právě logem, otázka je proč se tam děje tolik convertStringToType<int> konverze? Je to kvůli tomu že Allowed pins jsou jako strings?
 
+11.05.2026
 PR:
 V DeviceSelection screen bych u tlačítka Configure očekával otevření konfigurace device v rámci Library (Edit Entity). Pro připojení k pinům by bylo výstižnější tlačítko "Pins" nebo "Pins Assign". Preferuji mít tak obě tlačítka. Taktéž list "Configured devices" by měl být spíše "Pinned Devices". Otázka jestli není list zbytečný, a neodstranit ho - preferuji. Místo toho udělat více místa pro DevicesList a pro DeviceInfo box. Zařízení která už mají připojené všechny piny (proběhlo Assign) označit v DevicesList zeleně. Ty které mají přiřazené některé piny ale ne všechny které potřebuje, žlutě. A ty které ještě nebyly assignuty tak nechat bílé. Tato logika navazuje na to že každý device by měl mít stanovený počet pinů které vyžaduje k provozu - je nutné tohle dodělat do BaseDivice a DB.json + parseru a poté i do Pins manageru a vizualizace. Vizualizace i engine pak musí hlídat jestli uživatel přiřadil všechny piny a nedovolit mu jich přiřadit více. Pokuud uživatel klikne Connect, upozornit ho že mu chybí přiřazení X pinů z N. Devices kterým budou takto chybět nějaké piny, bud do runtime devices listu vubec nepřidat, nebo to povolit ale v runtime tak dát výstražný trojuhelík -> ten by se měl zobrazit i pokud device nedpovídá na volání, takže ho udělat clickable -> vyvolá splhash s výpise problémů.  Tlačítko "Remove" v Selection Screen přejmenovat na "Disconnect".  
 Nakonec DeviceSelection screen přidat tlačítko "Show Pins map" které jen zobrazí mapu pinů, jako při "Configure", ale bez vybraného device - takže jen náhled, zablokovat connect a kliknutí na pin nic neudělá. Tlačítko dát do pravého horního rohu. 
@@ -50,6 +51,13 @@ Connect screen je fajn ale:
 - Wireless manual tlačítko dáme vedle Wireless Auto, jako ozubené kolo bez textu. V budoucnu to bude odkaz na Screen s Wireless settings a wireless explore obrazovkou. (přidej komentáře TODO)
 
 Po připojení se také zobrazí splash box "Connecting" jako legacy artefakt - nezobrazovat. Dole v Connection screen je text "Cable starts VSCP..." - takový text není uživatelský, raději piš "For cable connection (UART), please check if cable is in place."
+
+12.05.2026
+PR:
+Jinak, opravil jsem layout oken v Selection Screenu pomocí změny:
+lv_obj_align(layout.detailPanel, LV_ALIGN_TOP_LEFT, -15, 18); 202, device_catalog_browser.cpp
+
+Ale rozbil se Library screen - detailPanel (DeviceInfo) panel ted přetéká přes primaryList (DeviceList) jakoby se neuměl zarovnat vedle něj - což je zvlastní, protože u Connection screenu umí. 
 
 PR:
 V Library -> Edit Entity se neukáže klávesnice když kliknu na Text Area. Ani pro přidání Values / Configs. Navíc, Edit Entity screen nemá dobře vyřešené poměry mezi prvky. Values a Configs blokují co je nad nimi, posunout je níže. Dále listy uvnitř Values a Configs trošku zmenšit, přetékají přes velikost svého kontejneru. Také doporučují v Library rozšířit šířku DEviceListu, asi o 20%.

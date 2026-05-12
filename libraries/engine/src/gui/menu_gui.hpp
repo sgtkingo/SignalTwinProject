@@ -16,6 +16,7 @@ private:
     GuiRouter &router;
     DeviceManager &deviceManager;
     bool initialized = false;
+    bool connectionBusy = false;
 
     lv_obj_t *ui_MenuWidget = nullptr;
     lv_obj_t *ui_PinScrollContainer = nullptr;
@@ -23,6 +24,8 @@ private:
     lv_obj_t *ui_Subtitle = nullptr;
     lv_obj_t *ui_btnBack = nullptr;
     lv_obj_t *ui_btnConnect = nullptr;
+    lv_obj_t *ui_LoadingOverlay = nullptr;
+    lv_obj_t *ui_LoadingLabel = nullptr;
     std::array<lv_obj_t *, NUM_PINS> pinContainers;
     std::array<lv_obj_t *, NUM_PINS> pinLabels;
 
@@ -32,6 +35,10 @@ private:
     void handleConnectButtonClick();
     void handlePinClick(int pinIndex);
     bool isPinAllowedForCurrentDevice(int pinIndex) const;
+    bool isPreviewMode() const;
+    uint32_t showLoading(const char *message);
+    void finishLoading(uint32_t startTick, bool keepVisible);
+    void hideLoading();
 
 public:
     explicit ConnectionGui(DeviceBrowserState &browserState, GuiRouter &router, DeviceManager &deviceManager);

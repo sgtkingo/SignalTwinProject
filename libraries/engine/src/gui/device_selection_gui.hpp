@@ -29,9 +29,11 @@ private:
     lv_obj_t *ui_DeviceDescription = nullptr;
     lv_obj_t *ui_DeviceSpecs = nullptr;
     lv_obj_t *ui_btnConfigure = nullptr;
+    lv_obj_t *ui_btnPins = nullptr;
     lv_obj_t *ui_btnRemove = nullptr;
     lv_obj_t *ui_btnStart = nullptr;
     lv_obj_t *ui_btnBack = nullptr;
+    lv_obj_t *ui_btnShowPinsMap = nullptr;
 
     void buildSelectionGui();
     void populateAvailableList();
@@ -40,8 +42,10 @@ private:
     void updateStartButtonState();
     void handleDeviceSelection(int deviceIndex);
     void handleConfigureButtonClick();
+    void handlePinsButtonClick();
     void handleRemoveButtonClick();
     void handleStartButtonClick();
+    void handleShowPinsMapButtonClick();
     void handleBackButtonClick();
 
 public:

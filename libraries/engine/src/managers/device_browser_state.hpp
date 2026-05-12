@@ -19,6 +19,7 @@ private:
     DeviceDefinitionSchema libraryDraft;      ///< Active Library editor draft
     bool hasLibraryDraft = false;             ///< Whether a draft is currently active
     bool libraryDraftNewEntity = false;       ///< Whether the draft represents a new entity
+    bool pinMapPreviewMode = false;           ///< Whether Connection screen is a read-only pin map preview.
 
     bool isCatalogDevice(const BaseDevice *device) const;
 
@@ -32,6 +33,9 @@ public:
 
     BaseDevice *getSelectionDevice() const;
     void setSelectionDevice(BaseDevice *device);
+
+    bool isPinMapPreviewMode() const { return pinMapPreviewMode; }
+    void setPinMapPreviewMode(bool previewMode) { pinMapPreviewMode = previewMode; }
 
     BaseDevice *getLibraryDevice() const;
     void setLibraryDevice(BaseDevice *device);

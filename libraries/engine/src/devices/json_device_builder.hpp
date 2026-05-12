@@ -4,6 +4,7 @@
 #include "base_device.hpp"
 
 #include <cstddef>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -21,8 +22,10 @@ struct DeviceDefinitionSchema
     std::string uid;
     std::string type;
     std::string description;
+    std::string picture = "placeholder:device";
     std::string allowedPinsCsv;
-    std::vector<std::string> defaultPins;
+    std::vector<std::string> pins;
+    std::map<std::string, std::string> defaultPins;
     DeviceRole role = DeviceRole::SENSOR;
     size_t sourceIndex = 0;
     int order = 0;

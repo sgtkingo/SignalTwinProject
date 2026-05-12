@@ -14,6 +14,7 @@
 
 #include <sstream>
 #include <utility>
+#include <map>
 #include "device_manager.hpp"
 #include "helpers.hpp"
 #include "expt.hpp"
@@ -39,6 +40,28 @@ std::vector<BaseDevice *> DeviceManager::collectAssignedDevicesFromPinMap() cons
     }
 
     return uniqueDevices;
+}
+
+std::vector<BaseDevice *> DeviceManager::filterCompleteDevices(const std::vector<BaseDevice *> &devices) const
+{
+    std::vector<BaseDevice *> completeDevices;
+    for (BaseDevice *device : devices) {
+        if (device && device->isPinAssignmentComplete()) {
+            completeDevices.push_back(device);
+        }
+    }
+    return completeDevices;
+}
+
+std::vector<BaseDevice *> DeviceManager::filterConnectedDevices(const std::vector<BaseDevice *> &devices) const
+{
+    std::vector<BaseDevice *> connectedDevices;
+    for (BaseDevice *device : devices) {
+        if (device && device->isPinAssignmentComplete() && device->isPinConnectionActive()) {
+            connectedDevices.push_back(device);
+        }
+    }
+    return connectedDevices;
 }
 
 void DeviceManager::resetPinState(size_t pinIndex)
@@ -72,11 +95,11 @@ void DeviceManager::disconnectAssignedDevices(const std::vector<BaseDevice *> &d
     }
 }
 
-bool DeviceManager::connectAssignedDevices(const std::vector<BaseDevice *> &devices) const
+bool DeviceManager::connectAssignedDevices(const std::vector<BaseDevice *> &devices)
 {
     bool result = true;
     for (BaseDevice *device : devices) {
-        result &= connectDevice(device);
+        result &= connectAssignedDevice(device);
     }
     return result;
 }
@@ -219,10 +242,68 @@ bool DeviceManager::connect()
     }
 
     const std::vector<BaseDevice *> assignedDevices = collectAssignedDevicesFromPinMap();
-    debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DeviceManager::connect", "pin connection", "assigned device count=%u", static_cast<unsigned int>(assignedDevices.size()));
-    disconnectAssignedDevices(assignedDevices);
-    applyAssignedPinsToDevices();
-    return connectAssignedDevices(assignedDevices);
+    const std::vector<BaseDevice *> completeDevices = filterCompleteDevices(assignedDevices);
+    debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DeviceManager::connect", "pin connection", "assigned device count=%u complete=%u", static_cast<unsigned int>(assignedDevices.size()), static_cast<unsigned int>(completeDevices.size()));
+    if (completeDevices.empty()) {
+        debugLogMessage(DEBUG_VERBOSE_ERRORS, "DeviceManager::connect", "pin connection failed", "no fully assigned devices");
+        return false;
+    }
+
+    return connectAssignedDevices(completeDevices);
+}
+
+bool DeviceManager::connectAssignedDevice(BaseDevice *device)
+{
+    if (!device) {
+        debugLogMessage(DEBUG_VERBOSE_ERRORS, "DeviceManager::connectAssignedDevice", "device invalid", "device is null");
+        return false;
+    }
+
+    if (!ensureProtocolInitialized()) {
+        debugLogMessage(DEBUG_VERBOSE_ERRORS, "DeviceManager::connectAssignedDevice", "protocol init failed", "device=%s", device->UID.c_str());
+        return false;
+    }
+
+    bool hasPinMapAssignment = false;
+    for (const auto &pin : PinMap) {
+        if (pin.assignedDevice == device) {
+            hasPinMapAssignment = true;
+            break;
+        }
+    }
+
+    if (!hasPinMapAssignment) {
+        debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DeviceManager::connectAssignedDevice", "pin connection failed", "device=%s has no assigned pins", device->UID.c_str());
+        return false;
+    }
+
+    if (!device->isPinAssignmentComplete()) {
+        debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DeviceManager::connectAssignedDevice", "pin connection failed", "device=%s missing=%u required=%u", device->UID.c_str(), static_cast<unsigned int>(device->getMissingPinCount()), static_cast<unsigned int>(device->getRequiredPinCount()));
+        return false;
+    }
+
+    const std::map<std::string, std::string> pinAssignments = device->getPinAssignments();
+    debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DeviceManager::connectAssignedDevice", "protocol connect", "device=%s pins=%s", device->UID.c_str(), device->getPins().c_str());
+    if (!disconnectDevice(device)) {
+        debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DeviceManager::connectAssignedDevice", "protocol disconnect skipped", "device=%s error=%s", device->UID.c_str(), device->getError().c_str());
+    }
+
+    if (pinAssignments.empty()) {
+        for (const auto &virtualPin : PinMap) {
+            if (virtualPin.assignedDevice == device) {
+                device->assignPin(std::to_string(virtualPin.pinNumber));
+            }
+        }
+    } else {
+        for (const auto &pinAssignment : pinAssignments) {
+            device->assignPin(pinAssignment.first, pinAssignment.second);
+        }
+    }
+
+    const bool connected = connectDevice(device);
+    device->setPinConnectionActive(connected);
+    debugLogMessage(connected ? DEBUG_VERBOSE_IMPORTANT : DEBUG_VERBOSE_ERRORS, "DeviceManager::connectAssignedDevice", connected ? "protocol connect" : "protocol connect failed", "device=%s connected=%d", device->UID.c_str(), connected);
+    return connected;
 }
 
 void DeviceManager::erase() {
@@ -243,6 +324,18 @@ bool DeviceManager::assignDeviceToPin(BaseDevice* device, int activePin) {
     VirtualPin *pin = getPinState(static_cast<size_t>(activePin));
     if (!pin) {
         debugLogMessage(DEBUG_VERBOSE_ERRORS, "DeviceManager::assignDeviceToPin", "pin index invalid", "pin=%d", activePin);
+        return false;
+    }
+    if (!device) {
+        debugLogMessage(DEBUG_VERBOSE_ERRORS, "DeviceManager::assignDeviceToPin", "device invalid", "pin=%d", activePin);
+        return false;
+    }
+    if (!device->isPinAllowed(pin->pinNumber)) {
+        debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DeviceManager::assignDeviceToPin", "pin not allowed", "device=%s pin=%d", device->UID.c_str(), pin->pinNumber);
+        return false;
+    }
+    if (!device->canAssignMorePins()) {
+        debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DeviceManager::assignDeviceToPin", "pin assignment limit", "device=%s pin=%d assigned=%u required=%u", device->UID.c_str(), activePin, static_cast<unsigned int>(device->getAssignedPinCount()), static_cast<unsigned int>(device->getRequiredPinCount()));
         return false;
     }
 
@@ -274,6 +367,40 @@ bool DeviceManager::unassignAllPinsForDevice(BaseDevice *device)
     return changed;
 }
 
+bool DeviceManager::disconnectAndUnassignDevice(BaseDevice *device)
+{
+    if (!device) {
+        debugLogMessage(DEBUG_VERBOSE_ERRORS, "DeviceManager::disconnectAndUnassignDevice", "device invalid", "device is null");
+        return false;
+    }
+
+    bool hasPinMapAssignment = false;
+    for (const auto &pin : PinMap) {
+        if (pin.assignedDevice == device) {
+            hasPinMapAssignment = true;
+            break;
+        }
+    }
+
+    if (!hasPinMapAssignment) {
+        debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DeviceManager::disconnectAndUnassignDevice", "pin assignment", "device=%s has no assigned pins", device->UID.c_str());
+        return false;
+    }
+
+    if (!ensureProtocolInitialized()) {
+        debugLogMessage(DEBUG_VERBOSE_ERRORS, "DeviceManager::disconnectAndUnassignDevice", "protocol init failed", "device=%s", device->UID.c_str());
+        return false;
+    }
+
+    debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DeviceManager::disconnectAndUnassignDevice", "protocol disconnect", "device=%s pins=%s", device->UID.c_str(), device->getPins().c_str());
+    if (!disconnectDevice(device)) {
+        debugLogMessage(DEBUG_VERBOSE_ERRORS, "DeviceManager::disconnectAndUnassignDevice", "protocol disconnect failed", "device=%s error=%s", device->UID.c_str(), device->getError().c_str());
+        return false;
+    }
+
+    return unassignAllPinsForDevice(device);
+}
+
 BaseDevice* DeviceManager::getAssignedDevice(size_t pinIndex) const {
     const VirtualPin *pin = getPinState(pinIndex);
     return pin ? pin->assignedDevice : nullptr;
@@ -302,4 +429,45 @@ bool DeviceManager::hasAssignedDevices() const
         }
     }
     return false;
+}
+
+bool DeviceManager::hasCompleteAssignedDevices() const
+{
+    for (BaseDevice *device : collectAssignedDevicesFromPinMap()) {
+        if (device && device->isPinAssignmentComplete()) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool DeviceManager::hasConnectedAssignedDevices() const
+{
+    for (BaseDevice *device : collectAssignedDevicesFromPinMap()) {
+        if (device && device->isPinAssignmentComplete() && device->isPinConnectionActive()) {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::vector<BaseDevice *> DeviceManager::getCompleteAssignedDevices() const
+{
+    return filterCompleteDevices(collectAssignedDevicesFromPinMap());
+}
+
+std::vector<BaseDevice *> DeviceManager::getConnectedAssignedDevices() const
+{
+    return filterConnectedDevices(collectAssignedDevicesFromPinMap());
+}
+
+std::vector<BaseDevice *> DeviceManager::getIncompleteAssignedDevices() const
+{
+    std::vector<BaseDevice *> incompleteDevices;
+    for (BaseDevice *device : collectAssignedDevicesFromPinMap()) {
+        if (device && !device->isPinAssignmentComplete()) {
+            incompleteDevices.push_back(device);
+        }
+    }
+    return incompleteDevices;
 }

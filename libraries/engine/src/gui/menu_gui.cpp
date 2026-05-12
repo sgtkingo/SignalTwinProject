@@ -1,6 +1,12 @@
 #include "menu_gui.hpp"
 
 #include "../helpers.hpp"
+#include "expt.hpp"
+
+namespace
+{
+constexpr uint32_t MIN_CONNECT_LOADING_MS = 500;
+}
 
 ConnectionGui::ConnectionGui(DeviceBrowserState &browserState, GuiRouter &router, DeviceManager &deviceManager)
     : browserState(browserState), router(router), deviceManager(deviceManager)
@@ -100,18 +106,44 @@ void ConnectionGui::buildMenu()
 
 void ConnectionGui::updateHeader()
 {
+    if (isPreviewMode()) {
+        lv_label_set_text(ui_Title, "Pins Map");
+        lv_label_set_text(ui_Subtitle, "Read-only pin map. Select a device to assign pins.");
+        if (ui_btnConnect) {
+            lv_obj_add_state(ui_btnConnect, LV_STATE_DISABLED);
+        }
+        return;
+    }
+
+    lv_label_set_text(ui_Title, "Connection");
+    if (ui_btnConnect) {
+        lv_obj_clear_state(ui_btnConnect, LV_STATE_DISABLED);
+    }
+
     BaseDevice *device = browserState.getSelectionDevice();
     if (!device) {
         lv_label_set_text(ui_Subtitle, "Select a device in Selection first.");
         return;
     }
 
-    std::string subtitle = device->getTypeName() + " | Green=assign, Yellow=unassign, Red=used elsewhere, Gray=locked";
+    std::string subtitle = device->getTypeName() + " | Pins " +
+                           std::to_string(device->getAssignedPinCount()) + "/" +
+                           std::to_string(device->getRequiredPinCount()) +
+                           " | Green=assign, Yellow=unassign, Red=used elsewhere, Gray=locked";
     lv_label_set_text(ui_Subtitle, subtitle.c_str());
+}
+
+bool ConnectionGui::isPreviewMode() const
+{
+    return browserState.isPinMapPreviewMode();
 }
 
 bool ConnectionGui::isPinAllowedForCurrentDevice(int pinIndex) const
 {
+    if (isPreviewMode()) {
+        return true;
+    }
+
     BaseDevice *device = browserState.getSelectionDevice();
     if (!device) {
         return false;
@@ -131,6 +163,10 @@ uint32_t ConnectionGui::getPinStateColor(int pinIndex) const
 
     if (assignedDevice == nullptr) {
         return 0x00B050;
+    }
+
+    if (isPreviewMode()) {
+        return 0x2F80ED;
     }
 
     if (assignedDevice == selectedDevice) {
@@ -157,7 +193,71 @@ void ConnectionGui::hideConnection()
         return;
     }
 
+    hideLoading();
     lv_obj_add_flag(ui_MenuWidget, LV_OBJ_FLAG_HIDDEN);
+}
+
+uint32_t ConnectionGui::showLoading(const char *message)
+{
+    if (!ui_LoadingOverlay) {
+        ui_LoadingOverlay = lv_obj_create(ui_MenuWidget);
+        lv_obj_remove_style_all(ui_LoadingOverlay);
+        lv_obj_set_size(ui_LoadingOverlay, lv_pct(100), lv_pct(100));
+        lv_obj_set_align(ui_LoadingOverlay, LV_ALIGN_CENTER);
+        lv_obj_set_style_bg_color(ui_LoadingOverlay, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_bg_opa(ui_LoadingOverlay, 140, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_add_flag(ui_LoadingOverlay, LV_OBJ_FLAG_CLICKABLE);
+
+        lv_obj_t *panel = lv_obj_create(ui_LoadingOverlay);
+        lv_obj_set_size(panel, 240, 120);
+        lv_obj_center(panel);
+        lv_obj_set_style_radius(panel, 8, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_bg_color(panel, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_bg_opa(panel, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+        lv_obj_t *spinner = lv_spinner_create(panel, 900, 60);
+        lv_obj_set_size(spinner, 38, 38);
+        lv_obj_align(spinner, LV_ALIGN_TOP_MID, 0, 16);
+
+        ui_LoadingLabel = lv_label_create(panel);
+        lv_label_set_text(ui_LoadingLabel, message ? message : "Connecting...");
+        lv_obj_align(ui_LoadingLabel, LV_ALIGN_BOTTOM_MID, 0, -18);
+        lv_obj_set_style_text_align(ui_LoadingLabel, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+    } else {
+        lv_label_set_text(ui_LoadingLabel, message ? message : "Connecting...");
+    }
+
+    connectionBusy = true;
+    lv_obj_clear_flag(ui_LoadingOverlay, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_foreground(ui_LoadingOverlay);
+    lv_obj_invalidate(ui_LoadingOverlay);
+    const uint32_t startTick = lv_tick_get();
+    lv_timer_handler();
+    lv_refr_now(nullptr);
+    delay_ms(20);
+    lv_timer_handler();
+    lv_refr_now(nullptr);
+    return startTick;
+}
+
+void ConnectionGui::finishLoading(uint32_t startTick, bool keepVisible)
+{
+    while (lv_tick_elaps(startTick) < MIN_CONNECT_LOADING_MS) {
+        lv_timer_handler();
+        delay_ms(16);
+    }
+
+    if (!keepVisible) {
+        hideLoading();
+    }
+}
+
+void ConnectionGui::hideLoading()
+{
+    connectionBusy = false;
+    if (ui_LoadingOverlay) {
+        lv_obj_add_flag(ui_LoadingOverlay, LV_OBJ_FLAG_HIDDEN);
+    }
 }
 
 void ConnectionGui::updatePinLabels()
@@ -172,13 +272,21 @@ void ConnectionGui::updatePinLabels()
         int gpioNumber = deviceManager.getPinNumber(i);
         BaseDevice *assignedDevice = deviceManager.getAssignedDevice(i);
         std::string labelText = "Pin " + std::to_string(gpioNumber) + "\n";
+        const std::string pinTag = assignedDevice
+            ? assignedDevice->getPinTag(gpioNumber)
+            : (selectedDevice ? selectedDevice->getNextUnassignedPinTag() : "");
+        if (!pinTag.empty()) {
+            labelText += pinTag + "\n";
+        }
 
-        if (deviceManager.isPinLocked(i) || !isPinAllowedForCurrentDevice(i)) {
+        if (deviceManager.isPinLocked(i) || (!isPreviewMode() && !isPinAllowedForCurrentDevice(i))) {
             labelText += "Locked";
         } else if (assignedDevice == nullptr) {
             labelText += "Available";
+        } else if (isPreviewMode()) {
+            labelText += assignedDevice->getTypeName();
         } else if (assignedDevice == selectedDevice) {
-            labelText += selectedDevice->getTypeName();
+            labelText += selectedDevice ? selectedDevice->getTypeName() : "Selected device";
         } else {
             labelText += assignedDevice->getTypeName();
         }
@@ -212,27 +320,49 @@ void ConnectionGui::updatePinVisualStates()
 
 void ConnectionGui::handleConnectButtonClick()
 {
+    if (connectionBusy) {
+        return;
+    }
+
+    if (isPreviewMode()) {
+        return;
+    }
+
     BaseDevice *device = browserState.getSelectionDevice();
     if (!device) {
         splashMessage("No device selected.");
         return;
     }
 
-    if (device->getPins().empty()) {
-        splashMessage("Assign at least one pin first.");
+    if (!device->isPinAssignmentComplete()) {
+        const std::string message = "Missing " + std::to_string(device->getMissingPinCount()) +
+                                    " of " + std::to_string(device->getRequiredPinCount()) +
+                                    " required pins.";
+        splashMessage(message.c_str());
         return;
     }
 
-    if (!deviceManager.ensureProtocolInitialized()) {
-        splashMessage("Protocol init failed. Check the connected platform.");
+    const uint32_t loadingStart = showLoading("Connecting...");
+    if (!deviceManager.connectAssignedDevice(device)) {
+        finishLoading(loadingStart, false);
+        splashMessage("Device connection failed. Check cable and emulator.");
         return;
     }
 
+    finishLoading(loadingStart, true);
     router.showSelection();
 }
 
 void ConnectionGui::handlePinClick(int pinIndex)
 {
+    if (connectionBusy) {
+        return;
+    }
+
+    if (isPreviewMode()) {
+        return;
+    }
+
     BaseDevice *device = browserState.getSelectionDevice();
     if (!device || pinIndex < 0 || pinIndex >= NUM_PINS) {
         splashMessage("No device selected.");
@@ -250,6 +380,10 @@ void ConnectionGui::handlePinClick(int pinIndex)
             splashMessage("Failed to unassign device from pin.");
         }
     } else if (assignedDevice == nullptr) {
+        if (!device->canAssignMorePins()) {
+            splashMessage("All required pins are already assigned.");
+            return;
+        }
         if (!deviceManager.assignDeviceToPin(device, pinIndex)) {
             splashMessage("Failed to assign device to pin.");
         }

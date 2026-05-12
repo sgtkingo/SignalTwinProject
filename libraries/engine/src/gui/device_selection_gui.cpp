@@ -2,6 +2,34 @@
 
 #include "../helpers.hpp"
 
+namespace
+{
+std::string buildPinProgressLabel(const BaseDevice *device)
+{
+    if (!device) {
+        return "";
+    }
+
+    return std::to_string(device->getAssignedPinCount()) + "/" + std::to_string(device->getRequiredPinCount()) + " pins";
+}
+
+uint32_t getDeviceAssignmentColor(const BaseDevice *device)
+{
+    if (!device || device->getAssignedPinCount() == 0) {
+        return 0xFFFFFF;
+    }
+    return device->isPinAssignmentComplete() ? 0xE6F4EA : 0xFFF8D6;
+}
+
+uint32_t getDeviceAssignmentBorderColor(const BaseDevice *device)
+{
+    if (!device || device->getAssignedPinCount() == 0) {
+        return 0xD9DDE3;
+    }
+    return device->isPinAssignmentComplete() ? 0x2EAD5F : 0xF2C94C;
+}
+}
+
 DeviceSelectionGui::DeviceSelectionGui(DeviceCatalog &deviceCatalog, DeviceBrowserState &browserState, GuiRouter &router, DeviceManager &deviceManager, DeviceVisualizationSession &visualizationSession)
     : catalogBrowser(deviceCatalog), browserState(browserState), router(router), deviceManager(deviceManager), visualizationSession(visualizationSession)
 {
@@ -10,9 +38,9 @@ DeviceSelectionGui::DeviceSelectionGui(DeviceCatalog &deviceCatalog, DeviceBrows
 void DeviceSelectionGui::buildSelectionGui()
 {
     const DeviceCatalogBrowserLayout layout = DeviceCatalogBrowserLayoutFactory::createLayout({
-        "Selection",
+        "Please select devices to connect.",
         0xF5F5F5,
-        true
+        false
     });
 
     ui_SelectionWidget = layout.root;
@@ -21,15 +49,22 @@ void DeviceSelectionGui::buildSelectionGui()
     lv_obj_t *infoPanel = layout.detailPanel;
     ui_DeviceDescription = layout.detailLabel;
 
+    constexpr lv_coord_t contentY = 54;
+    constexpr lv_coord_t contentHeight = 310;
+    lv_obj_set_size(ui_AvailableList, 300, contentHeight);
+    lv_obj_set_pos(ui_AvailableList, 12, contentY);
+    lv_obj_set_size(infoPanel, 410, contentHeight);
+    lv_obj_set_pos(infoPanel, 320, contentY);
+
     ui_DeviceTitle = lv_label_create(infoPanel);
-    lv_obj_set_width(ui_DeviceTitle, 270);
+    lv_obj_set_width(ui_DeviceTitle, 400);
     lv_obj_set_pos(ui_DeviceTitle, 10, 10);
     lv_obj_set_style_text_font(ui_DeviceTitle, &lv_font_montserrat_20, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_set_pos(ui_DeviceDescription, 10, 50);
 
     ui_DeviceSpecs = lv_label_create(infoPanel);
-    lv_obj_set_width(ui_DeviceSpecs, 270);
+    lv_obj_set_width(ui_DeviceSpecs, 400);
     lv_obj_set_pos(ui_DeviceSpecs, 10, 150);
     lv_label_set_long_mode(ui_DeviceSpecs, LV_LABEL_LONG_WRAP);
 
@@ -43,8 +78,20 @@ void DeviceSelectionGui::buildSelectionGui()
         self->handleBackButtonClick();
     }, LV_EVENT_ALL, this);
 
-    ui_btnConfigure = DeviceCatalogBrowserLayoutFactory::createFooterButton(ui_SelectionWidget, "Configure", LV_ALIGN_BOTTOM_MID, 0, -60);
-    lv_obj_set_size(ui_btnConfigure, 145, 36);
+    ui_btnShowPinsMap = DeviceCatalogBrowserLayoutFactory::createFooterButton(ui_SelectionWidget, "Show Pins Map", LV_ALIGN_TOP_RIGHT, -12, 10);
+    lv_obj_set_size(ui_btnShowPinsMap, 132, 34);
+    lv_obj_set_style_bg_color(ui_btnShowPinsMap, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_add_event_cb(ui_btnShowPinsMap, [](lv_event_t *e) {
+        if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
+            return;
+        }
+        auto *self = static_cast<DeviceSelectionGui *>(lv_event_get_user_data(e));
+        self->handleShowPinsMapButtonClick();
+    }, LV_EVENT_ALL, this);
+
+    ui_btnConfigure = DeviceCatalogBrowserLayoutFactory::createFooterButton(ui_SelectionWidget, "Config", LV_ALIGN_BOTTOM_LEFT, 110, -16);
+    lv_obj_set_size(ui_btnConfigure, 100, 36);
+    lv_obj_set_style_bg_color(ui_btnConfigure, lv_color_hex(0x8C939D), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_add_event_cb(ui_btnConfigure, [](lv_event_t *e) {
         if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
             return;
@@ -53,8 +100,19 @@ void DeviceSelectionGui::buildSelectionGui()
         self->handleConfigureButtonClick();
     }, LV_EVENT_ALL, this);
 
-    ui_btnRemove = DeviceCatalogBrowserLayoutFactory::createFooterButton(ui_SelectionWidget, "Remove", LV_ALIGN_BOTTOM_MID, 0, -16);
-    lv_obj_set_size(ui_btnRemove, 145, 36);
+    ui_btnPins = DeviceCatalogBrowserLayoutFactory::createFooterButton(ui_SelectionWidget, "Connect", LV_ALIGN_BOTTOM_LEFT, 250, -16);
+    lv_obj_set_size(ui_btnPins, 100, 36);
+    lv_obj_set_style_bg_color(ui_btnPins, lv_color_hex(0x2EAD5F), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_add_event_cb(ui_btnPins, [](lv_event_t *e) {
+        if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
+            return;
+        }
+        auto *self = static_cast<DeviceSelectionGui *>(lv_event_get_user_data(e));
+        self->handlePinsButtonClick();
+    }, LV_EVENT_ALL, this);
+
+    ui_btnRemove = DeviceCatalogBrowserLayoutFactory::createFooterButton(ui_SelectionWidget, "Disconnect", LV_ALIGN_BOTTOM_LEFT, 360, -16);
+    lv_obj_set_size(ui_btnRemove, 120, 36);
     lv_obj_set_style_bg_color(ui_btnRemove, lv_color_hex(0xD96464), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_add_event_cb(ui_btnRemove, [](lv_event_t *e) {
         if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
@@ -65,7 +123,7 @@ void DeviceSelectionGui::buildSelectionGui()
     }, LV_EVENT_ALL, this);
 
     ui_btnStart = DeviceCatalogBrowserLayoutFactory::createFooterButton(ui_SelectionWidget, "Start Visualization", LV_ALIGN_BOTTOM_RIGHT, -10, -16);
-    lv_obj_set_size(ui_btnStart, 145, 36);
+    lv_obj_set_size(ui_btnStart, 150, 46);
     lv_obj_add_event_cb(ui_btnStart, [](lv_event_t *e) {
         if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
             return;
@@ -85,8 +143,12 @@ void DeviceSelectionGui::populateAvailableList()
     const auto &devices = catalogBrowser.getDevices();
     for (size_t i = 0; i < devices.size(); ++i) {
         BaseDevice *device = devices[i];
-        const std::string label = DeviceCatalogBrowserFormatter::buildDeviceListLabel(device);
+        const std::string label = DeviceCatalogBrowserFormatter::buildDeviceListLabel(device) + "\n" + buildPinProgressLabel(device);
         lv_obj_t *button = lv_list_add_btn(ui_AvailableList, nullptr, label.c_str());
+        lv_obj_set_style_bg_color(button, lv_color_hex(getDeviceAssignmentColor(device)), LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_border_color(button, lv_color_hex(getDeviceAssignmentBorderColor(device)), LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_border_width(button, 1, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_text_color(button, lv_color_hex(0x1C1F23), LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_obj_set_user_data(button, reinterpret_cast<void *>(static_cast<intptr_t>(i)));
         lv_obj_add_event_cb(button, [](lv_event_t *e) {
             if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
@@ -102,23 +164,7 @@ void DeviceSelectionGui::populateAvailableList()
 
 void DeviceSelectionGui::populateSelectedList()
 {
-    if (!ui_SelectedList) {
-        return;
-    }
-
-    lv_obj_clean(ui_SelectedList);
-    lv_obj_t *header = lv_label_create(ui_SelectedList);
-    lv_label_set_text(header, "Configured devices");
-
-    const auto &devices = catalogBrowser.getDevices();
-    for (BaseDevice *device : devices) {
-        if (!device || device->getPins().empty()) {
-            continue;
-        }
-
-        std::string entry = device->getTypeName() + " [" + device->getRoleLabel() + "] -> " + device->getPins();
-        lv_list_add_text(ui_SelectedList, entry.c_str());
-    }
+    // Pin state is now visible directly in the main device list and in the Pins map preview.
 }
 
 void DeviceSelectionGui::updateDeviceInfo()
@@ -134,7 +180,9 @@ void DeviceSelectionGui::updateDeviceInfo()
     browserState.setSelectionDevice(device);
     lv_label_set_text(ui_DeviceTitle, device->getName().c_str());
     lv_label_set_text(ui_DeviceDescription, DeviceCatalogBrowserFormatter::buildSelectionInfoText(device).c_str());
-    lv_label_set_text(ui_DeviceSpecs, DeviceCatalogBrowserFormatter::buildSelectionSpecsText(device).c_str());
+    const std::string specs = "Pin assignment: " + buildPinProgressLabel(device) + "\n\n" +
+                              DeviceCatalogBrowserFormatter::buildSelectionSpecsText(device);
+    lv_label_set_text(ui_DeviceSpecs, specs.c_str());
 }
 
 void DeviceSelectionGui::updateStartButtonState()
@@ -143,7 +191,7 @@ void DeviceSelectionGui::updateStartButtonState()
         return;
     }
 
-    if (deviceManager.hasAssignedDevices()) {
+    if (deviceManager.hasConnectedAssignedDevices()) {
         lv_obj_clear_state(ui_btnStart, LV_STATE_DISABLED);
         return;
     }
@@ -165,6 +213,23 @@ void DeviceSelectionGui::handleConfigureButtonClick()
         return;
     }
 
+    browserState.setLibraryDevice(device);
+    if (!browserState.beginLibraryDraftFromLibraryDevice()) {
+        splashMessage("Cannot open selected entity in Library.");
+        return;
+    }
+    router.showLibraryEditor();
+}
+
+void DeviceSelectionGui::handlePinsButtonClick()
+{
+    BaseDevice *device = getSelectedDevice();
+    if (!device) {
+        splashMessage("Select a device first.");
+        return;
+    }
+
+    browserState.setPinMapPreviewMode(false);
     browserState.setSelectionDevice(device);
     router.showConnection();
 }
@@ -173,32 +238,55 @@ void DeviceSelectionGui::handleRemoveButtonClick()
 {
     BaseDevice *device = getSelectedDevice();
     if (!device) {
-        splashMessage("Select a configured device to remove.");
+        splashMessage("Select a device to disconnect.");
         return;
     }
 
-    deviceManager.unassignAllPinsForDevice(device);
+    if (!deviceManager.disconnectAndUnassignDevice(device)) {
+        splashMessage("Failed to disconnect device.");
+        return;
+    }
+
     populateSelectedList();
+    populateAvailableList();
+    updateDeviceInfo();
     updateStartButtonState();
 }
 
 void DeviceSelectionGui::handleStartButtonClick()
 {
     deviceManager.setRunning(false);
-    visualizationSession.setDevices(deviceManager.getAssignedDevices());
     browserState.setSelectionDevice(nullptr);
 
-    if (!deviceManager.hasAssignedDevices()) {
-        splashMessage("No devices configured.");
+    if (!deviceManager.hasCompleteAssignedDevices()) {
+        const auto incompleteDevices = deviceManager.getIncompleteAssignedDevices();
+        if (!incompleteDevices.empty()) {
+            BaseDevice *device = incompleteDevices.front();
+            const std::string message = device->getTypeName() + ": missing " +
+                                        std::to_string(device->getMissingPinCount()) + " of " +
+                                        std::to_string(device->getRequiredPinCount()) + " required pins.";
+            splashMessage(message.c_str());
+        } else {
+            splashMessage("No devices fully assigned.");
+        }
         return;
     }
 
-    if (!deviceManager.connect()) {
-        splashMessage("Error during device connection.");
+    const auto connectedDevices = deviceManager.getConnectedAssignedDevices();
+    if (connectedDevices.empty()) {
+        splashMessage("Open Pins and press Connect first.");
         return;
     }
 
+    visualizationSession.setDevices(connectedDevices);
     router.showVisualization();
+}
+
+void DeviceSelectionGui::handleShowPinsMapButtonClick()
+{
+    browserState.setSelectionDevice(nullptr);
+    browserState.setPinMapPreviewMode(true);
+    router.showConnection();
 }
 
 void DeviceSelectionGui::handleBackButtonClick()

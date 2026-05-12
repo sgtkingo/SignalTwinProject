@@ -29,6 +29,22 @@ std::string buildParamSummary(const std::vector<DeviceParamSchema> &params)
     return text;
 }
 
+std::string buildPinsText(const DeviceDefinitionSchema &draft)
+{
+    if (draft.pins.empty()) {
+        return "None";
+    }
+
+    std::string text;
+    for (const std::string &pin : draft.pins) {
+        if (!text.empty()) {
+            text += ", ";
+        }
+        text += pin;
+    }
+    return text;
+}
+
 std::string buildLibraryDetailText(const DeviceDefinitionSchema &draft)
 {
     std::string detail = "Entity Draft\n";
@@ -51,6 +67,7 @@ std::string buildLibraryDetailText(const DeviceDefinitionSchema &draft)
     }
     detail += "\n\nDescription:\n";
     detail += draft.description.empty() ? "No description available." : draft.description;
+    detail += "\n\nPins:\n" + buildPinsText(draft);
     detail += "\n\nAllowed Pins:\n" + buildAllowedPinsText(draft);
     detail += "\n\nValues:\n" + buildParamSummary(draft.values);
     detail += "\nConfigs:\n" + buildParamSummary(draft.configs);

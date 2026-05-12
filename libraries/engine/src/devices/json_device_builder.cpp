@@ -13,6 +13,7 @@
 #include <cctype>
 #include <iomanip>
 #include <sstream>
+#include <utility>
 
 namespace
 {
@@ -26,6 +27,16 @@ public:
     void setAllowedPinsCsv(const std::string &allowedPins)
     {
         setAllowedPins(allowedPins);
+    }
+
+    void setPinDefinitionsList(std::vector<std::string> pins)
+    {
+        setPinDefinitions(std::move(pins));
+    }
+
+    void setPictureRef(std::string picture)
+    {
+        setPicture(std::move(picture));
     }
 };
 
@@ -352,21 +363,39 @@ std::vector<DeviceParamSchema> parseParameterSchemas(JsonObjectConst paramsJson,
     return params;
 }
 
-std::vector<std::string> parseDefaultPins(JsonObjectConst defaultsJson)
+std::vector<std::string> parseDevicePins(JsonObjectConst deviceJson)
+{
+    JsonVariantConst value = deviceJson["Pins"];
+    if (value.is<JsonArrayConst>()) {
+        return jsonVariantToStringVector(value);
+    }
+
+    std::vector<std::string> pins;
+    for (const std::string &pin : splitString(jsonVariantToString(value), ',')) {
+        if (!pin.empty()) {
+            pins.push_back(pin);
+        }
+    }
+    return pins;
+}
+
+std::map<std::string, std::string> parseDefaultPins(JsonObjectConst defaultsJson, const std::vector<std::string> &pinDefinitions)
 {
     if (defaultsJson.isNull() || defaultsJson["pins"].isNull()) {
         return {};
     }
 
-    if (defaultsJson["pins"].is<JsonArrayConst>()) {
-        return jsonVariantToStringVector(defaultsJson["pins"]);
-    }
-
-    std::vector<std::string> pins;
-    for (const std::string &pin : splitString(jsonVariantToString(defaultsJson["pins"]), ',')) {
-        if (!pin.empty()) {
-            pins.push_back(pin);
+    JsonVariantConst value = defaultsJson["pins"];
+    std::map<std::string, std::string> pins;
+    if (value.is<JsonObjectConst>()) {
+        for (JsonPairConst pair : value.as<JsonObjectConst>()) {
+            const std::string tag = pair.key().c_str();
+            const std::string pin = jsonVariantToString(pair.value());
+            if (!tag.empty() && !pin.empty()) {
+                pins[tag] = pin;
+            }
         }
+        return pins;
     }
     return pins;
 }
@@ -391,6 +420,12 @@ DeviceDefinitionSchema parseDeviceDefinitionSchema(JsonObjectConst deviceJson, c
 
     schema.type = jsonVariantToString(deviceJson["type"]);
     schema.description = !deviceJson["description"].isNull() ? jsonVariantToString(deviceJson["description"]) : "";
+    schema.picture = !deviceJson["picture"].isNull()
+        ? jsonVariantToString(deviceJson["picture"])
+        : (!deviceJson["image"].isNull() ? jsonVariantToString(deviceJson["image"]) : "placeholder:device");
+    if (schema.picture.empty()) {
+        schema.picture = "placeholder:device";
+    }
     schema.role = !deviceJson["role"].isNull()
         ? parseDeviceRole(jsonVariantToString(deviceJson["role"]))
         : DeviceRole::SENSOR;
@@ -417,7 +452,11 @@ DeviceDefinitionSchema parseDeviceDefinitionSchema(JsonObjectConst deviceJson, c
     } else if (!deviceJson["allowed_pins"].isNull()) {
         schema.allowedPinsCsv = jsonVariantToCsv(deviceJson["allowed_pins"]);
     }
-    schema.defaultPins = parseDefaultPins(defaultsJson);
+    schema.pins = parseDevicePins(deviceJson);
+    if (schema.pins.empty()) {
+        throw DeviceInitializationFailException("parseDeviceDefinitionSchema", "Device " + schema.uid + " has no Pins definition.");
+    }
+    schema.defaultPins = parseDefaultPins(defaultsJson, schema.pins);
 
     return schema;
 }
@@ -429,7 +468,9 @@ JsonConfiguredDevice *buildConfiguredDevice(const DeviceDefinitionSchema &schema
         device->Type = schema.type;
         device->Description = schema.description;
         device->setRole(schema.role);
+        device->setPictureRef(schema.picture);
         device->setAllowedPinsCsv(schema.allowedPinsCsv);
+        device->setPinDefinitionsList(schema.pins);
 
         for (const DeviceParamSchema &valueSchema : schema.values) {
             device->addValueParameter(valueSchema.key, valueSchema.param);
@@ -439,9 +480,9 @@ JsonConfiguredDevice *buildConfiguredDevice(const DeviceDefinitionSchema &schema
             device->addConfigParameter(configSchema.key, configSchema.param);
         }
 
-        for (const std::string &pin : schema.defaultPins) {
-            if (!pin.empty()) {
-                device->assignPin(pin);
+        for (const auto &pinAssignment : schema.defaultPins) {
+            if (!pinAssignment.first.empty() && !pinAssignment.second.empty()) {
+                device->assignPin(pinAssignment.first, pinAssignment.second);
             }
         }
 
@@ -636,6 +677,13 @@ bool saveDeviceCatalogSchemaToStorageFile(const DeviceCatalogSchema &schemaCatal
         deviceJson["role"] = deviceRoleToString(deviceSchema.role);
         deviceJson["type"] = deviceSchema.type;
         deviceJson["description"] = deviceSchema.description;
+        deviceJson["picture"] = deviceSchema.picture.empty() ? "placeholder:device" : deviceSchema.picture;
+        JsonArray pinsJson = deviceJson["Pins"].to<JsonArray>();
+        for (const std::string &pin : deviceSchema.pins) {
+            if (!pin.empty()) {
+                pinsJson.add(pin);
+            }
+        }
 
         JsonObject valuesJson = deviceJson["values"].to<JsonObject>();
         JsonObject configsJson = deviceJson["configs"].to<JsonObject>();
@@ -660,14 +708,14 @@ bool saveDeviceCatalogSchemaToStorageFile(const DeviceCatalogSchema &schemaCatal
         }
 
         if (!deviceSchema.defaultPins.empty()) {
-            JsonArray defaultPinsJson = defaultJson["pins"].to<JsonArray>();
-            for (const std::string &pin : deviceSchema.defaultPins) {
-                if (!pin.empty()) {
-                    defaultPinsJson.add(pin);
+            JsonObject defaultPinsJson = defaultJson["pins"].to<JsonObject>();
+            for (const auto &pinAssignment : deviceSchema.defaultPins) {
+                if (!pinAssignment.first.empty() && !pinAssignment.second.empty()) {
+                    defaultPinsJson[pinAssignment.first.c_str()] = pinAssignment.second.c_str();
                 }
             }
         } else {
-            defaultJson["pins"] = "";
+            defaultJson["pins"].to<JsonObject>();
         }
     }
 

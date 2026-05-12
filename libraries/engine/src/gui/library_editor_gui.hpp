@@ -2,6 +2,8 @@
 #define LIBRARY_EDITOR_GUI_HPP
 
 #include "lvgl.h"
+#include <map>
+#include <string>
 #include <vector>
 
 #include "gui_router.hpp"
@@ -25,7 +27,9 @@ private:
     lv_obj_t *ui_TypeInput = nullptr;
     lv_obj_t *ui_RoleDropdown = nullptr;
     lv_obj_t *ui_AllowedPinsInput = nullptr;
+    lv_obj_t *ui_DevicePinsInput = nullptr;
     lv_obj_t *ui_DefaultPinsInput = nullptr;
+    lv_obj_t *ui_PictureInput = nullptr;
     lv_obj_t *ui_DescriptionInput = nullptr;
     lv_obj_t *ui_ValuesPanel = nullptr;
     lv_obj_t *ui_ValuesList = nullptr;
@@ -69,6 +73,8 @@ private:
     static DeviceDataType getDataTypeFromDropdownIndex(uint16_t index);
     static std::vector<std::string> parsePinsCsv(const std::string &csv);
     static std::string formatPinsCsv(const std::vector<std::string> &pins);
+    static std::map<std::string, std::string> parseDefaultPinsMap(const std::string &csv);
+    static std::string formatDefaultPinsMap(const std::map<std::string, std::string> &pins);
 
 public:
     explicit LibraryEditorGui(DeviceCatalog &deviceCatalog, DeviceBrowserState &browserState, GuiRouter &router);

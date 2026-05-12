@@ -25,6 +25,7 @@ void DeviceBrowserState::clear()
 {
     selectionDevice = nullptr;
     libraryDevice = nullptr;
+    pinMapPreviewMode = false;
     clearLibraryDraft();
 }
 
@@ -36,6 +37,9 @@ BaseDevice *DeviceBrowserState::getSelectionDevice() const
 void DeviceBrowserState::setSelectionDevice(BaseDevice *device)
 {
     selectionDevice = isCatalogDevice(device) ? device : nullptr;
+    if (selectionDevice) {
+        pinMapPreviewMode = false;
+    }
 }
 
 BaseDevice *DeviceBrowserState::getLibraryDevice() const

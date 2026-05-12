@@ -75,8 +75,14 @@ void LibraryEditorGui::build()
     createFieldLabel(ui_Form, "Allowed Pins", 10, 122);
     ui_AllowedPinsInput = createSingleLineInput(ui_Form, 110, 114, 210);
 
-    createFieldLabel(ui_Form, "Default Pins", 10, 160);
-    ui_DefaultPinsInput = createSingleLineInput(ui_Form, 110, 152, 210);
+    createFieldLabel(ui_Form, "Pins", 10, 160);
+    ui_DevicePinsInput = createSingleLineInput(ui_Form, 110, 152, 210);
+
+    createFieldLabel(ui_Form, "Default Pins", 10, 198);
+    ui_DefaultPinsInput = createSingleLineInput(ui_Form, 110, 190, 210);
+
+    createFieldLabel(ui_Form, "Picture", 10, 236);
+    ui_PictureInput = createSingleLineInput(ui_Form, 110, 228, 210);
 
     createFieldLabel(ui_Form, "Description", 340, 8);
     ui_DescriptionInput = lv_textarea_create(ui_Form);
@@ -86,12 +92,12 @@ void LibraryEditorGui::build()
 
     ui_ValuesPanel = lv_obj_create(ui_Form);
     lv_obj_set_size(ui_ValuesPanel, 330, 170);
-    lv_obj_set_pos(ui_ValuesPanel, 10, 120);
+    lv_obj_set_pos(ui_ValuesPanel, 10, 312);
     buildParamListSection(ui_ValuesPanel, "Values", &ui_ValuesList, false);
 
     ui_ConfigsPanel = lv_obj_create(ui_Form);
     lv_obj_set_size(ui_ConfigsPanel, 330, 170);
-    lv_obj_set_pos(ui_ConfigsPanel, 370, 120);
+    lv_obj_set_pos(ui_ConfigsPanel, 370, 312);
     buildParamListSection(ui_ConfigsPanel, "Configs", &ui_ConfigsList, true);
 
     buildParamEditor();
@@ -345,6 +351,42 @@ std::string LibraryEditorGui::formatPinsCsv(const std::vector<std::string> &pins
     return csv;
 }
 
+std::map<std::string, std::string> LibraryEditorGui::parseDefaultPinsMap(const std::string &csv)
+{
+    std::map<std::string, std::string> pins;
+    for (const std::string &entry : splitAndTrimCsv(csv)) {
+        const size_t separator = entry.find(':');
+        if (separator == std::string::npos) {
+            continue;
+        }
+
+        const std::string tag = trimCopy(entry.substr(0, separator));
+        const std::string pin = trimCopy(entry.substr(separator + 1));
+        if (tag.empty() || pin.empty()) {
+            continue;
+        }
+
+        pins[tag] = pin;
+    }
+    return pins;
+}
+
+std::string LibraryEditorGui::formatDefaultPinsMap(const std::map<std::string, std::string> &pins)
+{
+    std::string csv;
+    for (const auto &pinAssignment : pins) {
+        if (pinAssignment.first.empty() || pinAssignment.second.empty()) {
+            continue;
+        }
+
+        if (!csv.empty()) {
+            csv += ",";
+        }
+        csv += pinAssignment.first + ":" + pinAssignment.second;
+    }
+    return csv;
+}
+
 void LibraryEditorGui::populateParamList(lv_obj_t *list, const std::vector<DeviceParamSchema> &params, bool configSection)
 {
     if (!list) {
@@ -549,6 +591,11 @@ bool LibraryEditorGui::validateTopLevelDraft(const DeviceDefinitionSchema &draft
         return false;
     }
 
+    if (draft.pins.empty()) {
+        error = "Pins must define at least one logical pin.";
+        return false;
+    }
+
     std::vector<std::string> keys;
     for (const DeviceParamSchema &schema : draft.values) {
         if (!validateParamSchema(schema, error)) {
@@ -598,7 +645,11 @@ void LibraryEditorGui::refresh()
     lv_textarea_set_text(ui_TypeInput, draft->type.c_str());
     lv_dropdown_set_selected(ui_RoleDropdown, getRoleDropdownIndex(draft->role));
     lv_textarea_set_text(ui_AllowedPinsInput, draft->allowedPinsCsv.c_str());
-    lv_textarea_set_text(ui_DefaultPinsInput, formatPinsCsv(draft->defaultPins).c_str());
+    const std::string pinsText = formatPinsCsv(draft->pins);
+    const std::string defaultPinsText = formatDefaultPinsMap(draft->defaultPins);
+    lv_textarea_set_text(ui_DevicePinsInput, pinsText.c_str());
+    lv_textarea_set_text(ui_DefaultPinsInput, defaultPinsText.c_str());
+    lv_textarea_set_text(ui_PictureInput, draft->picture.c_str());
     lv_textarea_set_text(ui_DescriptionInput, draft->description.c_str());
 
     valueDraftParams = draft->values;
@@ -617,8 +668,13 @@ void LibraryEditorGui::saveDraft()
     draft.uid = trimCopy(lv_textarea_get_text(ui_UidInput));
     draft.type = trimCopy(lv_textarea_get_text(ui_TypeInput));
     draft.description = trimCopy(lv_textarea_get_text(ui_DescriptionInput));
+    draft.picture = trimCopy(lv_textarea_get_text(ui_PictureInput));
+    if (draft.picture.empty()) {
+        draft.picture = "placeholder:device";
+    }
     draft.allowedPinsCsv = trimCopy(lv_textarea_get_text(ui_AllowedPinsInput));
-    draft.defaultPins = parsePinsCsv(lv_textarea_get_text(ui_DefaultPinsInput));
+    draft.pins = parsePinsCsv(lv_textarea_get_text(ui_DevicePinsInput));
+    draft.defaultPins = parseDefaultPinsMap(lv_textarea_get_text(ui_DefaultPinsInput));
     draft.role = getRoleFromDropdownIndex(lv_dropdown_get_selected(ui_RoleDropdown));
     draft.values = valueDraftParams;
     draft.configs = configDraftParams;
