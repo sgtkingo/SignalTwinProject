@@ -18,7 +18,7 @@
 #include <cctype> // For std::isspace
 
 // Static member definitions
-const std::string Protocol::API_VERSION = "1.3";
+const std::string Protocol::API_VERSION = "1.4";
 bool Protocol::initialized = false;
 
 // Helper function to trim whitespace and invisible characters from strings
