@@ -1,5 +1,5 @@
 #define DEFAULT_JSON_DB R"json({
-  "version": "1.0",
+  "version": "1.2",
   "application": "board",
   "devices": {
     "mic_001": {
@@ -338,4 +338,5 @@
       ]
     }
   }
-})json"
+}
+)json"
