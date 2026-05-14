@@ -15,6 +15,8 @@
 #include "lvgl.h"
 #include <array>
 #include <map>
+#include <string>
+#include <vector>
 
 #include "gui_router.hpp"
 #include "../managers/device_manager.hpp"
@@ -33,6 +35,18 @@
 class DataBundleSelectionGui
 {
 private:
+    static const int BUNDLE_VIEW_CHART_POINTS = 50;
+
+    struct BundleCsvRow
+    {
+        std::vector<std::string> cells;
+        std::string signalName;
+        std::string value;
+        bool numeric = false;
+        bool scaled = false;
+        lv_coord_t chartValue = 0;
+    };
+
     GuiRouter &router;
     DataBundleManager &dataBundleManager;///< Reference to the databundle manager instance
 
@@ -69,6 +83,27 @@ private:
     lv_obj_t *ui_DataBundleFooterButtonClear[6];            ///< Clear button [6]
     lv_obj_t *ui_DataBundleFooterButtonClearImage[6];       ///< Clear button image [6]
     lv_obj_t *ui_ShadowOverlay;                             ///< Shadow overlay for popups
+    lv_obj_t *ui_BundleViewerOverlay;                       ///< Bundle CSV viewer overlay
+    lv_obj_t *ui_BundleViewerPanel;                         ///< Bundle CSV viewer panel
+    lv_obj_t *ui_BundleViewerGraphTab = nullptr;            ///< Graph viewer tab button
+    lv_obj_t *ui_BundleViewerCsvTab = nullptr;              ///< CSV viewer tab button
+    lv_obj_t *ui_BundleViewerSettingsButton = nullptr;      ///< Local viewer settings button
+    lv_obj_t *ui_BundleViewerChart = nullptr;               ///< Bundle graph chart
+    lv_obj_t *ui_BundleViewerTable = nullptr;               ///< Bundle CSV table
+    lv_obj_t *ui_BundleViewerScalingLabel = nullptr;        ///< Bundle graph scaling label
+    lv_obj_t *ui_BundleViewerCursorLabel = nullptr;         ///< Bundle graph cursor label
+    lv_obj_t *ui_BundleViewerPrimaryLegend = nullptr;       ///< Primary signal legend
+    lv_obj_t *ui_BundleViewerSecondaryLegend = nullptr;     ///< Secondary signal legend
+    lv_obj_t *ui_BundleViewerPrimaryLegendLabel = nullptr;  ///< Primary signal legend text
+    lv_obj_t *ui_BundleViewerSecondaryLegendLabel = nullptr;///< Secondary signal legend text
+    lv_obj_t *ui_BundleViewerCursorXLine = nullptr;         ///< Cursor horizontal line
+    lv_obj_t *ui_BundleViewerCursorYLine = nullptr;         ///< Cursor vertical line
+    lv_obj_t *ui_BundleViewerSettingsOverlay = nullptr;     ///< Local settings overlay
+    lv_obj_t *ui_BundleViewerSettingsPanel = nullptr;       ///< Local settings panel
+    lv_obj_t *ui_BundleViewerPrimarySwatch = nullptr;       ///< Primary color swatch
+    lv_obj_t *ui_BundleViewerSecondarySwatch = nullptr;     ///< Secondary color swatch
+    lv_chart_series_t *ui_BundleViewerPrimarySeries = nullptr;   ///< Primary graph series
+    lv_chart_series_t *ui_BundleViewerSecondarySeries = nullptr; ///< Secondary graph series
     lv_obj_t *ui_DeleteAllButtonGroup;                      ///< Delete all bundles button group
     lv_obj_t *ui_LogoGroup;                                 ///< Logo group container
     lv_obj_t *ui_LogoCornerBottomLeft;                      ///< Logo corner bottom-left
@@ -77,6 +112,20 @@ private:
     lv_obj_t *ui_LogoCornerFillBottomRight;                 ///< Logo corner fill bottom-right
     lv_obj_t *ui_LogoOutlay;                                ///< Logo outlay
     lv_obj_t *ui_LogoImage;                                 ///< Logo image widget
+    std::vector<std::string> bundleViewerHeaders;           ///< CSV headers for active viewer
+    std::vector<BundleCsvRow> bundleViewerRows;             ///< CSV rows for active viewer
+    std::vector<std::string> bundleViewerSignals;           ///< Numeric signals available in active viewer
+    bool bundleViewerCsvMode = false;                       ///< True when CSV table tab is visible
+    int bundleViewerHistoryOffset = 0;                      ///< Graph history pan offset
+    int bundleViewerDragAccumulatorPx = 0;                  ///< Touch drag accumulator
+    int bundleViewerCursorIndex = 0;                        ///< Cursor point in the visible graph window
+    bool bundleViewerCursorVisible = false;                 ///< True while touch cursor is active
+    lv_coord_t bundleViewerRangeMin = -1;                   ///< Active graph range minimum
+    lv_coord_t bundleViewerRangeMax = 1;                    ///< Active graph range maximum
+    lv_point_t bundleViewerCursorXPoints[2];                ///< Horizontal cursor line points
+    lv_point_t bundleViewerCursorYPoints[2];                ///< Vertical cursor line points
+    uint8_t bundleViewerPrimaryColorIndex = 0;              ///< Primary line color palette index
+    uint8_t bundleViewerSecondaryColorIndex = 1;            ///< Secondary line color palette index
 
     /**
      * @brief Add navigation buttons to a widget
@@ -106,6 +155,90 @@ private:
      * @brief Hide shadow overlay
      */
     void hideShadowOverlay();
+
+    /**
+     * @brief Bind a bundle preview object to the CSV viewer
+     * @param object Object that should open the viewer when clicked
+     * @param index Bundle slot on the current page
+     */
+    void bindBundleOpenEvent(lv_obj_t *object, unsigned char index);
+
+    /**
+     * @brief Open the CSV viewer for a bundle slot on the current page
+     * @param index Bundle slot on the current page
+     */
+    void showBundleViewer(unsigned char index);
+
+    /**
+     * @brief Close the active CSV viewer if it exists
+     */
+    void closeBundleViewer();
+
+    /**
+     * @brief Parse CSV text and refresh internal viewer data buffers
+     * @param csvText CSV text loaded from storage
+     */
+    void parseBundleViewerCsv(const std::string &csvText);
+
+    /**
+     * @brief Create and render the graph/table content area of the bundle viewer
+     */
+    void createBundleViewerContent();
+
+    /**
+     * @brief Switch between graph and CSV table presentation
+     */
+    void setBundleViewerMode(bool csvMode);
+
+    /**
+     * @brief Update graph tab from parsed bundle rows
+     */
+    void updateBundleViewerGraph();
+
+    /**
+     * @brief Update CSV table tab from parsed bundle rows
+     */
+    void updateBundleViewerTable();
+
+    /**
+     * @brief Pan graph history by touch/step offset
+     */
+    void panBundleViewerHistory(int steps);
+
+    /**
+     * @brief Handle touch events on the bundle graph
+     */
+    void handleBundleViewerChartDrag(lv_event_t *e);
+
+    /**
+     * @brief Move graph cursor by one visible sample
+     */
+    void moveBundleViewerCursor(int steps);
+
+    /**
+     * @brief Show cursor at a visible graph point.
+     */
+    void showBundleViewerCursorAtIndex(int index);
+
+    /**
+     * @brief Hide the touch cursor.
+     */
+    void hideBundleViewerCursor();
+
+    /**
+     * @brief Show local graph settings
+     */
+    void showBundleViewerSettings();
+
+    /**
+     * @brief Hide local graph settings
+     */
+    void hideBundleViewerSettings();
+
+    /**
+     * @brief Cycle graph line color
+     */
+    void cycleBundleViewerSeriesColor(bool primary);
 
     /**
      * @brief update data bundles currently shown

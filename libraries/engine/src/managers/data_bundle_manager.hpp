@@ -13,6 +13,7 @@
 
 #include "data_bundle_types.hpp"
 #include "storage_manager.hpp"
+#include <cstddef>
 #include <vector>
 
 class DataBundleManager {
@@ -135,6 +136,14 @@ public:
     void listAllBundles();
 
     void printBundleCsv(std::string filename);
+
+    /**
+     * @brief Load a saved bundle as CSV text for the on-device viewer.
+     * @param index Global bundle index in the currently loaded bundle list
+     * @param maxBytes Maximum number of bytes copied into RAM
+     * @return CSV text, or an empty string when the bundle cannot be opened
+     */
+    std::string getBundleCsvText(unsigned char index, size_t maxBytes = 4096);
 
     /**
      * @brief Prints size of the active storage and its used size in bytes

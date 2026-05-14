@@ -487,6 +487,52 @@ void DataBundleManager::printBundleCsv(std::string filename)
     debugLogMessage("DataBundleManager::printBundleCsv", "storage read", "end csv=%s", fullPath.c_str());
 }
 
+std::string DataBundleManager::getBundleCsvText(unsigned char index, size_t maxBytes)
+{
+    if (!bundleFileNamesLoaded)
+    {
+        reloadBundleFileNames();
+    }
+
+    if (index >= bundleFileNames.size())
+    {
+        debugLogMessage(DEBUG_VERBOSE_ERRORS, "DataBundleManager::getBundleCsvText", "storage read failed", "index=%u count=%u", index, static_cast<unsigned int>(bundleFileNames.size()));
+        return "";
+    }
+
+    const std::string fullPath = std::string(root) + bundleFileNames[index];
+    File file = storageManager().open(fullPath, FILE_READ);
+    if (!file)
+    {
+        debugLogMessage(DEBUG_VERBOSE_ERRORS, "DataBundleManager::getBundleCsvText", "storage read failed", "could not open file %s", fullPath.c_str());
+        return "";
+    }
+
+    std::string csv;
+    csv.reserve(maxBytes < 256 ? maxBytes : 256);
+    size_t bytesRead = 0;
+    while (file.available() && bytesRead < maxBytes)
+    {
+        const char c = static_cast<char>(file.read());
+        if (c != '\r')
+        {
+            csv += c;
+            ++bytesRead;
+        }
+    }
+
+    const bool truncated = file.available();
+    file.close();
+
+    if (truncated)
+    {
+        csv += "\n...";
+    }
+
+    debugLogMessage("DataBundleManager::getBundleCsvText", "storage read", "file=%s bytes=%u truncated=%u", fullPath.c_str(), static_cast<unsigned int>(bytesRead), truncated ? 1 : 0);
+    return csv;
+}
+
 BundleMetadata DataBundleManager::getBundleMetadata(unsigned char index){
     if(index >= bundleFileNames.size())
     {

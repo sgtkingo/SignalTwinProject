@@ -13,13 +13,71 @@
 #include "../helpers.hpp"
 #include "./images/ui_images.h"
 #include "expt.hpp"
+#include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <cstdlib>
+
+namespace
+{
+constexpr uint32_t BUNDLE_VIEWER_COLORS[] = {
+    0x009BFF,
+    0xFF6B35,
+    0x00B894,
+    0x9B51E0,
+    0xF2C94C,
+    0xEB5757
+};
+
+std::vector<std::string> splitSemicolonLine(const std::string &line)
+{
+    std::vector<std::string> result;
+    size_t start = 0;
+    while (start <= line.size())
+    {
+        const size_t separator = line.find(';', start);
+        if (separator == std::string::npos)
+        {
+            result.push_back(line.substr(start));
+            break;
+        }
+
+        result.push_back(line.substr(start, separator - start));
+        start = separator + 1;
+    }
+    return result;
+}
+
+bool parseNumericValue(const std::string &text, double &value)
+{
+    if (text.empty())
+    {
+        return false;
+    }
+
+    char *end = nullptr;
+    value = std::strtod(text.c_str(), &end);
+    return end && *end == '\0';
+}
+
+bool textLooksScaledFloat(const std::string &text)
+{
+    return text.find('.') != std::string::npos || text.find(',') != std::string::npos;
+}
+
+uint32_t getBundleViewerColor(uint8_t index)
+{
+    return BUNDLE_VIEWER_COLORS[index % (sizeof(BUNDLE_VIEWER_COLORS) / sizeof(BUNDLE_VIEWER_COLORS[0]))];
+}
+}
 
 DataBundleSelectionGui::DataBundleSelectionGui(GuiRouter &router, DataBundleManager &dataBundleManager) : router(router), dataBundleManager(dataBundleManager)
 {
     ui_DataBundlesWidget = nullptr;
     ui_DataBundlePageWatcher = nullptr;
+    ui_ShadowOverlay = nullptr;
+    ui_BundleViewerOverlay = nullptr;
+    ui_BundleViewerPanel = nullptr;
     ui_DeleteAllButtonGroup = nullptr;
     for (int i = 0; i < 5; ++i) 
         ui_DataBundlePageWatcherCell[i] = nullptr;
@@ -158,6 +216,7 @@ void DataBundleSelectionGui::createDataBundle(unsigned char i, const char *dataB
     ui_DataBundle[i] = lv_obj_create(ui_DataBundlesWidget);
     lv_obj_remove_style_all(ui_DataBundle[i]);
     lv_obj_set_size(ui_DataBundle[i], 200, 165);
+    bindBundleOpenEvent(ui_DataBundle[i], i);
     
     // Apply the calculated position
     lv_obj_set_align(ui_DataBundle[i], LV_ALIGN_CENTER);
@@ -168,6 +227,7 @@ void DataBundleSelectionGui::createDataBundle(unsigned char i, const char *dataB
     lv_obj_remove_style_all(ui_DataBundleHeaderGroup[i]);
     lv_obj_set_size(ui_DataBundleHeaderGroup[i], 200, 20);
     lv_obj_set_align(ui_DataBundleHeaderGroup[i], LV_ALIGN_TOP_MID);
+    bindBundleOpenEvent(ui_DataBundleHeaderGroup[i], i);
 
     ui_DataBundleHeaderCornerBottomLeft[i] = lv_obj_create(ui_DataBundleHeaderGroup[i]);
     lv_obj_remove_style_all(ui_DataBundleHeaderCornerBottomLeft[i]);
@@ -190,12 +250,14 @@ void DataBundleSelectionGui::createDataBundle(unsigned char i, const char *dataB
     lv_obj_set_style_radius(ui_DataBundleHeader[i], 10, LV_PART_MAIN);
     lv_obj_set_style_bg_color(ui_DataBundleHeader[i], lv_color_hex(0x007CCC), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(ui_DataBundleHeader[i], 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    bindBundleOpenEvent(ui_DataBundleHeader[i], i);
 
     ui_DataBundleHeaderLabel[i] = lv_label_create(ui_DataBundleHeader[i]);
     lv_obj_set_align(ui_DataBundleHeaderLabel[i], LV_ALIGN_CENTER);
     lv_label_set_text(ui_DataBundleHeaderLabel[i], "Bundle Title"); 
     lv_obj_set_style_text_font(ui_DataBundleHeaderLabel[i], &lv_font_montserrat_12, LV_PART_MAIN);
     lv_obj_set_style_text_color(ui_DataBundleHeaderLabel[i], lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    bindBundleOpenEvent(ui_DataBundleHeaderLabel[i], i);
 
     // --- Chart ---
     ui_DataBundleChart[i] = lv_chart_create(ui_DataBundle[i]);
@@ -207,6 +269,7 @@ void DataBundleSelectionGui::createDataBundle(unsigned char i, const char *dataB
     lv_chart_set_div_line_count(ui_DataBundleChart[i], 5, 10);
     lv_obj_set_style_radius(ui_DataBundleChart[i], 0, LV_PART_MAIN);
     lv_obj_set_style_bg_color(ui_DataBundleChart[i], lv_color_hex(0xFFFFFF), LV_PART_MAIN);
+    bindBundleOpenEvent(ui_DataBundleChart[i], i);
     
     ui_DataBundleChart_series_1[i] = lv_chart_add_series(ui_DataBundleChart[i], lv_color_hex(0xFF8200), LV_CHART_AXIS_PRIMARY_Y);
 
@@ -239,6 +302,7 @@ void DataBundleSelectionGui::createDataBundle(unsigned char i, const char *dataB
     lv_obj_set_size(ui_DataBundleFooterTimerGroup[i], 108, 25);
     lv_obj_set_pos(ui_DataBundleFooterTimerGroup[i], 0, -9);
     lv_obj_set_align(ui_DataBundleFooterTimerGroup[i], LV_ALIGN_BOTTOM_LEFT);
+    bindBundleOpenEvent(ui_DataBundleFooterTimerGroup[i], i);
 
     ui_DataBundleFooterDateCornerTopLeft[i] = lv_obj_create(ui_DataBundleFooterTimerGroup[i]);
     lv_obj_remove_style_all(ui_DataBundleFooterDateCornerTopLeft[i]);
@@ -261,6 +325,7 @@ void DataBundleSelectionGui::createDataBundle(unsigned char i, const char *dataB
     lv_obj_set_style_radius(ui_DataBundleFooterDate[i], 10, LV_PART_MAIN);  
     lv_obj_set_style_bg_color(ui_DataBundleFooterDate[i], lv_color_hex(0x007CCC), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(ui_DataBundleFooterDate[i], 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    bindBundleOpenEvent(ui_DataBundleFooterDate[i], i);
 
     ui_DataBundleFooterLabelDate[i] = lv_label_create(ui_DataBundleFooterDate[i]);
     lv_label_set_text(ui_DataBundleFooterLabelDate[i], "01.01.2024");
@@ -268,6 +333,7 @@ void DataBundleSelectionGui::createDataBundle(unsigned char i, const char *dataB
     lv_obj_set_align(ui_DataBundleFooterLabelDate[i], LV_ALIGN_LEFT_MID);
     lv_obj_set_style_text_font(ui_DataBundleFooterLabelDate[i], &lv_font_montserrat_12, LV_PART_MAIN);
     lv_obj_set_style_text_color(ui_DataBundleFooterLabelDate[i], lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    bindBundleOpenEvent(ui_DataBundleFooterLabelDate[i], i);
 
     ui_DataBundleFooterLabelTime[i] = lv_label_create(ui_DataBundleFooterDate[i]);
     lv_label_set_text(ui_DataBundleFooterLabelTime[i], "12:00");
@@ -275,6 +341,7 @@ void DataBundleSelectionGui::createDataBundle(unsigned char i, const char *dataB
     lv_obj_set_align(ui_DataBundleFooterLabelTime[i], LV_ALIGN_RIGHT_MID);
     lv_obj_set_style_text_font(ui_DataBundleFooterLabelTime[i], &lv_font_montserrat_12, LV_PART_MAIN);
     lv_obj_set_style_text_color(ui_DataBundleFooterLabelTime[i], lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    bindBundleOpenEvent(ui_DataBundleFooterLabelTime[i], i);
 
     // --- Footer Buttons ---
     ui_DataBundleFooterButtonsGroup[i] = lv_obj_create(ui_DataBundleFooterGroup[i]);
@@ -581,6 +648,916 @@ void DataBundleSelectionGui::hideShadowOverlay()
     }
 }
 
+void DataBundleSelectionGui::bindBundleOpenEvent(lv_obj_t *object, unsigned char index)
+{
+    if (!object)
+    {
+        return;
+    }
+
+    lv_obj_add_flag(object, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_user_data(object, reinterpret_cast<void *>(static_cast<intptr_t>(index)));
+    lv_obj_add_event_cb(object, [](lv_event_t *e)
+                        {
+        if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
+            return;
+        }
+
+        auto self = static_cast<DataBundleSelectionGui*>(lv_event_get_user_data(e));
+        lv_obj_t *target = lv_event_get_current_target(e);
+        const unsigned char index = static_cast<unsigned char>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(target)));
+        self->showBundleViewer(index); }, LV_EVENT_CLICKED, this);
+}
+
+void DataBundleSelectionGui::showBundleViewer(unsigned char index)
+{
+    closeBundleViewer();
+
+    const unsigned char bundleIndex = static_cast<unsigned char>(currentPage * 6 + index);
+    const std::string csvText = dataBundleManager.getBundleCsvText(bundleIndex, 16000);
+    if (csvText.empty())
+    {
+        splashMessage("DataBundle could not be opened.");
+        return;
+    }
+
+    const char *titleText = "DataBundle";
+    if (index < 6 && ui_DataBundleHeaderLabel[index])
+    {
+        titleText = lv_label_get_text(ui_DataBundleHeaderLabel[index]);
+    }
+
+    parseBundleViewerCsv(csvText);
+
+    ui_BundleViewerOverlay = lv_obj_create(lv_scr_act());
+    lv_obj_clear_flag(ui_BundleViewerOverlay, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(ui_BundleViewerOverlay, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_size(ui_BundleViewerOverlay, lv_pct(100), lv_pct(100));
+    lv_obj_center(ui_BundleViewerOverlay);
+    lv_obj_set_style_radius(ui_BundleViewerOverlay, 0, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(ui_BundleViewerOverlay, lv_color_black(), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(ui_BundleViewerOverlay, LV_OPA_50, LV_PART_MAIN);
+    lv_obj_set_style_border_width(ui_BundleViewerOverlay, 0, LV_PART_MAIN);
+
+    ui_BundleViewerPanel = lv_obj_create(ui_BundleViewerOverlay);
+    lv_obj_clear_flag(ui_BundleViewerPanel, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_size(ui_BundleViewerPanel, 780, 460);
+    lv_obj_center(ui_BundleViewerPanel);
+    lv_obj_set_style_radius(ui_BundleViewerPanel, 0, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(ui_BundleViewerPanel, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(ui_BundleViewerPanel, 255, LV_PART_MAIN);
+    lv_obj_set_style_border_width(ui_BundleViewerPanel, 2, LV_PART_MAIN);
+    lv_obj_set_style_border_color(ui_BundleViewerPanel, lv_color_hex(0x007CCC), LV_PART_MAIN);
+
+    lv_obj_t *title = lv_label_create(ui_BundleViewerPanel);
+    lv_label_set_text_fmt(title, "%s DataBundle", titleText);
+    lv_obj_align(title, LV_ALIGN_TOP_LEFT, 18, 14);
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_16, LV_PART_MAIN);
+    lv_obj_set_style_text_color(title, lv_color_hex(0x111111), LV_PART_MAIN);
+
+    ui_BundleViewerGraphTab = lv_btn_create(ui_BundleViewerPanel);
+    lv_obj_set_size(ui_BundleViewerGraphTab, 76, 30);
+    lv_obj_align(ui_BundleViewerGraphTab, LV_ALIGN_TOP_LEFT, 18, 48);
+    lv_obj_set_style_radius(ui_BundleViewerGraphTab, 5, LV_PART_MAIN);
+    lv_obj_add_event_cb(ui_BundleViewerGraphTab, [](lv_event_t *e)
+                        {
+        auto self = static_cast<DataBundleSelectionGui*>(lv_event_get_user_data(e));
+        self->setBundleViewerMode(false); }, LV_EVENT_CLICKED, this);
+
+    lv_obj_t *graphLabel = lv_label_create(ui_BundleViewerGraphTab);
+    lv_label_set_text(graphLabel, "Graph");
+    lv_obj_center(graphLabel);
+    lv_obj_set_style_text_font(graphLabel, &lv_font_montserrat_12, LV_PART_MAIN);
+
+    ui_BundleViewerCsvTab = lv_btn_create(ui_BundleViewerPanel);
+    lv_obj_set_size(ui_BundleViewerCsvTab, 76, 30);
+    lv_obj_align(ui_BundleViewerCsvTab, LV_ALIGN_TOP_LEFT, 100, 48);
+    lv_obj_set_style_radius(ui_BundleViewerCsvTab, 5, LV_PART_MAIN);
+    lv_obj_add_event_cb(ui_BundleViewerCsvTab, [](lv_event_t *e)
+                        {
+        auto self = static_cast<DataBundleSelectionGui*>(lv_event_get_user_data(e));
+        self->setBundleViewerMode(true); }, LV_EVENT_CLICKED, this);
+
+    lv_obj_t *csvTabLabel = lv_label_create(ui_BundleViewerCsvTab);
+    lv_label_set_text(csvTabLabel, "CSV");
+    lv_obj_center(csvTabLabel);
+    lv_obj_set_style_text_font(csvTabLabel, &lv_font_montserrat_12, LV_PART_MAIN);
+
+    ui_BundleViewerSettingsButton = lv_btn_create(ui_BundleViewerPanel);
+    lv_obj_set_size(ui_BundleViewerSettingsButton, 34, 32);
+    lv_obj_align(ui_BundleViewerSettingsButton, LV_ALIGN_TOP_RIGHT, -98, 10);
+    lv_obj_set_style_radius(ui_BundleViewerSettingsButton, 16, LV_PART_MAIN);
+    lv_obj_add_event_cb(ui_BundleViewerSettingsButton, [](lv_event_t *e)
+                        {
+        auto self = static_cast<DataBundleSelectionGui*>(lv_event_get_user_data(e));
+        self->showBundleViewerSettings(); }, LV_EVENT_CLICKED, this);
+
+    lv_obj_t *settingsImage = lv_img_create(ui_BundleViewerSettingsButton);
+    lv_img_set_src(settingsImage, &ui_img_settings_png);
+    lv_obj_center(settingsImage);
+    lv_img_set_zoom(settingsImage, 92);
+
+    lv_obj_t *closeButton = lv_btn_create(ui_BundleViewerPanel);
+    lv_obj_set_size(closeButton, 76, 32);
+    lv_obj_align(closeButton, LV_ALIGN_TOP_RIGHT, -14, 10);
+    lv_obj_set_style_radius(closeButton, 5, LV_PART_MAIN);
+    lv_obj_add_event_cb(closeButton, [](lv_event_t *e)
+                        {
+        auto self = static_cast<DataBundleSelectionGui*>(lv_event_get_user_data(e));
+        self->closeBundleViewer(); }, LV_EVENT_CLICKED, this);
+
+    lv_obj_t *closeLabel = lv_label_create(closeButton);
+    lv_label_set_text(closeLabel, "Close");
+    lv_obj_center(closeLabel);
+    lv_obj_set_style_text_font(closeLabel, &lv_font_montserrat_14, LV_PART_MAIN);
+
+    createBundleViewerContent();
+    setBundleViewerMode(false);
+    lv_obj_move_foreground(ui_BundleViewerGraphTab);
+    lv_obj_move_foreground(ui_BundleViewerCsvTab);
+    lv_obj_move_foreground(ui_BundleViewerSettingsButton);
+    lv_obj_move_foreground(closeButton);
+
+    lv_obj_move_foreground(ui_BundleViewerOverlay);
+}
+
+void DataBundleSelectionGui::parseBundleViewerCsv(const std::string &csvText)
+{
+    bundleViewerHeaders.clear();
+    bundleViewerRows.clear();
+    bundleViewerSignals.clear();
+    bundleViewerCsvMode = false;
+    bundleViewerHistoryOffset = 0;
+    bundleViewerDragAccumulatorPx = 0;
+    bundleViewerCursorIndex = BUNDLE_VIEW_CHART_POINTS / 2;
+    bundleViewerCursorVisible = false;
+
+    size_t start = 0;
+    bool headerRead = false;
+    int signalIndex = -1;
+    int valueIndex = -1;
+
+    while (start <= csvText.size())
+    {
+        const size_t lineEnd = csvText.find('\n', start);
+        const std::string line = lineEnd == std::string::npos
+                                     ? csvText.substr(start)
+                                     : csvText.substr(start, lineEnd - start);
+        start = lineEnd == std::string::npos ? csvText.size() + 1 : lineEnd + 1;
+
+        if (line.empty())
+        {
+            continue;
+        }
+
+        if (!headerRead)
+        {
+            bundleViewerHeaders = splitSemicolonLine(line);
+            for (size_t i = 0; i < bundleViewerHeaders.size(); ++i)
+            {
+                if (bundleViewerHeaders[i] == "SignalName")
+                {
+                    signalIndex = static_cast<int>(i);
+                }
+                else if (bundleViewerHeaders[i] == "Value")
+                {
+                    valueIndex = static_cast<int>(i);
+                }
+            }
+            headerRead = true;
+            continue;
+        }
+
+        BundleCsvRow row;
+        row.cells = splitSemicolonLine(line);
+        while (row.cells.size() < bundleViewerHeaders.size())
+        {
+            row.cells.push_back("");
+        }
+
+        if (signalIndex >= 0 && static_cast<size_t>(signalIndex) < row.cells.size())
+        {
+            row.signalName = row.cells[signalIndex];
+        }
+        if (valueIndex >= 0 && static_cast<size_t>(valueIndex) < row.cells.size())
+        {
+            row.value = row.cells[valueIndex];
+        }
+
+        double numericValue = 0.0;
+        row.numeric = parseNumericValue(row.value, numericValue);
+        row.scaled = row.numeric && textLooksScaledFloat(row.value);
+        row.chartValue = row.scaled
+                             ? static_cast<lv_coord_t>(std::lround(numericValue * 100.0))
+                             : static_cast<lv_coord_t>(std::lround(numericValue));
+
+        if (row.numeric &&
+            !row.signalName.empty() &&
+            std::find(bundleViewerSignals.begin(), bundleViewerSignals.end(), row.signalName) == bundleViewerSignals.end())
+        {
+            bundleViewerSignals.push_back(row.signalName);
+        }
+
+        bundleViewerRows.push_back(row);
+    }
+}
+
+void DataBundleSelectionGui::createBundleViewerContent()
+{
+    ui_BundleViewerScalingLabel = lv_label_create(ui_BundleViewerPanel);
+    lv_label_set_text(ui_BundleViewerScalingLabel, "Scaling 1x");
+    lv_obj_align(ui_BundleViewerScalingLabel, LV_ALIGN_TOP_LEFT, 210, 56);
+    lv_obj_set_style_text_font(ui_BundleViewerScalingLabel, &lv_font_montserrat_10, LV_PART_MAIN);
+    lv_obj_set_style_text_color(ui_BundleViewerScalingLabel, lv_color_hex(0xD32F2F), LV_PART_MAIN);
+
+    ui_BundleViewerPrimaryLegend = lv_obj_create(ui_BundleViewerPanel);
+    lv_obj_remove_style_all(ui_BundleViewerPrimaryLegend);
+    lv_obj_set_size(ui_BundleViewerPrimaryLegend, 128, 26);
+    lv_obj_align(ui_BundleViewerPrimaryLegend, LV_ALIGN_TOP_LEFT, 310, 50);
+    lv_obj_set_style_radius(ui_BundleViewerPrimaryLegend, 5, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(ui_BundleViewerPrimaryLegend, lv_color_hex(getBundleViewerColor(bundleViewerPrimaryColorIndex)), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(ui_BundleViewerPrimaryLegend, 255, LV_PART_MAIN);
+
+    ui_BundleViewerPrimaryLegendLabel = lv_label_create(ui_BundleViewerPrimaryLegend);
+    lv_obj_set_width(ui_BundleViewerPrimaryLegendLabel, 116);
+    lv_label_set_long_mode(ui_BundleViewerPrimaryLegendLabel, LV_LABEL_LONG_DOT);
+    lv_obj_center(ui_BundleViewerPrimaryLegendLabel);
+    lv_obj_set_style_text_font(ui_BundleViewerPrimaryLegendLabel, &lv_font_montserrat_12, LV_PART_MAIN);
+    lv_obj_set_style_text_color(ui_BundleViewerPrimaryLegendLabel, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
+
+    ui_BundleViewerSecondaryLegend = lv_obj_create(ui_BundleViewerPanel);
+    lv_obj_remove_style_all(ui_BundleViewerSecondaryLegend);
+    lv_obj_set_size(ui_BundleViewerSecondaryLegend, 128, 26);
+    lv_obj_align(ui_BundleViewerSecondaryLegend, LV_ALIGN_TOP_LEFT, 448, 50);
+    lv_obj_set_style_radius(ui_BundleViewerSecondaryLegend, 5, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(ui_BundleViewerSecondaryLegend, lv_color_hex(getBundleViewerColor(bundleViewerSecondaryColorIndex)), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(ui_BundleViewerSecondaryLegend, 255, LV_PART_MAIN);
+
+    ui_BundleViewerSecondaryLegendLabel = lv_label_create(ui_BundleViewerSecondaryLegend);
+    lv_obj_set_width(ui_BundleViewerSecondaryLegendLabel, 116);
+    lv_label_set_long_mode(ui_BundleViewerSecondaryLegendLabel, LV_LABEL_LONG_DOT);
+    lv_obj_center(ui_BundleViewerSecondaryLegendLabel);
+    lv_obj_set_style_text_font(ui_BundleViewerSecondaryLegendLabel, &lv_font_montserrat_12, LV_PART_MAIN);
+    lv_obj_set_style_text_color(ui_BundleViewerSecondaryLegendLabel, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
+
+    ui_BundleViewerChart = lv_chart_create(ui_BundleViewerPanel);
+    lv_obj_set_size(ui_BundleViewerChart, 720, 300);
+    lv_obj_align(ui_BundleViewerChart, LV_ALIGN_TOP_MID, 0, 92);
+    lv_obj_add_flag(ui_BundleViewerChart, LV_OBJ_FLAG_CLICKABLE);
+    lv_chart_set_type(ui_BundleViewerChart, LV_CHART_TYPE_LINE);
+    lv_chart_set_point_count(ui_BundleViewerChart, BUNDLE_VIEW_CHART_POINTS);
+    lv_chart_set_div_line_count(ui_BundleViewerChart, 5, 10);
+    lv_chart_set_axis_tick(ui_BundleViewerChart, LV_CHART_AXIS_PRIMARY_X, 10, 0, 10, 1, true, 40);
+    lv_chart_set_axis_tick(ui_BundleViewerChart, LV_CHART_AXIS_PRIMARY_Y, 10, 5, 5, 2, true, 45);
+    lv_obj_set_style_bg_opa(ui_BundleViewerChart, 0, LV_PART_MAIN);
+    lv_obj_set_style_border_width(ui_BundleViewerChart, 2, LV_PART_MAIN);
+    lv_obj_set_style_border_color(ui_BundleViewerChart, lv_color_hex(0x000000), LV_PART_MAIN);
+    lv_obj_set_style_line_color(ui_BundleViewerChart, lv_color_hex(0x000000), LV_PART_TICKS);
+    lv_obj_set_style_text_color(ui_BundleViewerChart, lv_color_hex(0x000000), LV_PART_TICKS);
+    lv_obj_add_event_cb(ui_BundleViewerChart, [](lv_event_t *e)
+                        {
+        auto self = static_cast<DataBundleSelectionGui*>(lv_event_get_user_data(e));
+        self->handleBundleViewerChartDrag(e); }, LV_EVENT_ALL, this);
+
+    ui_BundleViewerPrimarySeries = lv_chart_add_series(ui_BundleViewerChart, lv_color_hex(getBundleViewerColor(bundleViewerPrimaryColorIndex)), LV_CHART_AXIS_PRIMARY_Y);
+    ui_BundleViewerSecondarySeries = lv_chart_add_series(ui_BundleViewerChart, lv_color_hex(getBundleViewerColor(bundleViewerSecondaryColorIndex)), LV_CHART_AXIS_PRIMARY_Y);
+
+    ui_BundleViewerCursorLabel = lv_label_create(ui_BundleViewerPanel);
+    lv_obj_set_width(ui_BundleViewerCursorLabel, 720);
+    lv_obj_align(ui_BundleViewerCursorLabel, LV_ALIGN_BOTTOM_MID, 0, -22);
+    lv_obj_set_style_text_font(ui_BundleViewerCursorLabel, &lv_font_montserrat_12, LV_PART_MAIN);
+    lv_obj_set_style_text_color(ui_BundleViewerCursorLabel, lv_color_hex(0xD32F2F), LV_PART_MAIN);
+    lv_obj_add_flag(ui_BundleViewerCursorLabel, LV_OBJ_FLAG_HIDDEN);
+
+    ui_BundleViewerCursorXLine = lv_line_create(ui_BundleViewerPanel);
+    lv_obj_set_style_line_color(ui_BundleViewerCursorXLine, lv_color_hex(0xD32F2F), LV_PART_MAIN);
+    lv_obj_set_style_line_width(ui_BundleViewerCursorXLine, 2, LV_PART_MAIN);
+    lv_obj_set_style_line_dash_width(ui_BundleViewerCursorXLine, 6, LV_PART_MAIN);
+    lv_obj_set_style_line_dash_gap(ui_BundleViewerCursorXLine, 4, LV_PART_MAIN);
+    lv_obj_add_flag(ui_BundleViewerCursorXLine, LV_OBJ_FLAG_HIDDEN);
+
+    ui_BundleViewerCursorYLine = lv_line_create(ui_BundleViewerPanel);
+    lv_obj_set_style_line_color(ui_BundleViewerCursorYLine, lv_color_hex(0xD32F2F), LV_PART_MAIN);
+    lv_obj_set_style_line_width(ui_BundleViewerCursorYLine, 2, LV_PART_MAIN);
+    lv_obj_set_style_line_dash_width(ui_BundleViewerCursorYLine, 6, LV_PART_MAIN);
+    lv_obj_set_style_line_dash_gap(ui_BundleViewerCursorYLine, 4, LV_PART_MAIN);
+    lv_obj_add_flag(ui_BundleViewerCursorYLine, LV_OBJ_FLAG_HIDDEN);
+
+    ui_BundleViewerTable = lv_table_create(ui_BundleViewerPanel);
+    lv_obj_set_size(ui_BundleViewerTable, 740, 335);
+    lv_obj_align(ui_BundleViewerTable, LV_ALIGN_BOTTOM_MID, 0, -18);
+    lv_obj_set_scroll_dir(ui_BundleViewerTable, static_cast<lv_dir_t>(LV_DIR_VER | LV_DIR_HOR));
+    lv_obj_set_style_text_font(ui_BundleViewerTable, &lv_font_montserrat_10, LV_PART_ITEMS);
+    lv_obj_set_style_border_color(ui_BundleViewerTable, lv_color_hex(0xC7D2E0), LV_PART_MAIN);
+    lv_obj_set_style_border_width(ui_BundleViewerTable, 1, LV_PART_MAIN);
+}
+
+void DataBundleSelectionGui::setBundleViewerMode(bool csvMode)
+{
+    bundleViewerCsvMode = csvMode;
+
+    const lv_color_t activeColor = lv_color_hex(0x009BFF);
+    const lv_color_t inactiveColor = lv_color_hex(0xA8B3BF);
+    if (ui_BundleViewerGraphTab)
+    {
+        lv_obj_set_style_bg_color(ui_BundleViewerGraphTab, csvMode ? inactiveColor : activeColor, LV_PART_MAIN);
+    }
+    if (ui_BundleViewerCsvTab)
+    {
+        lv_obj_set_style_bg_color(ui_BundleViewerCsvTab, csvMode ? activeColor : inactiveColor, LV_PART_MAIN);
+    }
+
+    lv_obj_t *graphObjects[] = {
+        ui_BundleViewerChart,
+        ui_BundleViewerScalingLabel,
+        ui_BundleViewerCursorLabel,
+        ui_BundleViewerPrimaryLegend,
+        ui_BundleViewerSecondaryLegend,
+        ui_BundleViewerCursorXLine,
+        ui_BundleViewerCursorYLine
+    };
+    for (lv_obj_t *object : graphObjects)
+    {
+        if (!object) {
+            continue;
+        }
+        if (csvMode) {
+            lv_obj_add_flag(object, LV_OBJ_FLAG_HIDDEN);
+        } else {
+            lv_obj_clear_flag(object, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+
+    if (ui_BundleViewerTable)
+    {
+        if (csvMode) {
+            lv_obj_clear_flag(ui_BundleViewerTable, LV_OBJ_FLAG_HIDDEN);
+            hideBundleViewerCursor();
+            updateBundleViewerTable();
+        } else {
+            lv_obj_add_flag(ui_BundleViewerTable, LV_OBJ_FLAG_HIDDEN);
+            updateBundleViewerGraph();
+        }
+    }
+
+    lv_obj_move_foreground(ui_BundleViewerGraphTab);
+    lv_obj_move_foreground(ui_BundleViewerCsvTab);
+    lv_obj_move_foreground(ui_BundleViewerSettingsButton);
+}
+
+void DataBundleSelectionGui::updateBundleViewerGraph()
+{
+    if (!ui_BundleViewerChart || !ui_BundleViewerPrimarySeries || !ui_BundleViewerSecondarySeries)
+    {
+        return;
+    }
+
+    std::vector<lv_coord_t> primaryValues;
+    std::vector<lv_coord_t> secondaryValues;
+    std::vector<std::string> primaryRawValues;
+    std::vector<std::string> secondaryRawValues;
+    bool usesFloatScaling = false;
+
+    const std::string primarySignal = bundleViewerSignals.empty() ? "" : bundleViewerSignals[0];
+    const std::string secondarySignal = bundleViewerSignals.size() > 1 ? bundleViewerSignals[1] : "";
+
+    for (const auto &row : bundleViewerRows)
+    {
+        if (!row.numeric)
+        {
+            continue;
+        }
+
+        if (row.signalName == primarySignal)
+        {
+            primaryValues.push_back(row.chartValue);
+            primaryRawValues.push_back(row.value);
+            usesFloatScaling = usesFloatScaling || row.scaled;
+        }
+        else if (!secondarySignal.empty() && row.signalName == secondarySignal)
+        {
+            secondaryValues.push_back(row.chartValue);
+            secondaryRawValues.push_back(row.value);
+            usesFloatScaling = usesFloatScaling || row.scaled;
+        }
+    }
+
+    lv_chart_set_series_color(ui_BundleViewerChart, ui_BundleViewerPrimarySeries, lv_color_hex(getBundleViewerColor(bundleViewerPrimaryColorIndex)));
+    lv_chart_set_series_color(ui_BundleViewerChart, ui_BundleViewerSecondarySeries, lv_color_hex(getBundleViewerColor(bundleViewerSecondaryColorIndex)));
+    lv_chart_set_all_value(ui_BundleViewerChart, ui_BundleViewerPrimarySeries, LV_CHART_POINT_NONE);
+    lv_chart_set_all_value(ui_BundleViewerChart, ui_BundleViewerSecondarySeries, LV_CHART_POINT_NONE);
+
+    const int maxCount = static_cast<int>(std::max(primaryValues.size(), secondaryValues.size()));
+    const int maxOffset = maxCount > BUNDLE_VIEW_CHART_POINTS ? maxCount - BUNDLE_VIEW_CHART_POINTS : 0;
+    if (bundleViewerHistoryOffset > maxOffset)
+    {
+        bundleViewerHistoryOffset = maxOffset;
+    }
+
+    const int start = maxCount > BUNDLE_VIEW_CHART_POINTS
+                          ? maxCount - BUNDLE_VIEW_CHART_POINTS - bundleViewerHistoryOffset
+                          : 0;
+
+    bool hasRange = false;
+    lv_coord_t minValue = 0;
+    lv_coord_t maxValue = 0;
+    auto applySeries = [&](lv_chart_series_t *series, const std::vector<lv_coord_t> &values)
+    {
+        for (int i = 0; i < BUNDLE_VIEW_CHART_POINTS; ++i)
+        {
+            const int sourceIndex = start + i;
+            if (sourceIndex < 0 || sourceIndex >= static_cast<int>(values.size()))
+            {
+                continue;
+            }
+
+            const lv_coord_t value = values[sourceIndex];
+            lv_chart_set_value_by_id(ui_BundleViewerChart, series, i, value);
+            if (!hasRange)
+            {
+                minValue = value;
+                maxValue = value;
+                hasRange = true;
+            }
+            else
+            {
+                if (value < minValue) minValue = value;
+                if (value > maxValue) maxValue = value;
+            }
+        }
+    };
+
+    applySeries(ui_BundleViewerPrimarySeries, primaryValues);
+    applySeries(ui_BundleViewerSecondarySeries, secondaryValues);
+
+    if (!hasRange)
+    {
+        minValue = -1;
+        maxValue = 1;
+    }
+    if (minValue == maxValue)
+    {
+        --minValue;
+        ++maxValue;
+    }
+
+    const lv_coord_t span = maxValue - minValue;
+    const lv_coord_t pad = (span / 10) > 1 ? (span / 10) : 1;
+    bundleViewerRangeMin = minValue - pad;
+    bundleViewerRangeMax = maxValue + pad;
+    lv_chart_set_range(ui_BundleViewerChart, LV_CHART_AXIS_PRIMARY_Y, bundleViewerRangeMin, bundleViewerRangeMax);
+    lv_chart_set_range(ui_BundleViewerChart, LV_CHART_AXIS_SECONDARY_Y, bundleViewerRangeMin, bundleViewerRangeMax);
+
+    if (bundleViewerCursorIndex >= BUNDLE_VIEW_CHART_POINTS)
+    {
+        bundleViewerCursorIndex = BUNDLE_VIEW_CHART_POINTS - 1;
+    }
+
+    if (ui_BundleViewerScalingLabel)
+    {
+        lv_label_set_text(ui_BundleViewerScalingLabel, usesFloatScaling ? "Scaling x100" : "Scaling 1x");
+    }
+    if (ui_BundleViewerPrimaryLegend)
+    {
+        lv_obj_set_style_bg_color(ui_BundleViewerPrimaryLegend, lv_color_hex(getBundleViewerColor(bundleViewerPrimaryColorIndex)), LV_PART_MAIN);
+    }
+    if (ui_BundleViewerPrimaryLegendLabel)
+    {
+        lv_label_set_text(ui_BundleViewerPrimaryLegendLabel, primarySignal.empty() ? "S1" : primarySignal.c_str());
+    }
+    if (ui_BundleViewerSecondaryLegend)
+    {
+        lv_obj_set_style_bg_color(ui_BundleViewerSecondaryLegend, lv_color_hex(getBundleViewerColor(bundleViewerSecondaryColorIndex)), LV_PART_MAIN);
+    }
+    if (ui_BundleViewerSecondaryLegendLabel)
+    {
+        lv_label_set_text(ui_BundleViewerSecondaryLegendLabel, secondarySignal.empty() ? "S2" : secondarySignal.c_str());
+    }
+
+    if (bundleViewerCursorVisible)
+    {
+        showBundleViewerCursorAtIndex(bundleViewerCursorIndex);
+    }
+    else
+    {
+        hideBundleViewerCursor();
+    }
+
+    lv_chart_refresh(ui_BundleViewerChart);
+    lv_obj_invalidate(ui_BundleViewerChart);
+}
+
+void DataBundleSelectionGui::updateBundleViewerTable()
+{
+    if (!ui_BundleViewerTable)
+    {
+        return;
+    }
+
+    const uint16_t columnCount = static_cast<uint16_t>(bundleViewerHeaders.empty() ? 1 : bundleViewerHeaders.size());
+    const uint16_t rowCount = static_cast<uint16_t>(bundleViewerRows.size() + 1);
+    lv_table_set_col_cnt(ui_BundleViewerTable, columnCount);
+    lv_table_set_row_cnt(ui_BundleViewerTable, rowCount);
+
+    for (uint16_t col = 0; col < columnCount; ++col)
+    {
+        const std::string header = bundleViewerHeaders.empty() ? "Data" : bundleViewerHeaders[col];
+        lv_table_set_cell_value(ui_BundleViewerTable, 0, col, header.c_str());
+        lv_table_set_col_width(ui_BundleViewerTable, col, col < 2 ? 118 : 92);
+    }
+
+    for (uint16_t row = 0; row < bundleViewerRows.size(); ++row)
+    {
+        for (uint16_t col = 0; col < columnCount; ++col)
+        {
+            const char *cell = col < bundleViewerRows[row].cells.size() ? bundleViewerRows[row].cells[col].c_str() : "";
+            lv_table_set_cell_value(ui_BundleViewerTable, static_cast<uint16_t>(row + 1), col, cell);
+        }
+    }
+}
+
+void DataBundleSelectionGui::panBundleViewerHistory(int steps)
+{
+    if (steps == 0)
+    {
+        return;
+    }
+
+    int maxCount = 0;
+    for (const auto &signal : bundleViewerSignals)
+    {
+        int count = 0;
+        for (const auto &row : bundleViewerRows)
+        {
+            if (row.numeric && row.signalName == signal)
+            {
+                ++count;
+            }
+        }
+        if (count > maxCount)
+        {
+            maxCount = count;
+        }
+    }
+
+    const int maxOffset = maxCount > BUNDLE_VIEW_CHART_POINTS ? maxCount - BUNDLE_VIEW_CHART_POINTS : 0;
+    int nextOffset = bundleViewerHistoryOffset + steps;
+    if (nextOffset < 0) nextOffset = 0;
+    if (nextOffset > maxOffset) nextOffset = maxOffset;
+    if (nextOffset == bundleViewerHistoryOffset)
+    {
+        return;
+    }
+
+    bundleViewerHistoryOffset = nextOffset;
+    updateBundleViewerGraph();
+}
+
+void DataBundleSelectionGui::handleBundleViewerChartDrag(lv_event_t *e)
+{
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code == LV_EVENT_PRESSED || code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST)
+    {
+        bundleViewerDragAccumulatorPx = 0;
+        if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST)
+        {
+            hideBundleViewerCursor();
+        }
+        return;
+    }
+
+    if (code == LV_EVENT_LONG_PRESSED || (code == LV_EVENT_PRESSING && bundleViewerCursorVisible))
+    {
+        lv_indev_t *indev = lv_indev_get_act();
+        if (!indev || !ui_BundleViewerChart)
+        {
+            return;
+        }
+
+        lv_point_t point;
+        lv_indev_get_point(indev, &point);
+
+        lv_area_t chartArea;
+        lv_obj_get_coords(ui_BundleViewerChart, &chartArea);
+        const int chartWidth = chartArea.x2 - chartArea.x1;
+        if (chartWidth <= 0)
+        {
+            return;
+        }
+
+        int pointIndex = ((point.x - chartArea.x1) * (BUNDLE_VIEW_CHART_POINTS - 1)) / chartWidth;
+        if (pointIndex < 0) pointIndex = 0;
+        if (pointIndex >= BUNDLE_VIEW_CHART_POINTS) pointIndex = BUNDLE_VIEW_CHART_POINTS - 1;
+        showBundleViewerCursorAtIndex(pointIndex);
+        return;
+    }
+
+    if (code != LV_EVENT_PRESSING)
+    {
+        return;
+    }
+
+    lv_indev_t *indev = lv_indev_get_act();
+    if (!indev)
+    {
+        return;
+    }
+
+    lv_point_t vect;
+    lv_indev_get_vect(indev, &vect);
+    bundleViewerDragAccumulatorPx += vect.x;
+
+    const int pixelsPerStep = 20;
+    int steps = 0;
+    while (bundleViewerDragAccumulatorPx >= pixelsPerStep)
+    {
+        ++steps;
+        bundleViewerDragAccumulatorPx -= pixelsPerStep;
+    }
+    while (bundleViewerDragAccumulatorPx <= -pixelsPerStep)
+    {
+        --steps;
+        bundleViewerDragAccumulatorPx += pixelsPerStep;
+    }
+
+    panBundleViewerHistory(steps);
+}
+
+void DataBundleSelectionGui::moveBundleViewerCursor(int steps)
+{
+    int nextIndex = bundleViewerCursorIndex + steps;
+    if (nextIndex < 0) nextIndex = 0;
+    if (nextIndex >= BUNDLE_VIEW_CHART_POINTS) nextIndex = BUNDLE_VIEW_CHART_POINTS - 1;
+    if (nextIndex == bundleViewerCursorIndex)
+    {
+        return;
+    }
+
+    bundleViewerCursorIndex = nextIndex;
+    bundleViewerCursorVisible = true;
+    updateBundleViewerGraph();
+}
+
+void DataBundleSelectionGui::showBundleViewerCursorAtIndex(int index)
+{
+    if (!ui_BundleViewerChart || !ui_BundleViewerCursorXLine || !ui_BundleViewerCursorYLine)
+    {
+        return;
+    }
+
+    if (index < 0) index = 0;
+    if (index >= BUNDLE_VIEW_CHART_POINTS) index = BUNDLE_VIEW_CHART_POINTS - 1;
+    bundleViewerCursorIndex = index;
+    bundleViewerCursorVisible = true;
+
+    const std::string primarySignal = bundleViewerSignals.empty() ? "" : bundleViewerSignals[0];
+    const std::string secondarySignal = bundleViewerSignals.size() > 1 ? bundleViewerSignals[1] : "";
+    std::vector<lv_coord_t> primaryValues;
+    std::vector<lv_coord_t> secondaryValues;
+    std::vector<std::string> primaryRawValues;
+    std::vector<std::string> secondaryRawValues;
+
+    for (const auto &row : bundleViewerRows)
+    {
+        if (!row.numeric)
+        {
+            continue;
+        }
+
+        if (row.signalName == primarySignal)
+        {
+            primaryValues.push_back(row.chartValue);
+            primaryRawValues.push_back(row.value);
+        }
+        else if (!secondarySignal.empty() && row.signalName == secondarySignal)
+        {
+            secondaryValues.push_back(row.chartValue);
+            secondaryRawValues.push_back(row.value);
+        }
+    }
+
+    const int maxCount = static_cast<int>(std::max(primaryValues.size(), secondaryValues.size()));
+    const int start = maxCount > BUNDLE_VIEW_CHART_POINTS
+                          ? maxCount - BUNDLE_VIEW_CHART_POINTS - bundleViewerHistoryOffset
+                          : 0;
+    const int sourceIndex = start + bundleViewerCursorIndex;
+
+    lv_coord_t cursorValue = bundleViewerRangeMin;
+    if (sourceIndex >= 0 && sourceIndex < static_cast<int>(primaryValues.size()))
+    {
+        cursorValue = primaryValues[sourceIndex];
+    }
+    else if (sourceIndex >= 0 && sourceIndex < static_cast<int>(secondaryValues.size()))
+    {
+        cursorValue = secondaryValues[sourceIndex];
+    }
+
+    lv_area_t chartArea;
+    lv_area_t panelArea;
+    lv_obj_get_coords(ui_BundleViewerChart, &chartArea);
+    lv_obj_get_coords(ui_BundleViewerPanel, &panelArea);
+
+    const lv_coord_t chartLeft = chartArea.x1 - panelArea.x1;
+    const lv_coord_t chartRight = chartArea.x2 - panelArea.x1;
+    const lv_coord_t chartTop = chartArea.y1 - panelArea.y1;
+    const lv_coord_t chartBottom = chartArea.y2 - panelArea.y1;
+    const lv_coord_t chartWidth = chartRight - chartLeft;
+    const lv_coord_t chartHeight = chartBottom - chartTop;
+    const lv_coord_t range = bundleViewerRangeMax - bundleViewerRangeMin;
+
+    lv_coord_t cursorX = chartLeft;
+    if (chartWidth > 0)
+    {
+        cursorX = chartLeft + static_cast<lv_coord_t>((static_cast<long>(bundleViewerCursorIndex) * chartWidth) / (BUNDLE_VIEW_CHART_POINTS - 1));
+    }
+
+    lv_coord_t cursorY = chartBottom;
+    if (chartHeight > 0 && range != 0)
+    {
+        const long numerator = static_cast<long>(cursorValue - bundleViewerRangeMin) * chartHeight;
+        cursorY = chartBottom - static_cast<lv_coord_t>(numerator / range);
+    }
+    if (cursorY < chartTop) cursorY = chartTop;
+    if (cursorY > chartBottom) cursorY = chartBottom;
+
+    bundleViewerCursorXPoints[0] = {chartLeft, cursorY};
+    bundleViewerCursorXPoints[1] = {chartRight, cursorY};
+    bundleViewerCursorYPoints[0] = {cursorX, chartTop};
+    bundleViewerCursorYPoints[1] = {cursorX, chartBottom};
+    lv_line_set_points(ui_BundleViewerCursorXLine, bundleViewerCursorXPoints, 2);
+    lv_line_set_points(ui_BundleViewerCursorYLine, bundleViewerCursorYPoints, 2);
+    lv_obj_clear_flag(ui_BundleViewerCursorXLine, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(ui_BundleViewerCursorYLine, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_foreground(ui_BundleViewerCursorXLine);
+    lv_obj_move_foreground(ui_BundleViewerCursorYLine);
+
+    if (ui_BundleViewerCursorLabel)
+    {
+        const char *primaryValue = sourceIndex >= 0 && sourceIndex < static_cast<int>(primaryRawValues.size())
+                                       ? primaryRawValues[sourceIndex].c_str()
+                                       : "-";
+        const char *secondaryValue = sourceIndex >= 0 && sourceIndex < static_cast<int>(secondaryRawValues.size())
+                                         ? secondaryRawValues[sourceIndex].c_str()
+                                         : "-";
+        lv_label_set_text_fmt(
+            ui_BundleViewerCursorLabel,
+            "Cursor %d/%d  %s=%s  %s=%s",
+            maxCount == 0 ? 0 : sourceIndex + 1,
+            maxCount,
+            primarySignal.empty() ? "S1" : primarySignal.c_str(),
+            primaryValue,
+            secondarySignal.empty() ? "S2" : secondarySignal.c_str(),
+            secondaryValue);
+        lv_obj_clear_flag(ui_BundleViewerCursorLabel, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_move_foreground(ui_BundleViewerCursorLabel);
+    }
+}
+
+void DataBundleSelectionGui::hideBundleViewerCursor()
+{
+    bundleViewerCursorVisible = false;
+    if (ui_BundleViewerCursorXLine)
+    {
+        lv_obj_add_flag(ui_BundleViewerCursorXLine, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (ui_BundleViewerCursorYLine)
+    {
+        lv_obj_add_flag(ui_BundleViewerCursorYLine, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (ui_BundleViewerCursorLabel)
+    {
+        lv_obj_add_flag(ui_BundleViewerCursorLabel, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+void DataBundleSelectionGui::showBundleViewerSettings()
+{
+    if (!ui_BundleViewerPanel || ui_BundleViewerSettingsOverlay)
+    {
+        return;
+    }
+
+    ui_BundleViewerSettingsOverlay = lv_obj_create(lv_scr_act());
+    lv_obj_set_size(ui_BundleViewerSettingsOverlay, lv_pct(100), lv_pct(100));
+    lv_obj_clear_flag(ui_BundleViewerSettingsOverlay, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(ui_BundleViewerSettingsOverlay, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_style_bg_opa(ui_BundleViewerSettingsOverlay, LV_OPA_0, LV_PART_MAIN);
+    lv_obj_set_style_border_width(ui_BundleViewerSettingsOverlay, 0, LV_PART_MAIN);
+    lv_obj_add_event_cb(ui_BundleViewerSettingsOverlay, [](lv_event_t *e)
+                        {
+        auto self = static_cast<DataBundleSelectionGui*>(lv_event_get_user_data(e));
+        self->hideBundleViewerSettings(); }, LV_EVENT_CLICKED, this);
+
+    ui_BundleViewerSettingsPanel = lv_obj_create(ui_BundleViewerSettingsOverlay);
+    lv_obj_set_size(ui_BundleViewerSettingsPanel, 220, 128);
+    lv_obj_align(ui_BundleViewerSettingsPanel, LV_ALIGN_TOP_RIGHT, -54, 60);
+    lv_obj_clear_flag(ui_BundleViewerSettingsPanel, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(ui_BundleViewerSettingsPanel, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_style_radius(ui_BundleViewerSettingsPanel, 8, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(ui_BundleViewerSettingsPanel, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(ui_BundleViewerSettingsPanel, 255, LV_PART_MAIN);
+    lv_obj_set_style_border_width(ui_BundleViewerSettingsPanel, 2, LV_PART_MAIN);
+    lv_obj_set_style_border_color(ui_BundleViewerSettingsPanel, lv_color_hex(0x009BFF), LV_PART_MAIN);
+
+    lv_obj_t *title = lv_label_create(ui_BundleViewerSettingsPanel);
+    lv_label_set_text(title, "Graph Settings");
+    lv_obj_align(title, LV_ALIGN_TOP_LEFT, 10, 8);
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_14, LV_PART_MAIN);
+
+    lv_obj_t *primaryLabel = lv_label_create(ui_BundleViewerSettingsPanel);
+    lv_label_set_text(primaryLabel, "Primary line");
+    lv_obj_align(primaryLabel, LV_ALIGN_TOP_LEFT, 10, 42);
+    lv_obj_set_style_text_font(primaryLabel, &lv_font_montserrat_12, LV_PART_MAIN);
+
+    ui_BundleViewerPrimarySwatch = lv_btn_create(ui_BundleViewerSettingsPanel);
+    lv_obj_set_size(ui_BundleViewerPrimarySwatch, 56, 22);
+    lv_obj_align(ui_BundleViewerPrimarySwatch, LV_ALIGN_TOP_RIGHT, -12, 38);
+    lv_obj_set_style_radius(ui_BundleViewerPrimarySwatch, 4, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(ui_BundleViewerPrimarySwatch, lv_color_hex(getBundleViewerColor(bundleViewerPrimaryColorIndex)), LV_PART_MAIN);
+    lv_obj_add_event_cb(ui_BundleViewerPrimarySwatch, [](lv_event_t *e)
+                        {
+        auto self = static_cast<DataBundleSelectionGui*>(lv_event_get_user_data(e));
+        self->cycleBundleViewerSeriesColor(true); }, LV_EVENT_CLICKED, this);
+
+    lv_obj_t *secondaryLabel = lv_label_create(ui_BundleViewerSettingsPanel);
+    lv_label_set_text(secondaryLabel, "Secondary line");
+    lv_obj_align(secondaryLabel, LV_ALIGN_TOP_LEFT, 10, 76);
+    lv_obj_set_style_text_font(secondaryLabel, &lv_font_montserrat_12, LV_PART_MAIN);
+
+    ui_BundleViewerSecondarySwatch = lv_btn_create(ui_BundleViewerSettingsPanel);
+    lv_obj_set_size(ui_BundleViewerSecondarySwatch, 56, 22);
+    lv_obj_align(ui_BundleViewerSecondarySwatch, LV_ALIGN_TOP_RIGHT, -12, 72);
+    lv_obj_set_style_radius(ui_BundleViewerSecondarySwatch, 4, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(ui_BundleViewerSecondarySwatch, lv_color_hex(getBundleViewerColor(bundleViewerSecondaryColorIndex)), LV_PART_MAIN);
+    lv_obj_add_event_cb(ui_BundleViewerSecondarySwatch, [](lv_event_t *e)
+                        {
+        auto self = static_cast<DataBundleSelectionGui*>(lv_event_get_user_data(e));
+        self->cycleBundleViewerSeriesColor(false); }, LV_EVENT_CLICKED, this);
+
+    lv_obj_move_foreground(ui_BundleViewerSettingsOverlay);
+}
+
+void DataBundleSelectionGui::hideBundleViewerSettings()
+{
+    if (ui_BundleViewerSettingsOverlay)
+    {
+        lv_obj_del(ui_BundleViewerSettingsOverlay);
+        ui_BundleViewerSettingsOverlay = nullptr;
+        ui_BundleViewerSettingsPanel = nullptr;
+        ui_BundleViewerPrimarySwatch = nullptr;
+        ui_BundleViewerSecondarySwatch = nullptr;
+    }
+}
+
+void DataBundleSelectionGui::cycleBundleViewerSeriesColor(bool primary)
+{
+    const uint8_t colorCount = sizeof(BUNDLE_VIEWER_COLORS) / sizeof(BUNDLE_VIEWER_COLORS[0]);
+    if (primary)
+    {
+        bundleViewerPrimaryColorIndex = static_cast<uint8_t>((bundleViewerPrimaryColorIndex + 1) % colorCount);
+        if (ui_BundleViewerPrimarySwatch)
+        {
+            lv_obj_set_style_bg_color(ui_BundleViewerPrimarySwatch, lv_color_hex(getBundleViewerColor(bundleViewerPrimaryColorIndex)), LV_PART_MAIN);
+        }
+    }
+    else
+    {
+        bundleViewerSecondaryColorIndex = static_cast<uint8_t>((bundleViewerSecondaryColorIndex + 1) % colorCount);
+        if (ui_BundleViewerSecondarySwatch)
+        {
+            lv_obj_set_style_bg_color(ui_BundleViewerSecondarySwatch, lv_color_hex(getBundleViewerColor(bundleViewerSecondaryColorIndex)), LV_PART_MAIN);
+        }
+    }
+
+    updateBundleViewerGraph();
+}
+
+void DataBundleSelectionGui::closeBundleViewer()
+{
+    hideBundleViewerSettings();
+    if (ui_BundleViewerOverlay)
+    {
+        lv_obj_del(ui_BundleViewerOverlay);
+        ui_BundleViewerOverlay = nullptr;
+        ui_BundleViewerPanel = nullptr;
+        ui_BundleViewerGraphTab = nullptr;
+        ui_BundleViewerCsvTab = nullptr;
+        ui_BundleViewerSettingsButton = nullptr;
+        ui_BundleViewerChart = nullptr;
+        ui_BundleViewerTable = nullptr;
+        ui_BundleViewerScalingLabel = nullptr;
+        ui_BundleViewerCursorLabel = nullptr;
+        ui_BundleViewerPrimaryLegend = nullptr;
+        ui_BundleViewerSecondaryLegend = nullptr;
+        ui_BundleViewerPrimaryLegendLabel = nullptr;
+        ui_BundleViewerSecondaryLegendLabel = nullptr;
+        ui_BundleViewerCursorXLine = nullptr;
+        ui_BundleViewerCursorYLine = nullptr;
+        ui_BundleViewerPrimarySeries = nullptr;
+        ui_BundleViewerSecondarySeries = nullptr;
+    }
+}
+
 void DataBundleSelectionGui::handleClearButtonClick(unsigned char index)
 {
     // Add buttons
@@ -753,6 +1730,7 @@ void DataBundleSelectionGui::hideDataBundles()
     if (!initialized || !ui_DataBundlesWidget)
         return;
 
+    closeBundleViewer();
     lv_obj_add_flag(ui_DataBundlesWidget, LV_OBJ_FLAG_HIDDEN);
 }
 
