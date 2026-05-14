@@ -82,6 +82,10 @@ public:
 
     DefaultCommunicationMode getDefaultCommunicationMode() const override { return navigationPolicy.getDefaultCommunicationMode(); }
     void setDefaultCommunicationMode(DefaultCommunicationMode mode) override { navigationPolicy.setDefaultCommunicationMode(mode); }
+    ThemeMode getThemeMode() const override { return navigationPolicy.getThemeMode(); }
+    void setThemeMode(ThemeMode mode) override { navigationPolicy.setThemeMode(mode); }
+    LanguageMode getLanguageMode() const override { return navigationPolicy.getLanguageMode(); }
+    void setLanguageMode(LanguageMode mode) override { navigationPolicy.setLanguageMode(mode); }
     std::string getCatalogApplication() const override { return deviceCatalog.getApplication(); }
     std::string getCatalogVersion() const override { return deviceCatalog.getVersion(); }
 

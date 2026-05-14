@@ -10,6 +10,8 @@ private:
     bool databankReturnToVisualization = false;                           ///< Remembers whether Databank was opened from live visualization
     DefaultCommunicationMode defaultCommunicationMode = DefaultCommunicationMode::ASK; ///< User preference from Settings
     DefaultCommunicationMode sessionCommunicationMode = DefaultCommunicationMode::ASK; ///< Runtime communication mode used by current visualization flow
+    ThemeMode themeMode = ThemeMode::LIGHT;                               ///< User theme preference placeholder.
+    LanguageMode languageMode = LanguageMode::ENGLISH;                    ///< User language preference placeholder.
     bool selectionBackToMainMenu = false;                                 ///< Whether Selection should back-navigate directly to Main Menu
 
 public:
@@ -32,6 +34,10 @@ public:
     DefaultCommunicationMode getDefaultCommunicationMode() const { return defaultCommunicationMode; }
     void setDefaultCommunicationMode(DefaultCommunicationMode mode) { defaultCommunicationMode = mode; }
     DefaultCommunicationMode getSessionCommunicationMode() const { return sessionCommunicationMode; }
+    ThemeMode getThemeMode() const { return themeMode; }
+    void setThemeMode(ThemeMode mode) { themeMode = mode; }
+    LanguageMode getLanguageMode() const { return languageMode; }
+    void setLanguageMode(LanguageMode mode) { languageMode = mode; }
 };
 
 #endif // GUI_NAVIGATION_POLICY_HPP

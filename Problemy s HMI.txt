@@ -77,5 +77,5 @@ FileTransfer screen, který spustí FileTransfer service a ověří zda je HMI p
 
 Odkaz na file transfer screen dát do Main Menu, vlevo nahoru. Ikona: cable connect.
 
-
+Jakmile bude tato funkce dostupná, tak tlačítko "Export" u DataBundle otevře tento screen a pokusí se udělat connect na PC.
   

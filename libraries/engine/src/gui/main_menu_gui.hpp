@@ -21,6 +21,7 @@ private:
 
     void build();
     lv_obj_t *createMenuButton(lv_obj_t *parent, const char *text, lv_align_t align, lv_coord_t x_ofs, lv_coord_t y_ofs);
+    lv_obj_t *createIconButton(lv_obj_t *parent, const void *imageSource, lv_align_t align, lv_coord_t x_ofs, lv_coord_t y_ofs);
 
 public:
     explicit MainMenuGui(GuiRouter &router);

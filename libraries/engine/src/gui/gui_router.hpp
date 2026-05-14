@@ -40,6 +40,10 @@ public:
     virtual bool shouldSelectionBackGoToMainMenu() const = 0;
     virtual DefaultCommunicationMode getDefaultCommunicationMode() const = 0;
     virtual void setDefaultCommunicationMode(DefaultCommunicationMode mode) = 0;
+    virtual ThemeMode getThemeMode() const = 0;
+    virtual void setThemeMode(ThemeMode mode) = 0;
+    virtual LanguageMode getLanguageMode() const = 0;
+    virtual void setLanguageMode(LanguageMode mode) = 0;
     virtual std::string getCatalogApplication() const = 0;
     virtual std::string getCatalogVersion() const = 0;
 };

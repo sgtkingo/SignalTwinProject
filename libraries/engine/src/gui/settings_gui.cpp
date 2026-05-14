@@ -2,6 +2,13 @@
 
 #include <string>
 
+namespace
+{
+const char *DEFAULT_COMMUNICATION_OPTIONS = "Ask every time\nCable (UART)\nWireless Auto\nWireless Manual";
+const char *THEME_OPTIONS = "White\nDark";
+const char *LANGUAGE_OPTIONS = "EN - English\nCZ - Cestina\nDE - Deutsch";
+}
+
 SettingsGui::SettingsGui(GuiRouter &router) : router(router)
 {
 }
@@ -12,29 +19,145 @@ lv_obj_t *SettingsGui::createSingleLineInput(lv_obj_t *parent, lv_coord_t x, lv_
     lv_obj_set_size(input, width, 34);
     lv_obj_set_pos(input, x, y);
     lv_textarea_set_one_line(input, true);
+    attachKeyboard(input);
     return input;
 }
 
-void SettingsGui::addModeButton(const char *text, DefaultCommunicationMode mode, lv_coord_t y)
+void SettingsGui::buildKeyboard()
 {
-    lv_obj_t *button = lv_btn_create(ui_Widget);
-    lv_obj_set_size(button, 230, 38);
-    lv_obj_set_pos(button, 26, y);
-    lv_obj_add_event_cb(button, [](lv_event_t *e) {
-        if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
+    ui_Keyboard = lv_keyboard_create(lv_scr_act());
+    lv_obj_set_size(ui_Keyboard, 760, 132);
+    lv_obj_align(ui_Keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
+    lv_obj_add_flag(ui_Keyboard, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_event_cb(ui_Keyboard, [](lv_event_t *e) {
+        lv_event_code_t code = lv_event_get_code(e);
+        if (code != LV_EVENT_READY && code != LV_EVENT_CANCEL) {
             return;
         }
 
         auto *self = static_cast<SettingsGui *>(lv_event_get_user_data(e));
-        auto mode = static_cast<DefaultCommunicationMode>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_current_target(e))));
-        self->router.setDefaultCommunicationMode(mode);
-        self->showSettings();
+        self->hideKeyboard();
     }, LV_EVENT_ALL, this);
-    lv_obj_set_user_data(button, reinterpret_cast<void *>(static_cast<intptr_t>(mode)));
+}
 
-    lv_obj_t *label = lv_label_create(button);
-    lv_label_set_text(label, text);
-    lv_obj_center(label);
+void SettingsGui::attachKeyboard(lv_obj_t *textarea)
+{
+    if (!textarea) {
+        return;
+    }
+
+    lv_obj_add_event_cb(textarea, [](lv_event_t *e) {
+        auto *self = static_cast<SettingsGui *>(lv_event_get_user_data(e));
+        self->handleKeyboardEvent(e);
+    }, LV_EVENT_ALL, this);
+}
+
+void SettingsGui::handleKeyboardEvent(lv_event_t *e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t *textarea = lv_event_get_target(e);
+
+    if (code == LV_EVENT_FOCUSED || code == LV_EVENT_CLICKED) {
+        showKeyboardFor(textarea);
+        return;
+    }
+
+    if (code == LV_EVENT_READY || code == LV_EVENT_CANCEL) {
+        hideKeyboard();
+    }
+}
+
+void SettingsGui::showKeyboardFor(lv_obj_t *textarea)
+{
+    if (!ui_Keyboard || !textarea) {
+        return;
+    }
+
+    lv_keyboard_set_textarea(ui_Keyboard, textarea);
+    lv_obj_clear_flag(ui_Keyboard, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_foreground(ui_Keyboard);
+}
+
+void SettingsGui::hideKeyboard()
+{
+    if (!ui_Keyboard) {
+        return;
+    }
+
+    lv_keyboard_set_textarea(ui_Keyboard, nullptr);
+    lv_obj_add_flag(ui_Keyboard, LV_OBJ_FLAG_HIDDEN);
+}
+
+uint16_t SettingsGui::getModeDropdownIndex(DefaultCommunicationMode mode)
+{
+    switch (mode) {
+    case DefaultCommunicationMode::CABLE:
+        return 1;
+    case DefaultCommunicationMode::WIRELESS_AUTO:
+        return 2;
+    case DefaultCommunicationMode::WIRELESS_MANUAL:
+        return 3;
+    case DefaultCommunicationMode::ASK:
+    default:
+        return 0;
+    }
+}
+
+DefaultCommunicationMode SettingsGui::getModeFromDropdownIndex(uint16_t index)
+{
+    switch (index) {
+    case 1:
+        return DefaultCommunicationMode::CABLE;
+    case 2:
+        return DefaultCommunicationMode::WIRELESS_AUTO;
+    case 3:
+        return DefaultCommunicationMode::WIRELESS_MANUAL;
+    case 0:
+    default:
+        return DefaultCommunicationMode::ASK;
+    }
+}
+
+uint16_t SettingsGui::getThemeDropdownIndex(ThemeMode mode)
+{
+    switch (mode) {
+    case ThemeMode::DARK:
+        return 1;
+    case ThemeMode::LIGHT:
+    default:
+        return 0;
+    }
+}
+
+ThemeMode SettingsGui::getThemeFromDropdownIndex(uint16_t index)
+{
+    return index == 1 ? ThemeMode::DARK : ThemeMode::LIGHT;
+}
+
+uint16_t SettingsGui::getLanguageDropdownIndex(LanguageMode mode)
+{
+    switch (mode) {
+    case LanguageMode::CZECH:
+        return 1;
+    case LanguageMode::GERMAN:
+        return 2;
+    case LanguageMode::ENGLISH:
+    default:
+        return 0;
+    }
+}
+
+LanguageMode SettingsGui::getLanguageFromDropdownIndex(uint16_t index)
+{
+    switch (index) {
+    case 1:
+        return LanguageMode::CZECH;
+    case 2:
+        return LanguageMode::GERMAN;
+    case 0:
+    default:
+        return LanguageMode::ENGLISH;
+    }
 }
 
 void SettingsGui::build()
@@ -49,19 +172,92 @@ void SettingsGui::build()
     lv_obj_set_style_border_color(ui_Widget, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(ui_Widget, 2, LV_PART_MAIN | LV_STATE_DEFAULT);
 
+    buildKeyboard();
+
     lv_obj_t *title = lv_label_create(ui_Widget);
     lv_label_set_text(title, "Settings");
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 16);
     lv_obj_set_style_text_font(title, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_CurrentMode = lv_label_create(ui_Widget);
-    lv_obj_set_pos(ui_CurrentMode, 26, 62);
+    lv_obj_t *communicationPanel = lv_obj_create(ui_Widget);
+    lv_obj_set_size(communicationPanel, 260, 132);
+    lv_obj_set_pos(communicationPanel, 26, 82);
+
+    ui_CurrentMode = lv_label_create(communicationPanel);
+    lv_label_set_text(ui_CurrentMode, "Default Communication");
+    lv_obj_set_pos(ui_CurrentMode, 12, 12);
     lv_obj_set_style_text_font(ui_CurrentMode, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    addModeButton("Ask every time", DefaultCommunicationMode::ASK, 104);
-    addModeButton("Cable (UART)", DefaultCommunicationMode::CABLE, 148);
-    addModeButton("Wireless Auto", DefaultCommunicationMode::WIRELESS_AUTO, 192);
-    addModeButton("Wireless Manual", DefaultCommunicationMode::WIRELESS_MANUAL, 236);
+    ui_CommDropdown = lv_dropdown_create(communicationPanel);
+    lv_dropdown_set_options(ui_CommDropdown, DEFAULT_COMMUNICATION_OPTIONS);
+    lv_obj_set_size(ui_CommDropdown, 220, 38);
+    lv_obj_set_pos(ui_CommDropdown, 12, 58);
+    lv_obj_add_event_cb(ui_CommDropdown, [](lv_event_t *e) {
+        auto *self = static_cast<SettingsGui *>(lv_event_get_user_data(e));
+        if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
+            self->hideKeyboard();
+            return;
+        }
+
+        if (lv_event_get_code(e) != LV_EVENT_VALUE_CHANGED) {
+            return;
+        }
+
+        self->router.setDefaultCommunicationMode(SettingsGui::getModeFromDropdownIndex(lv_dropdown_get_selected(self->ui_CommDropdown)));
+    }, LV_EVENT_ALL, this);
+
+    lv_obj_t *appearancePanel = lv_obj_create(ui_Widget);
+    lv_obj_set_size(appearancePanel, 260, 132);
+    lv_obj_set_pos(appearancePanel, 26, 226);
+
+    lv_obj_t *appearanceTitle = lv_label_create(appearancePanel);
+    lv_label_set_text(appearanceTitle, "Appearance");
+    lv_obj_set_pos(appearanceTitle, 12, 12);
+    lv_obj_set_style_text_font(appearanceTitle, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    lv_obj_t *themeLabel = lv_label_create(appearancePanel);
+    lv_label_set_text(themeLabel, "Theme");
+    lv_obj_set_pos(themeLabel, 12, 54);
+
+    ui_ThemeDropdown = lv_dropdown_create(appearancePanel);
+    lv_dropdown_set_options(ui_ThemeDropdown, THEME_OPTIONS);
+    lv_obj_set_size(ui_ThemeDropdown, 126, 34);
+    lv_obj_set_pos(ui_ThemeDropdown, 114, 44);
+    lv_obj_add_event_cb(ui_ThemeDropdown, [](lv_event_t *e) {
+        auto *self = static_cast<SettingsGui *>(lv_event_get_user_data(e));
+        if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
+            self->hideKeyboard();
+            return;
+        }
+
+        if (lv_event_get_code(e) != LV_EVENT_VALUE_CHANGED) {
+            return;
+        }
+
+        self->router.setThemeMode(SettingsGui::getThemeFromDropdownIndex(lv_dropdown_get_selected(self->ui_ThemeDropdown)));
+    }, LV_EVENT_ALL, this);
+
+    lv_obj_t *languageLabel = lv_label_create(appearancePanel);
+    lv_label_set_text(languageLabel, "Language");
+    lv_obj_set_pos(languageLabel, 12, 94);
+
+    ui_LanguageDropdown = lv_dropdown_create(appearancePanel);
+    lv_dropdown_set_options(ui_LanguageDropdown, LANGUAGE_OPTIONS);
+    lv_obj_set_size(ui_LanguageDropdown, 126, 34);
+    lv_obj_set_pos(ui_LanguageDropdown, 114, 84);
+    lv_obj_add_event_cb(ui_LanguageDropdown, [](lv_event_t *e) {
+        auto *self = static_cast<SettingsGui *>(lv_event_get_user_data(e));
+        if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
+            self->hideKeyboard();
+            return;
+        }
+
+        if (lv_event_get_code(e) != LV_EVENT_VALUE_CHANGED) {
+            return;
+        }
+
+        self->router.setLanguageMode(SettingsGui::getLanguageFromDropdownIndex(lv_dropdown_get_selected(self->ui_LanguageDropdown)));
+    }, LV_EVENT_ALL, this);
 
     lv_obj_t *metadataPanel = lv_obj_create(ui_Widget);
     lv_obj_set_size(metadataPanel, 420, 238);
@@ -108,6 +304,7 @@ void SettingsGui::build()
             return;
         }
 
+        self->hideKeyboard();
         lv_label_set_text(self->ui_MetadataStatus, "Catalog metadata saved.");
         self->refresh();
     }, LV_EVENT_ALL, this);
@@ -137,28 +334,17 @@ void SettingsGui::build()
 
 void SettingsGui::refresh()
 {
-    if (!ui_CurrentMode) {
+    if (!ui_CommDropdown) {
         return;
     }
 
-    const char *modeText = "Ask every time";
-    switch (router.getDefaultCommunicationMode()) {
-    case DefaultCommunicationMode::CABLE:
-        modeText = "Cable (UART)";
-        break;
-    case DefaultCommunicationMode::WIRELESS_AUTO:
-        modeText = "Wireless Auto";
-        break;
-    case DefaultCommunicationMode::WIRELESS_MANUAL:
-        modeText = "Wireless Manual";
-        break;
-    default:
-        break;
+    lv_dropdown_set_selected(ui_CommDropdown, getModeDropdownIndex(router.getDefaultCommunicationMode()));
+    if (ui_ThemeDropdown) {
+        lv_dropdown_set_selected(ui_ThemeDropdown, getThemeDropdownIndex(router.getThemeMode()));
     }
-
-    std::string label = "Default communication: ";
-    label += modeText;
-    lv_label_set_text(ui_CurrentMode, label.c_str());
+    if (ui_LanguageDropdown) {
+        lv_dropdown_set_selected(ui_LanguageDropdown, getLanguageDropdownIndex(router.getLanguageMode()));
+    }
 
     if (ui_ApplicationInput) {
         lv_textarea_set_text(ui_ApplicationInput, router.getCatalogApplication().c_str());
@@ -185,6 +371,7 @@ void SettingsGui::showSettings()
     }
 
     refresh();
+    hideKeyboard();
     lv_obj_clear_flag(ui_Widget, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -194,5 +381,6 @@ void SettingsGui::hideSettings()
         return;
     }
 
+    hideKeyboard();
     lv_obj_add_flag(ui_Widget, LV_OBJ_FLAG_HIDDEN);
 }

@@ -9,4 +9,17 @@ enum class DefaultCommunicationMode
     WIRELESS_MANUAL
 };
 
+enum class ThemeMode
+{
+    LIGHT = 0,
+    DARK
+};
+
+enum class LanguageMode
+{
+    ENGLISH = 0,
+    CZECH,
+    GERMAN
+};
+
 #endif // APP_SETTINGS_HPP
