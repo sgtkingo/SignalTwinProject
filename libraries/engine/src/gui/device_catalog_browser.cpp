@@ -199,7 +199,7 @@ DeviceCatalogBrowserLayout DeviceCatalogBrowserLayoutFactory::createLayout(const
         lv_obj_set_pos(layout.detailPanel, 230, 50);
     } else {
         lv_obj_set_size(layout.detailPanel, 410, 320);
-        lv_obj_align(layout.detailPanel, LV_ALIGN_TOP_LEFT, -15, 18);
+        lv_obj_set_pos(layout.detailPanel, 270, 50);
     }
 
     layout.detailLabel = lv_label_create(layout.detailPanel);
