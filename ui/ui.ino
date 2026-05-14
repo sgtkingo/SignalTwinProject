@@ -173,6 +173,7 @@ void setup ()
     delay( 200 );
 
     lv_init();
+    lv_extra_init();
 
     delay( 100 );
     touch_init();

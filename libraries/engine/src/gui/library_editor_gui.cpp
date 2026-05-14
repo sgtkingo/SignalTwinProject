@@ -1,6 +1,10 @@
 #include "library_editor_gui.hpp"
 
 #include "../helpers.hpp"
+#include "../managers/storage_manager.hpp"
+#include "./images/ui_images.h"
+#include "lvgl_storage_fs.hpp"
+#include "expt.hpp"
 
 #include <algorithm>
 #include <cstdint>
@@ -32,6 +36,45 @@ std::vector<std::string> splitAndTrimCsv(const std::string &csv)
 
 const char *ROLE_OPTIONS = "Sensor\nActuator\nHybrid";
 const char *PARAM_DTYPE_OPTIONS = "int\nfloat\ndouble\nstring";
+const char *DEVICE_PICTURE_DIR = "/data/pics";
+
+bool isStoragePicturePath(const std::string &path)
+{
+    return path.rfind(DEVICE_PICTURE_DIR, 0) == 0;
+}
+
+bool isGifPath(const std::string &path)
+{
+    return path.size() >= 4 && path.substr(path.size() - 4) == ".gif";
+}
+
+std::string findDevicePicturePath(const std::string &deviceUid, const std::string &storedPicture = "")
+{
+    if (!storageManager().isAvailable() && !storageManager().init()) {
+        debugLogMessage("LibraryEditorGui::findDevicePicturePath", "storage unavailable", "uid=%s", deviceUid.c_str());
+        return "";
+    }
+    storageManager().ensureDirectory(DEVICE_PICTURE_DIR);
+
+    if (!storedPicture.empty() && isStoragePicturePath(storedPicture) && storageManager().exists(storedPicture)) {
+        return storedPicture;
+    }
+
+    const std::string uid = trimCopy(deviceUid);
+    if (uid.empty()) {
+        return "";
+    }
+
+    const char *extensions[] = {".png", ".jpg", ".gif"};
+    for (const char *extension : extensions) {
+        const std::string candidate = std::string(DEVICE_PICTURE_DIR) + "/" + uid + extension;
+        if (storageManager().exists(candidate)) {
+            return candidate;
+        }
+    }
+
+    return "";
+}
 }
 
 LibraryEditorGui::LibraryEditorGui(DeviceCatalog &deviceCatalog, DeviceBrowserState &browserState, GuiRouter &router)
@@ -51,6 +94,8 @@ void LibraryEditorGui::build()
     lv_obj_set_style_border_color(ui_Widget, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(ui_Widget, 2, LV_PART_MAIN | LV_STATE_DEFAULT);
 
+    buildKeyboard();
+
     ui_Title = lv_label_create(ui_Widget);
     lv_obj_align(ui_Title, LV_ALIGN_TOP_MID, 0, 14);
     lv_obj_set_style_text_font(ui_Title, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -63,41 +108,71 @@ void LibraryEditorGui::build()
     createFieldLabel(ui_Form, "UID", 10, 8);
     ui_UidInput = createSingleLineInput(ui_Form, 110, 0, 210);
 
-    createFieldLabel(ui_Form, "Type", 10, 46);
-    ui_TypeInput = createSingleLineInput(ui_Form, 110, 38, 210);
+    createFieldLabel(ui_Form, "Type", 10, 50);
+    ui_TypeInput = createSingleLineInput(ui_Form, 110, 48, 210);
 
-    createFieldLabel(ui_Form, "Role", 10, 84);
+    createFieldLabel(ui_Form, "Role", 10, 92);
     ui_RoleDropdown = lv_dropdown_create(ui_Form);
     lv_dropdown_set_options(ui_RoleDropdown, ROLE_OPTIONS);
     lv_obj_set_size(ui_RoleDropdown, 210, 34);
-    lv_obj_set_pos(ui_RoleDropdown, 110, 76);
+    lv_obj_set_pos(ui_RoleDropdown, 110, 94);
 
-    createFieldLabel(ui_Form, "Allowed Pins", 10, 122);
-    ui_AllowedPinsInput = createSingleLineInput(ui_Form, 110, 114, 210);
+    createFieldLabel(ui_Form, "Allowed Pins", 10, 144);
+    ui_AllowedPinsInput = createSingleLineInput(ui_Form, 110, 144, 210);
 
-    createFieldLabel(ui_Form, "Pins", 10, 160);
-    ui_DevicePinsInput = createSingleLineInput(ui_Form, 110, 152, 210);
+    createFieldLabel(ui_Form, "Pins", 10, 196);
+    ui_DevicePinsInput = createSingleLineInput(ui_Form, 110, 196, 210);
 
-    createFieldLabel(ui_Form, "Default Pins", 10, 198);
-    ui_DefaultPinsInput = createSingleLineInput(ui_Form, 110, 190, 210);
+    createFieldLabel(ui_Form, "Default Pins", 10, 240);
+    ui_DefaultPinsInput = createSingleLineInput(ui_Form, 110, 240, 210);
 
-    createFieldLabel(ui_Form, "Picture", 10, 236);
-    ui_PictureInput = createSingleLineInput(ui_Form, 110, 228, 210);
+    lv_obj_add_event_cb(ui_UidInput, [](lv_event_t *e) {
+        lv_event_code_t code = lv_event_get_code(e);
+        if (code != LV_EVENT_READY && code != LV_EVENT_DEFOCUSED) {
+            return;
+        }
+
+        auto *self = static_cast<LibraryEditorGui *>(lv_event_get_user_data(e));
+        self->updatePicturePreview(lv_textarea_get_text(self->ui_UidInput));
+    }, LV_EVENT_ALL, this);
 
     createFieldLabel(ui_Form, "Description", 340, 8);
     ui_DescriptionInput = lv_textarea_create(ui_Form);
-    lv_obj_set_size(ui_DescriptionInput, 360, 98);
+    lv_obj_set_size(ui_DescriptionInput, 340, 98);
     lv_obj_set_pos(ui_DescriptionInput, 340, 0);
     lv_textarea_set_one_line(ui_DescriptionInput, false);
+    attachKeyboard(ui_DescriptionInput);
+
+    ui_PicturePreview = lv_obj_create(ui_Form);
+    lv_obj_set_size(ui_PicturePreview, 160, 160);
+    lv_obj_set_pos(ui_PicturePreview, 340, 122);
+    lv_obj_clear_flag(ui_PicturePreview, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_radius(ui_PicturePreview, 8, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui_PicturePreview, lv_color_hex(0xF5F5F5), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_PicturePreview, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_color(ui_PicturePreview, lv_color_hex(0xD8D8D8), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_width(ui_PicturePreview, 1, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ui_PictureImage = lv_img_create(ui_PicturePreview);
+    lv_img_set_src(ui_PictureImage, &ui_img_visensors_png);
+    lv_img_set_zoom(ui_PictureImage, 256);
+    lv_obj_align(ui_PictureImage, LV_ALIGN_TOP_MID, 0, 18);
+
+    ui_PictureFallbackLabel = lv_label_create(ui_PicturePreview);
+    lv_label_set_text(ui_PictureFallbackLabel, "Picture not provided");
+    lv_obj_set_style_text_color(ui_PictureFallbackLabel, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_width(ui_PictureFallbackLabel, 146);
+    lv_obj_set_style_text_align(ui_PictureFallbackLabel, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_align(ui_PictureFallbackLabel, LV_ALIGN_BOTTOM_MID, 0, -16);
 
     ui_ValuesPanel = lv_obj_create(ui_Form);
-    lv_obj_set_size(ui_ValuesPanel, 330, 170);
-    lv_obj_set_pos(ui_ValuesPanel, 10, 312);
+    lv_obj_set_size(ui_ValuesPanel, 330, 250);
+    lv_obj_set_pos(ui_ValuesPanel, 2, 360);
     buildParamListSection(ui_ValuesPanel, "Values", &ui_ValuesList, false);
 
     ui_ConfigsPanel = lv_obj_create(ui_Form);
-    lv_obj_set_size(ui_ConfigsPanel, 330, 170);
-    lv_obj_set_pos(ui_ConfigsPanel, 370, 312);
+    lv_obj_set_size(ui_ConfigsPanel, 330, 250);
+    lv_obj_set_pos(ui_ConfigsPanel, 342, 360);
     buildParamListSection(ui_ConfigsPanel, "Configs", &ui_ConfigsList, true);
 
     buildParamEditor();
@@ -153,8 +228,119 @@ void LibraryEditorGui::buildParamListSection(lv_obj_t *panel, const char *title,
     lv_obj_center(addLabel);
 
     *listOut = lv_list_create(panel);
-    lv_obj_set_size(*listOut, 310, 124);
-    lv_obj_set_pos(*listOut, 8, 36);
+    lv_obj_set_size(*listOut, 240, 160);
+    lv_obj_set_pos(*listOut, 2, 42);
+}
+
+void LibraryEditorGui::buildKeyboard()
+{
+    ui_Keyboard = lv_keyboard_create(lv_scr_act());
+    lv_obj_set_size(ui_Keyboard, 760, 132);
+    lv_obj_align(ui_Keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
+    lv_obj_add_flag(ui_Keyboard, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_event_cb(ui_Keyboard, [](lv_event_t *e) {
+        lv_event_code_t code = lv_event_get_code(e);
+        if (code != LV_EVENT_READY && code != LV_EVENT_CANCEL) {
+            return;
+        }
+
+        auto *self = static_cast<LibraryEditorGui *>(lv_event_get_user_data(e));
+        self->hideKeyboard();
+    }, LV_EVENT_ALL, this);
+}
+
+void LibraryEditorGui::attachKeyboard(lv_obj_t *textarea)
+{
+    if (!textarea) {
+        return;
+    }
+
+    lv_obj_add_event_cb(textarea, [](lv_event_t *e) {
+        auto *self = static_cast<LibraryEditorGui *>(lv_event_get_user_data(e));
+        self->handleKeyboardEvent(e);
+    }, LV_EVENT_ALL, this);
+}
+
+void LibraryEditorGui::handleKeyboardEvent(lv_event_t *e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t *textarea = lv_event_get_target(e);
+
+    if (code == LV_EVENT_FOCUSED || code == LV_EVENT_CLICKED) {
+        showKeyboardFor(textarea);
+        return;
+    }
+
+    if (code == LV_EVENT_READY || code == LV_EVENT_CANCEL) {
+        hideKeyboard();
+    }
+}
+
+void LibraryEditorGui::showKeyboardFor(lv_obj_t *textarea)
+{
+    if (!ui_Keyboard || !textarea) {
+        return;
+    }
+
+    lv_keyboard_set_textarea(ui_Keyboard, textarea);
+    lv_obj_clear_flag(ui_Keyboard, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_foreground(ui_Keyboard);
+}
+
+void LibraryEditorGui::hideKeyboard()
+{
+    if (!ui_Keyboard) {
+        return;
+    }
+
+    lv_keyboard_set_textarea(ui_Keyboard, nullptr);
+    lv_obj_add_flag(ui_Keyboard, LV_OBJ_FLAG_HIDDEN);
+}
+
+void LibraryEditorGui::updatePicturePreview(const std::string &deviceUid, const std::string &storedPicture)
+{
+    if (!ui_PictureImage || !ui_PictureFallbackLabel) {
+        return;
+    }
+
+    pictureSourcePath.clear();
+    const std::string picturePath = findDevicePicturePath(deviceUid, storedPicture);
+    const bool hasPicture = !picturePath.empty();
+
+#if LV_USE_GIF
+    if (ui_PictureGif) {
+        lv_obj_del(ui_PictureGif);
+        ui_PictureGif = nullptr;
+    }
+#endif
+
+    if (!hasPicture) {
+        lv_img_set_src(ui_PictureImage, &ui_img_visensors_png);
+        lv_img_set_zoom(ui_PictureImage, 256);
+        lv_obj_align(ui_PictureImage, LV_ALIGN_TOP_MID, 0, 18);
+        lv_obj_clear_flag(ui_PictureImage, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ui_PictureFallbackLabel, LV_OBJ_FLAG_HIDDEN);
+        return;
+    }
+
+    ensureLvglStorageFsRegistered();
+    pictureSourcePath = "S:" + picturePath;
+    lv_obj_add_flag(ui_PictureFallbackLabel, LV_OBJ_FLAG_HIDDEN);
+
+#if LV_USE_GIF
+    if (isGifPath(picturePath)) {
+        lv_obj_add_flag(ui_PictureImage, LV_OBJ_FLAG_HIDDEN);
+        ui_PictureGif = lv_gif_create(ui_PicturePreview);
+        lv_gif_set_src(ui_PictureGif, pictureSourcePath.c_str());
+        lv_obj_center(ui_PictureGif);
+        return;
+    }
+#endif
+
+    lv_img_set_src(ui_PictureImage, pictureSourcePath.c_str());
+    lv_img_set_zoom(ui_PictureImage, 256);
+    lv_obj_clear_flag(ui_PictureImage, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_center(ui_PictureImage);
 }
 
 void LibraryEditorGui::buildParamEditor()
@@ -167,7 +353,7 @@ void LibraryEditorGui::buildParamEditor()
     lv_obj_add_flag(ui_ParamEditorOverlay, LV_OBJ_FLAG_HIDDEN);
 
     ui_ParamEditorPanel = lv_obj_create(ui_ParamEditorOverlay);
-    lv_obj_set_size(ui_ParamEditorPanel, 440, 300);
+    lv_obj_set_size(ui_ParamEditorPanel, 500, 320);
     lv_obj_center(ui_ParamEditorPanel);
 
     ui_ParamEditorTitle = lv_label_create(ui_ParamEditorPanel);
@@ -212,6 +398,7 @@ void LibraryEditorGui::buildParamEditor()
     }, LV_EVENT_ALL, this);
     lv_obj_t *cancelLabel = lv_label_create(cancel);
     lv_label_set_text(cancelLabel, "Cancel");
+    lv_obj_set_style_bg_color(cancel, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_center(cancelLabel);
 
     lv_obj_t *remove = lv_btn_create(ui_ParamEditorPanel);
@@ -234,6 +421,7 @@ void LibraryEditorGui::buildParamEditor()
     }, LV_EVENT_ALL, this);
     lv_obj_t *removeLabel = lv_label_create(remove);
     lv_label_set_text(removeLabel, "Remove");
+    lv_obj_set_style_bg_color(remove, lv_color_hex(0xFF0000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_center(removeLabel);
 
     lv_obj_t *save = lv_btn_create(ui_ParamEditorPanel);
@@ -271,6 +459,7 @@ lv_obj_t *LibraryEditorGui::createSingleLineInput(lv_obj_t *parent, lv_coord_t x
     lv_obj_set_size(input, width, 34);
     lv_obj_set_pos(input, x, y);
     lv_textarea_set_one_line(input, true);
+    attachKeyboard(input);
     return input;
 }
 
@@ -453,6 +642,7 @@ void LibraryEditorGui::showParamEditor(bool configSection, int index)
 void LibraryEditorGui::hideParamEditor()
 {
     editingParamIndex = -1;
+    hideKeyboard();
     lv_obj_add_flag(ui_ParamEditorOverlay, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -649,8 +839,8 @@ void LibraryEditorGui::refresh()
     const std::string defaultPinsText = formatDefaultPinsMap(draft->defaultPins);
     lv_textarea_set_text(ui_DevicePinsInput, pinsText.c_str());
     lv_textarea_set_text(ui_DefaultPinsInput, defaultPinsText.c_str());
-    lv_textarea_set_text(ui_PictureInput, draft->picture.c_str());
     lv_textarea_set_text(ui_DescriptionInput, draft->description.c_str());
+    updatePicturePreview(draft->uid, draft->picture);
 
     valueDraftParams = draft->values;
     configDraftParams = draft->configs;
@@ -668,7 +858,7 @@ void LibraryEditorGui::saveDraft()
     draft.uid = trimCopy(lv_textarea_get_text(ui_UidInput));
     draft.type = trimCopy(lv_textarea_get_text(ui_TypeInput));
     draft.description = trimCopy(lv_textarea_get_text(ui_DescriptionInput));
-    draft.picture = trimCopy(lv_textarea_get_text(ui_PictureInput));
+    draft.picture = findDevicePicturePath(draft.uid);
     if (draft.picture.empty()) {
         draft.picture = "placeholder:device";
     }
@@ -713,6 +903,7 @@ void LibraryEditorGui::showEditor()
 
     refresh();
     hideParamEditor();
+    hideKeyboard();
     lv_obj_clear_flag(ui_Widget, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -723,5 +914,6 @@ void LibraryEditorGui::hideEditor()
     }
 
     hideParamEditor();
+    hideKeyboard();
     lv_obj_add_flag(ui_Widget, LV_OBJ_FLAG_HIDDEN);
 }

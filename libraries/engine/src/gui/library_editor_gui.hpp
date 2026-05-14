@@ -29,7 +29,10 @@ private:
     lv_obj_t *ui_AllowedPinsInput = nullptr;
     lv_obj_t *ui_DevicePinsInput = nullptr;
     lv_obj_t *ui_DefaultPinsInput = nullptr;
-    lv_obj_t *ui_PictureInput = nullptr;
+    lv_obj_t *ui_PicturePreview = nullptr;
+    lv_obj_t *ui_PictureImage = nullptr;
+    lv_obj_t *ui_PictureGif = nullptr;
+    lv_obj_t *ui_PictureFallbackLabel = nullptr;
     lv_obj_t *ui_DescriptionInput = nullptr;
     lv_obj_t *ui_ValuesPanel = nullptr;
     lv_obj_t *ui_ValuesList = nullptr;
@@ -46,14 +49,22 @@ private:
     lv_obj_t *ui_ParamMaxInput = nullptr;
     lv_obj_t *ui_ParamStepInput = nullptr;
     lv_obj_t *ui_ParamOptionsInput = nullptr;
+    lv_obj_t *ui_Keyboard = nullptr;
 
     std::vector<DeviceParamSchema> valueDraftParams;
     std::vector<DeviceParamSchema> configDraftParams;
+    std::string pictureSourcePath;
 
     void build();
     void refresh();
     void saveDraft();
     void ensureDraftLoaded();
+    void buildKeyboard();
+    void attachKeyboard(lv_obj_t *textarea);
+    void handleKeyboardEvent(lv_event_t *e);
+    void showKeyboardFor(lv_obj_t *textarea);
+    void hideKeyboard();
+    void updatePicturePreview(const std::string &deviceUid, const std::string &storedPicture = "");
     void buildParamListSection(lv_obj_t *panel, const char *title, lv_obj_t **listOut, bool configSection);
     void buildParamEditor();
     void populateParamList(lv_obj_t *list, const std::vector<DeviceParamSchema> &params, bool configSection);

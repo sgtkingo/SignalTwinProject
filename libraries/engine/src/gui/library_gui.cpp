@@ -93,6 +93,12 @@ void LibraryGui::build()
     ui_Detail = layout.detailPanel;
     ui_DetailLabel = layout.detailLabel;
 
+    lv_obj_set_size(ui_DeviceList, 300, 285);
+    lv_obj_set_pos(ui_DeviceList, 10, 50);
+    lv_obj_set_size(ui_Detail, 430, 320);
+    lv_obj_set_pos(ui_Detail, 320, 50);
+    lv_obj_set_width(ui_DetailLabel, 410);
+
     lv_obj_t *back = DeviceCatalogBrowserLayoutFactory::createFooterButton(ui_Widget, "Back", LV_ALIGN_BOTTOM_LEFT, 16, -14);
     lv_obj_set_size(back, 90, 36);
     lv_obj_add_event_cb(back, [](lv_event_t *e) {
