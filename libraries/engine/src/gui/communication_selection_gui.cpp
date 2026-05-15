@@ -1,6 +1,7 @@
 #include "communication_selection_gui.hpp"
 
 #include "../helpers.hpp"
+#include "./images/ui_images.h"
 #include "expt.hpp"
 
 #ifndef LV_SYMBOL_SETTINGS
@@ -68,6 +69,21 @@ void CommunicationSelectionGui::createWirelessManualButton(lv_coord_t x, lv_coor
     lv_label_set_text(label, LV_SYMBOL_SETTINGS);
     lv_obj_center(label);
     lv_obj_set_style_text_font(label, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
+}
+
+void CommunicationSelectionGui::createModeIcon(const void *imageSource, lv_coord_t centerX, lv_coord_t y, uint16_t zoom)
+{
+    lv_obj_t *holder = lv_obj_create(ui_Widget);
+    lv_obj_remove_style_all(holder);
+    lv_obj_set_size(holder, 92, 92);
+    lv_obj_set_pos(holder, centerX - 46, y);
+    lv_obj_clear_flag(holder, LV_OBJ_FLAG_CLICKABLE);
+
+    lv_obj_t *image = lv_img_create(holder);
+    lv_img_set_src(image, imageSource);
+    lv_img_set_zoom(image, zoom);
+    lv_obj_center(image);
+    lv_obj_clear_flag(image, LV_OBJ_FLAG_CLICKABLE);
 }
 
 uint32_t CommunicationSelectionGui::showLoading(const char *message)
@@ -155,6 +171,22 @@ void CommunicationSelectionGui::handleModeSelection(DefaultCommunicationMode mod
     router.completeCommunicationSelection(mode);
 }
 
+void CommunicationSelectionGui::applyDefaultCommunicationMode()
+{
+    if (!initialized || !ui_Widget) {
+        return;
+    }
+
+    const DefaultCommunicationMode mode = router.consumeCommunicationAutoStartMode();
+    if (mode == DefaultCommunicationMode::ASK) {
+        return;
+    }
+
+    lv_timer_handler();
+    lv_refr_now(nullptr);
+    handleModeSelection(mode);
+}
+
 void CommunicationSelectionGui::init(void)
 {
     if (initialized) {
@@ -192,6 +224,8 @@ void CommunicationSelectionGui::constructCommunicationSelection(void)
     createOptionButton("Cable (UART)", 70, 130, DefaultCommunicationMode::CABLE);
     createOptionButton("Wireless Auto", 395, 130, DefaultCommunicationMode::WIRELESS_AUTO, false);
     createWirelessManualButton(625, 130);
+    createModeIcon(&ui_img_cable_png, 180, 226, 150);
+    createModeIcon(&ui_img_bluetooth_png, 539, 232, 150);
 
     lv_obj_t *back = lv_btn_create(ui_Widget);
     lv_obj_set_size(back, 90, 36);

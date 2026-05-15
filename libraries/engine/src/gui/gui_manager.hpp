@@ -87,6 +87,7 @@ public:
     bool shouldSelectionBackGoToMainMenu() const override { return navigationPolicy.shouldSelectionBackGoToMainMenu(); }
 
     DefaultCommunicationMode getDefaultCommunicationMode() const override { return navigationPolicy.getDefaultCommunicationMode(); }
+    DefaultCommunicationMode consumeCommunicationAutoStartMode() override { return navigationPolicy.consumeCommunicationAutoStartMode(); }
     void setDefaultCommunicationMode(DefaultCommunicationMode mode) override { navigationPolicy.setDefaultCommunicationMode(mode); }
     ThemeMode getThemeMode() const override { return navigationPolicy.getThemeMode(); }
     void setThemeMode(ThemeMode mode) override { navigationPolicy.setThemeMode(mode); }

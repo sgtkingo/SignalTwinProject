@@ -10,6 +10,7 @@ private:
     bool databankReturnToVisualization = false;                           ///< Remembers whether Databank was opened from live visualization
     DefaultCommunicationMode defaultCommunicationMode = DefaultCommunicationMode::ASK; ///< User preference from Settings
     DefaultCommunicationMode sessionCommunicationMode = DefaultCommunicationMode::ASK; ///< Runtime communication mode used by current visualization flow
+    bool communicationAutoStartPending = false;                            ///< Whether Communication screen should start the configured mode once.
     ThemeMode themeMode = ThemeMode::LIGHT;                               ///< User theme preference placeholder.
     LanguageMode languageMode = LanguageMode::ENGLISH;                    ///< User language preference placeholder.
     bool selectionBackToMainMenu = false;                                 ///< Whether Selection should back-navigate directly to Main Menu
@@ -34,6 +35,7 @@ public:
     DefaultCommunicationMode getDefaultCommunicationMode() const { return defaultCommunicationMode; }
     void setDefaultCommunicationMode(DefaultCommunicationMode mode) { defaultCommunicationMode = mode; }
     DefaultCommunicationMode getSessionCommunicationMode() const { return sessionCommunicationMode; }
+    DefaultCommunicationMode consumeCommunicationAutoStartMode();
     ThemeMode getThemeMode() const { return themeMode; }
     void setThemeMode(ThemeMode mode) { themeMode = mode; }
     LanguageMode getLanguageMode() const { return languageMode; }

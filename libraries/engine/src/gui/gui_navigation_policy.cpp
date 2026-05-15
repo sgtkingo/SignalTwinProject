@@ -27,6 +27,8 @@ GuiState GuiNavigationPolicy::resolveBackTarget(GuiState fromState) const
 
 GuiState GuiNavigationPolicy::beginVisualizationFlow()
 {
+    sessionCommunicationMode = DefaultCommunicationMode::ASK;
+    communicationAutoStartPending = defaultCommunicationMode != DefaultCommunicationMode::ASK;
     selectionBackToMainMenu = false;
     return GuiState::COMMUNICATION_SELECTION;
 }
@@ -34,8 +36,19 @@ GuiState GuiNavigationPolicy::beginVisualizationFlow()
 GuiState GuiNavigationPolicy::finishCommunicationSelection(DefaultCommunicationMode mode)
 {
     sessionCommunicationMode = mode;
+    communicationAutoStartPending = false;
     selectionBackToMainMenu = false;
     return GuiState::SELECTION;
+}
+
+DefaultCommunicationMode GuiNavigationPolicy::consumeCommunicationAutoStartMode()
+{
+    if (!communicationAutoStartPending) {
+        return DefaultCommunicationMode::ASK;
+    }
+
+    communicationAutoStartPending = false;
+    return defaultCommunicationMode;
 }
 
 GuiState GuiNavigationPolicy::openDatabankFromMainMenu()

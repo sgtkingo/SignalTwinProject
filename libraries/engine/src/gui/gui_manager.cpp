@@ -279,6 +279,9 @@ void GuiManager::switchContent(GuiState targetState)
 void GuiManager::openVisualizationFlow()
 {
     navigateTo(navigationPolicy.beginVisualizationFlow());
+    if (currentState == GuiState::COMMUNICATION_SELECTION) {
+        screenRegistry.getCommunicationSelectionGui().applyDefaultCommunicationMode();
+    }
 }
 
 void GuiManager::completeCommunicationSelection(DefaultCommunicationMode mode)

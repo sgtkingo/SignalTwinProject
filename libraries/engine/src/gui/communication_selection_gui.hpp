@@ -20,6 +20,7 @@ private:
 
     void createOptionButton(const char *text, lv_coord_t x, lv_coord_t y, DefaultCommunicationMode mode, bool supported = true);
     void createWirelessManualButton(lv_coord_t x, lv_coord_t y);
+    void createModeIcon(const void *imageSource, lv_coord_t centerX, lv_coord_t y, uint16_t zoom);
     void handleModeSelection(DefaultCommunicationMode mode);
     uint32_t showLoading(const char *message);
     void finishLoading(uint32_t startTick, bool keepVisible);
@@ -30,6 +31,7 @@ public:
     ~CommunicationSelectionGui() = default;
 
     void init(void);
+    void applyDefaultCommunicationMode();
     void constructCommunicationSelection(void);
     void hideCommunicationSelection(void);
 };
