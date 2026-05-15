@@ -47,7 +47,6 @@ void FileTransferGui::build()
         }
 
         auto *self = static_cast<FileTransferGui *>(lv_event_get_user_data(e));
-        self->handleStop();
         self->router.showMainMenu();
     }, LV_EVENT_ALL, this);
 
@@ -96,7 +95,7 @@ void FileTransferGui::build()
     }, LV_EVENT_ALL, this);
 
     ui_StartButtonLabel = lv_label_create(ui_StartButton);
-    lv_label_set_text(ui_StartButtonLabel, "Start Transfer");
+    lv_label_set_text(ui_StartButtonLabel, "OK");
     lv_obj_center(ui_StartButtonLabel);
     lv_obj_set_style_text_font(ui_StartButtonLabel, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
 
@@ -104,7 +103,7 @@ void FileTransferGui::build()
     lv_obj_set_size(ui_StopButton, 190, 46);
     lv_obj_align(ui_StopButton, LV_ALIGN_BOTTOM_MID, 110, -38);
     lv_obj_set_style_radius(ui_StopButton, 7, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_StopButton, lv_color_hex(0x8A8F98), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui_StopButton, lv_color_hex(0xD96464), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_add_event_cb(ui_StopButton, [](lv_event_t *e) {
         if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
             return;
@@ -115,11 +114,11 @@ void FileTransferGui::build()
     }, LV_EVENT_ALL, this);
 
     ui_StopButtonLabel = lv_label_create(ui_StopButton);
-    lv_label_set_text(ui_StopButtonLabel, "Stop Transfer");
+    lv_label_set_text(ui_StopButtonLabel, "End session");
     lv_obj_center(ui_StopButtonLabel);
     lv_obj_set_style_text_font(ui_StopButtonLabel, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    refresh();
+    renderPreparation();
 }
 
 void FileTransferGui::refresh()
@@ -129,7 +128,6 @@ void FileTransferGui::refresh()
     }
 
     const FileTransferState state = transferService.getState();
-    const bool sdPresent = transferService.isSdCardPresent();
     const lv_color_t darkText = lv_color_hex(0x1C1F23);
     const lv_color_t whiteText = lv_color_hex(0xFFFFFF);
     const lv_color_t mutedText = lv_color_hex(0x5F6B7A);
@@ -137,6 +135,17 @@ void FileTransferGui::refresh()
     lv_obj_set_style_text_color(ui_SubCaption, darkText, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(ui_StatusLabel, darkText, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_StatusLabel, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    if (!transferSessionAttempted && !transferService.isTransferModeActive()) {
+        renderPreparation();
+        return;
+    }
+
+    const bool sdPresent = transferService.isSdCardPresent();
+
+    lv_obj_add_state(ui_BackButton, LV_STATE_DISABLED);
+    lv_obj_add_state(ui_StartButton, LV_STATE_DISABLED);
+    lv_obj_clear_state(ui_StopButton, LV_STATE_DISABLED);
 
     if (!sdPresent && state != FileTransferState::READY) {
         lv_obj_set_style_bg_color(ui_Widget, lv_color_hex(0xD5D8DC), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -146,7 +155,6 @@ void FileTransferGui::refresh()
         lv_label_set_text(ui_StateSymbol, LV_SYMBOL_CLOSE);
         lv_obj_set_style_text_color(ui_StateSymbol, mutedText, LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_obj_add_state(ui_StartButton, LV_STATE_DISABLED);
-        lv_obj_add_state(ui_StopButton, LV_STATE_DISABLED);
         return;
     }
 
@@ -166,7 +174,6 @@ void FileTransferGui::refresh()
         lv_obj_set_style_text_color(ui_StateSymbol, whiteText, LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_obj_set_style_text_font(ui_StatusLabel, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_obj_add_state(ui_StartButton, LV_STATE_DISABLED);
-        lv_obj_clear_state(ui_StopButton, LV_STATE_DISABLED);
         return;
     }
 
@@ -179,8 +186,7 @@ void FileTransferGui::refresh()
         lv_obj_set_style_text_color(ui_SubCaption, whiteText, LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_obj_set_style_text_color(ui_StatusLabel, whiteText, LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_obj_set_style_text_color(ui_StateSymbol, whiteText, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_clear_state(ui_StartButton, LV_STATE_DISABLED);
-        lv_obj_add_state(ui_StopButton, LV_STATE_DISABLED);
+        lv_obj_add_state(ui_StartButton, LV_STATE_DISABLED);
         return;
     }
 
@@ -190,6 +196,30 @@ void FileTransferGui::refresh()
     lv_label_set_text(ui_HintLabel, "Transfer Mode will lock SD card access from HMI while PC transfer is active.");
     lv_label_set_text(ui_StateSymbol, LV_SYMBOL_REFRESH);
     lv_obj_set_style_text_color(ui_StateSymbol, darkText, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_add_state(ui_StartButton, LV_STATE_DISABLED);
+    lv_obj_clear_state(ui_StopButton, LV_STATE_DISABLED);
+}
+
+void FileTransferGui::renderPreparation()
+{
+    if (!ui_Widget || !ui_SubCaption || !ui_StatusLabel || !ui_HintLabel || !ui_StartButton || !ui_StopButton || !ui_BackButton) {
+        return;
+    }
+
+    lv_obj_set_style_bg_color(ui_Widget, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_label_set_text(ui_SubCaption, "Prepare transfer");
+    lv_label_set_text(ui_StatusLabel,
+                      "Transfer Mode exposes the SD card to your computer. It temporarily blocks HMI storage operations, requires an SD card, and expects the USB cable to be connected to the PC.");
+    lv_label_set_text(ui_HintLabel, "Press OK to start the transfer session.");
+    lv_label_set_text(ui_StateSymbol, LV_SYMBOL_USB);
+    lv_obj_set_style_text_color(ui_SubCaption, lv_color_hex(0x1C1F23), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ui_StatusLabel, lv_color_hex(0x1C1F23), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ui_HintLabel, lv_color_hex(0x5F6B7A), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ui_StateSymbol, lv_color_hex(0x2B5DAA), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_StatusLabel, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_label_set_text(ui_StartButtonLabel, "OK");
+    lv_label_set_text(ui_StopButtonLabel, "End session");
+    lv_obj_clear_state(ui_BackButton, LV_STATE_DISABLED);
     lv_obj_clear_state(ui_StartButton, LV_STATE_DISABLED);
     lv_obj_add_state(ui_StopButton, LV_STATE_DISABLED);
 }
@@ -207,19 +237,23 @@ void FileTransferGui::renderConnecting()
     lv_label_set_text(ui_StateSymbol, LV_SYMBOL_REFRESH);
     lv_obj_set_style_text_color(ui_StateSymbol, lv_color_hex(0x1C1F23), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_add_state(ui_StartButton, LV_STATE_DISABLED);
-    lv_obj_add_state(ui_StopButton, LV_STATE_DISABLED);
+    lv_obj_clear_state(ui_StopButton, LV_STATE_DISABLED);
+    lv_obj_add_state(ui_BackButton, LV_STATE_DISABLED);
 }
 
 void FileTransferGui::handleStart()
 {
+    transferSessionAttempted = true;
+    renderConnecting();
+    lv_obj_invalidate(ui_Widget);
+    lv_timer_handler();
+    lv_refr_now(nullptr);
+
     if (!transferService.isSdCardPresent()) {
         refresh();
         return;
     }
 
-    renderConnecting();
-    lv_obj_invalidate(ui_Widget);
-    lv_timer_handler();
     transferService.start();
     refresh();
 }
@@ -227,7 +261,8 @@ void FileTransferGui::handleStart()
 void FileTransferGui::handleStop()
 {
     transferService.stop();
-    refresh();
+    transferSessionAttempted = false;
+    router.showMainMenu();
 }
 
 void FileTransferGui::init()
@@ -247,10 +282,9 @@ void FileTransferGui::showFileTransfer()
     }
 
     lv_obj_clear_flag(ui_Widget, LV_OBJ_FLAG_HIDDEN);
-    if (!transferService.isSdCardPresent()) {
-        refresh();
-    } else if (transferService.getState() != FileTransferState::READY) {
-        handleStart();
+    if (!transferService.isTransferModeActive()) {
+        transferSessionAttempted = false;
+        renderPreparation();
     } else {
         refresh();
     }
@@ -262,7 +296,5 @@ void FileTransferGui::hideFileTransfer()
         return;
     }
 
-    transferService.stop();
-    refresh();
     lv_obj_add_flag(ui_Widget, LV_OBJ_FLAG_HIDDEN);
 }

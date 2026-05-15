@@ -19,11 +19,13 @@ class FileTransferService
 private:
     FileTransferState state = FileTransferState::IDLE;
     std::string lastMessage = "Transfer mode is idle.";
+    bool transferModeActive = false;
 
 public:
     bool isSdCardPresent() const;
     FileTransferState getState() const { return state; }
     const std::string &getLastMessage() const { return lastMessage; }
+    bool isTransferModeActive() const { return transferModeActive; }
 
     bool start();
     bool stop();

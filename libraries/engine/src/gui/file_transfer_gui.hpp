@@ -11,6 +11,7 @@ private:
     GuiRouter &router;
     FileTransferService transferService;
     bool initialized = false;
+    bool transferSessionAttempted = false;
 
     lv_obj_t *ui_Widget = nullptr;
     lv_obj_t *ui_Title = nullptr;
@@ -27,6 +28,7 @@ private:
 
     void build();
     void refresh();
+    void renderPreparation();
     void renderConnecting();
     void handleStart();
     void handleStop();

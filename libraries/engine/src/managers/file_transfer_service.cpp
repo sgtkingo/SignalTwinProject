@@ -50,10 +50,15 @@ bool FileTransferService::start()
 
         state = FileTransferState::CONNECTING;
         lastMessage = "Connecting...";
+        transferModeActive = true;
+        setLoggerUsbCdcAvailable(false);
 
 #if STORAGE_OPTION == STORAGE_OPTION_SD
         if (!storageManager().enterTransferLock())
         {
+            setLoggerUsbCdcAvailable(true);
+            flushBufferedLogMessages();
+            transferModeActive = false;
             state = FileTransferState::ERROR;
             lastMessage = "Failed to lock SD card for transfer.";
             debugLogMessage(DEBUG_VERBOSE_ERRORS, "FileTransferService::start", "transfer lock failed", "%s", lastMessage.c_str());
@@ -73,6 +78,9 @@ bool FileTransferService::start()
 #if STORAGE_OPTION == STORAGE_OPTION_SD
         storageManager().exitTransferLock();
 #endif
+        setLoggerUsbCdcAvailable(true);
+        flushBufferedLogMessages();
+        transferModeActive = false;
         return false;
 #endif
     }
@@ -84,6 +92,9 @@ bool FileTransferService::start()
 #if STORAGE_OPTION == STORAGE_OPTION_SD
         storageManager().exitTransferLock();
 #endif
+        setLoggerUsbCdcAvailable(true);
+        flushBufferedLogMessages();
+        transferModeActive = false;
         return false;
     }
     catch (const std::exception &ex)
@@ -94,6 +105,9 @@ bool FileTransferService::start()
 #if STORAGE_OPTION == STORAGE_OPTION_SD
         storageManager().exitTransferLock();
 #endif
+        setLoggerUsbCdcAvailable(true);
+        flushBufferedLogMessages();
+        transferModeActive = false;
         return false;
     }
     catch (...)
@@ -104,6 +118,9 @@ bool FileTransferService::start()
 #if STORAGE_OPTION == STORAGE_OPTION_SD
         storageManager().exitTransferLock();
 #endif
+        setLoggerUsbCdcAvailable(true);
+        flushBufferedLogMessages();
+        transferModeActive = false;
         return false;
     }
 }
@@ -112,9 +129,20 @@ bool FileTransferService::stop()
 {
     try
     {
+        if (!transferModeActive)
+        {
+            setLoggerUsbCdcAvailable(true);
+            state = FileTransferState::IDLE;
+            lastMessage = "Transfer mode is idle.";
+            return true;
+        }
+
 #if STORAGE_OPTION == STORAGE_OPTION_SD
         if (!storageManager().exitTransferLock())
         {
+            setLoggerUsbCdcAvailable(true);
+            flushBufferedLogMessages();
+            transferModeActive = false;
             state = FileTransferState::ERROR;
             lastMessage = "Failed to remount SD card after transfer.";
             debugLogMessage(DEBUG_VERBOSE_ERRORS, "FileTransferService::stop", "transfer unlock failed", "%s", lastMessage.c_str());
@@ -122,6 +150,9 @@ bool FileTransferService::stop()
         }
 #endif
 
+        setLoggerUsbCdcAvailable(true);
+        flushBufferedLogMessages();
+        transferModeActive = false;
         state = FileTransferState::IDLE;
         lastMessage = "Transfer mode stopped. SD card is mounted back in HMI.";
         debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "FileTransferService::stop", "transfer unlock", "%s", lastMessage.c_str());
@@ -130,6 +161,9 @@ bool FileTransferService::stop()
     catch (const Exception &ex)
     {
         ex.print();
+        setLoggerUsbCdcAvailable(true);
+        flushBufferedLogMessages();
+        transferModeActive = false;
         state = FileTransferState::ERROR;
         lastMessage = ex.flush(0);
         return false;
@@ -137,6 +171,9 @@ bool FileTransferService::stop()
     catch (const std::exception &ex)
     {
         Exception("FileTransferService::stop", ex.what()).print();
+        setLoggerUsbCdcAvailable(true);
+        flushBufferedLogMessages();
+        transferModeActive = false;
         state = FileTransferState::ERROR;
         lastMessage = ex.what();
         return false;
@@ -144,6 +181,9 @@ bool FileTransferService::stop()
     catch (...)
     {
         Exception("FileTransferService::stop", "Unknown exception").print();
+        setLoggerUsbCdcAvailable(true);
+        flushBufferedLogMessages();
+        transferModeActive = false;
         state = FileTransferState::ERROR;
         lastMessage = "Unknown exception while stopping transfer.";
         return false;
