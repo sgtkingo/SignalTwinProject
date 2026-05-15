@@ -42,6 +42,8 @@
 // #define TOUCH_MAP_Y2 4000//4000
 
 int touch_last_x = 0, touch_last_y = 0;
+int touch_second_x = 0, touch_second_y = 0;
+int touch_point_count = 0;
 
 #if defined(TOUCH_FT6X36)
 #include <Wire.h>
@@ -83,19 +85,23 @@ void touch(TPoint p, TEvent e)
   {
   case TEvent::Tap:
     Serial.println("Tap");
+    touch_point_count = 1;
     touch_touched_flag = true;
     touch_released_flag = true;
     break;
   case TEvent::DragStart:
     Serial.println("DragStart");
+    touch_point_count = 1;
     touch_touched_flag = true;
     break;
   case TEvent::DragMove:
     Serial.println("DragMove");
+    touch_point_count = 1;
     touch_touched_flag = true;
     break;
   case TEvent::DragEnd:
     Serial.println("DragEnd");
+    touch_point_count = 0;
     touch_released_flag = true;
     break;
   default:
@@ -159,23 +165,34 @@ bool touch_touched()
   ts.read();
   if (ts.isTouched)
   {
+    touch_point_count = ts.touches;
 #if defined(TOUCH_SWAP_XY)
     touch_last_x = map(ts.points[0].y, TOUCH_MAP_X1, TOUCH_MAP_X2, 0, lcd.width() - 1);
     touch_last_y = map(ts.points[0].x, TOUCH_MAP_Y1, TOUCH_MAP_Y2, 0, lcd.height() - 1);
+    if (ts.touches > 1) {
+      touch_second_x = map(ts.points[1].y, TOUCH_MAP_X1, TOUCH_MAP_X2, 0, lcd.width() - 1);
+      touch_second_y = map(ts.points[1].x, TOUCH_MAP_Y1, TOUCH_MAP_Y2, 0, lcd.height() - 1);
+    }
 #else
     touch_last_x = map(ts.points[0].x, TOUCH_MAP_X1, TOUCH_MAP_X2, 0, lcd.width() - 1);
     touch_last_y = map(ts.points[0].y, TOUCH_MAP_Y1, TOUCH_MAP_Y2, 0, lcd.height() - 1);
+    if (ts.touches > 1) {
+      touch_second_x = map(ts.points[1].x, TOUCH_MAP_X1, TOUCH_MAP_X2, 0, lcd.width() - 1);
+      touch_second_y = map(ts.points[1].y, TOUCH_MAP_Y1, TOUCH_MAP_Y2, 0, lcd.height() - 1);
+    }
 #endif
     return true;
   }
   else
   {
+    touch_point_count = 0;
     return false;
   }
 
 #elif defined(TOUCH_XPT2046)
   if (ts.touched())
   {
+    touch_point_count = 1;
     TS_Point p = ts.getPoint();
 #if defined(TOUCH_SWAP_XY)
     touch_last_x = map(p.y, TOUCH_MAP_X1, TOUCH_MAP_X2, 0, lcd.width() - 1);
@@ -188,6 +205,7 @@ bool touch_touched()
   }
   else
   {
+    touch_point_count = 0;
     return false;
   }
 

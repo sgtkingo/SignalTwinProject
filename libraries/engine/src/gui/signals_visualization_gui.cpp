@@ -14,7 +14,14 @@
 #include "./images/ui_images.h"
 #include "expt.hpp"
 #include <cstdint>
+#include <cstdio>
 #include <utility>
+
+extern int touch_point_count __attribute__((weak));
+extern int touch_last_x __attribute__((weak));
+extern int touch_last_y __attribute__((weak));
+extern int touch_second_x __attribute__((weak));
+extern int touch_second_y __attribute__((weak));
 
 namespace
 {
@@ -601,9 +608,18 @@ void SignalsVisualizationGui::hideEmptyChartState()
 
 std::pair<lv_coord_t, lv_coord_t> SignalsVisualizationGui::computeChartRange(const lv_coord_t *history)
 {
+    return computeChartRange(history, HISTORY_CAP);
+}
+
+std::pair<lv_coord_t, lv_coord_t> SignalsVisualizationGui::computeChartRange(const lv_coord_t *history, int sampleCount)
+{
+    if (!history || sampleCount <= 0) {
+        return std::pair<lv_coord_t, lv_coord_t>(-1, 1);
+    }
+
     lv_coord_t minValue = history[0];
     lv_coord_t maxValue = history[0];
-    for (int i = 1; i < HISTORY_CAP; ++i) {
+    for (int i = 1; i < sampleCount; ++i) {
         if (history[i] < minValue) {
             minValue = history[i];
         }
@@ -632,7 +648,7 @@ int SignalsVisualizationGui::getMaxChartHistoryOffset(const std::vector<std::str
             continue;
         }
 
-        const int offset = countIt->second > HISTORY_CAP ? countIt->second - HISTORY_CAP : 0;
+        const int offset = countIt->second > chartVisibleSampleCount ? countIt->second - chartVisibleSampleCount : 0;
         if (offset > maxOffset) {
             maxOffset = offset;
         }
@@ -670,17 +686,116 @@ void SignalsVisualizationGui::panChartHistory(int steps)
     updateChart(true);
 }
 
+void SignalsVisualizationGui::adjustChartVisibleSamples(int deltaSamples)
+{
+    if (deltaSamples == 0 || !chartPanel.isReady()) {
+        return;
+    }
+
+    int nextSampleCount = chartVisibleSampleCount + deltaSamples;
+    if (nextSampleCount < CHART_MIN_VISIBLE_SAMPLES) {
+        nextSampleCount = CHART_MIN_VISIBLE_SAMPLES;
+    }
+    if (nextSampleCount > CHART_MAX_VISIBLE_SAMPLES) {
+        nextSampleCount = CHART_MAX_VISIBLE_SAMPLES;
+    }
+    nextSampleCount = (nextSampleCount / CHART_SAMPLE_STEP) * CHART_SAMPLE_STEP;
+    if (nextSampleCount < CHART_MIN_VISIBLE_SAMPLES) {
+        nextSampleCount = CHART_MIN_VISIBLE_SAMPLES;
+    }
+
+    if (nextSampleCount == chartVisibleSampleCount) {
+        return;
+    }
+
+    chartVisibleSampleCount = nextSampleCount;
+    chartPanel.setVisibleSampleCount(chartVisibleSampleCount);
+    updateChartSampleLabel();
+
+    const auto chartKeys = getChartableValueKeys();
+    const int maxOffset = getMaxChartHistoryOffset(chartKeys);
+    if (chartHistoryOffset > maxOffset) {
+        chartHistoryOffset = maxOffset;
+    }
+
+    chartDragAccumulatorPx = 0;
+    debugLogMessage(
+        DEBUG_VERBOSE_IMPORTANT,
+        "SignalsVisualizationGui::adjustChartVisibleSamples",
+        "gui chart samples",
+        "visibleSamples=%d maxOffset=%d",
+        chartVisibleSampleCount,
+        maxOffset);
+    updateChart(true);
+}
+
+void SignalsVisualizationGui::updateChartSampleLabel()
+{
+    char label[24];
+    std::snprintf(label, sizeof(label), "Samples %d", chartVisibleSampleCount);
+    chartPanel.setSamplesText(label);
+}
+
+bool SignalsVisualizationGui::handleChartPinchGesture()
+{
+    if (&touch_point_count == nullptr || &touch_last_x == nullptr || &touch_last_y == nullptr ||
+        &touch_second_x == nullptr || &touch_second_y == nullptr || touch_point_count < 2) {
+        chartPinchActive = false;
+        chartPinchLastDistancePx = 0;
+        chartPinchAccumulatorPx = 0;
+        return false;
+    }
+
+    const int dx = touch_last_x - touch_second_x;
+    const int dy = touch_last_y - touch_second_y;
+    const int distancePx = static_cast<int>(std::sqrt(static_cast<double>(dx * dx + dy * dy)));
+    if (!chartPinchActive) {
+        chartPinchActive = true;
+        chartPinchLastDistancePx = distancePx;
+        chartPinchAccumulatorPx = 0;
+        chartDragAccumulatorPx = 0;
+        return true;
+    }
+
+    chartPinchAccumulatorPx += chartPinchLastDistancePx - distancePx;
+    chartPinchLastDistancePx = distancePx;
+
+    const int pixelsPerStep = 18;
+    int sampleSteps = 0;
+    while (chartPinchAccumulatorPx >= pixelsPerStep) {
+        ++sampleSteps;
+        chartPinchAccumulatorPx -= pixelsPerStep;
+    }
+    while (chartPinchAccumulatorPx <= -pixelsPerStep) {
+        --sampleSteps;
+        chartPinchAccumulatorPx += pixelsPerStep;
+    }
+
+    if (sampleSteps != 0) {
+        adjustChartVisibleSamples(sampleSteps * CHART_SAMPLE_STEP);
+    }
+
+    return true;
+}
+
 void SignalsVisualizationGui::handleChartDrag(lv_event_t *e)
 {
     const lv_event_code_t code = lv_event_get_code(e);
     if (code == LV_EVENT_PRESSED || code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST)
     {
         chartDragAccumulatorPx = 0;
+        chartPinchLastDistancePx = 0;
+        chartPinchAccumulatorPx = 0;
+        chartPinchActive = false;
         return;
     }
 
     if (code != LV_EVENT_PRESSING)
     {
+        return;
+    }
+
+    if (handleChartPinchGesture()) {
         return;
     }
 
@@ -726,6 +841,9 @@ void SignalsVisualizationGui::finishDeviceNavigation(bool wasRunning, BaseDevice
     currentDevice = nextDevice;
     chartHistoryOffset = 0;
     chartDragAccumulatorPx = 0;
+    chartPinchLastDistancePx = 0;
+    chartPinchAccumulatorPx = 0;
+    chartPinchActive = false;
     if (currentDevice) {
         currentDevice->setRedrawPending(true);
     }
@@ -788,6 +906,7 @@ void SignalsVisualizationGui::updateChart(bool force)
     if (chartKeys.empty())
     {
         chartPanel.setScalingText("");
+        chartPanel.setSamplesText("");
         showEmptyChartState(currentDevice->getRole() == DeviceRole::ACTUATOR
                                 ? "Control-only device"
                                 : "No numeric signal available");
@@ -810,22 +929,23 @@ void SignalsVisualizationGui::updateChart(bool force)
             }
         }
         chartPanel.setScalingText(usesFloatScaling ? "Scaling x100" : "Scaling 1x");
+        updateChartSampleLabel();
 
-        lv_coord_t historyPrimary[HISTORY_CAP];
+        lv_coord_t historyPrimary[CHART_MAX_VISIBLE_SAMPLES];
         if (!buildNumericHistoryForKey(chartKeys[0], historyPrimary, appendSample)) {
             return;
         }
 
-        auto primaryRange = computeChartRange(historyPrimary);
+        auto primaryRange = computeChartRange(historyPrimary, chartVisibleSampleCount);
         lv_coord_t globalMin = primaryRange.first;
         lv_coord_t globalMax = primaryRange.second;
 
         bool haveSecond = false;
-        lv_coord_t historySecondary[HISTORY_CAP];
+        lv_coord_t historySecondary[CHART_MAX_VISIBLE_SAMPLES];
         if (chartKeys.size() > 1) {
             haveSecond = buildNumericHistoryForKey(chartKeys[1], historySecondary, appendSample);
             if (haveSecond) {
-                auto secondaryRange = computeChartRange(historySecondary);
+                auto secondaryRange = computeChartRange(historySecondary, chartVisibleSampleCount);
                 if (secondaryRange.first < globalMin) {
                     globalMin = secondaryRange.first;
                 }
@@ -837,10 +957,10 @@ void SignalsVisualizationGui::updateChart(bool force)
 
         chartPanel.setRange(globalMin, globalMax);
         chartPanel.clearSeries();
-        chartPanel.populatePrimarySeries(historyPrimary);
+        chartPanel.populatePrimarySeries(historyPrimary, chartVisibleSampleCount);
 
         if (haveSecond) {
-            chartPanel.populateSecondarySeries(historySecondary);
+            chartPanel.populateSecondarySeries(historySecondary, chartVisibleSampleCount);
         } else {
             chartPanel.hideSecondarySeries();
         }

@@ -51,6 +51,9 @@ private:
     BaseDevice *currentDevice = nullptr; ///< Currently visualized device
 
     static const int CHART_HISTORY_CAP = HISTORY_CAP * 12;
+    static const int CHART_MIN_VISIBLE_SAMPLES = HISTORY_CAP;
+    static const int CHART_MAX_VISIBLE_SAMPLES = 100;
+    static const int CHART_SAMPLE_STEP = 5;
 
     /// Static buffers for chart data
     std::map<std::string, std::array<lv_coord_t, CHART_HISTORY_CAP>> bufMap;
@@ -63,6 +66,10 @@ private:
     bool showingConfigPanel = false;
     int chartHistoryOffset = 0;
     int chartDragAccumulatorPx = 0;
+    int chartVisibleSampleCount = HISTORY_CAP;
+    int chartPinchLastDistancePx = 0;
+    int chartPinchAccumulatorPx = 0;
+    bool chartPinchActive = false;
 
     void createMainWidget();
     void createTitleLabel();
@@ -189,20 +196,21 @@ private:
             }
         }
 
-        const int maxOffset = count > HISTORY_CAP ? count - HISTORY_CAP : 0;
+        const int visibleSamples = chartVisibleSampleCount;
+        const int maxOffset = count > visibleSamples ? count - visibleSamples : 0;
         if (chartHistoryOffset > maxOffset)
         {
             chartHistoryOffset = maxOffset;
         }
 
-        int start = count - HISTORY_CAP - chartHistoryOffset;
+        int start = count - visibleSamples - chartHistoryOffset;
         if (start < 0)
         {
             start = 0;
         }
 
         // Copy selected window to output array
-        for (int i = 0; i < HISTORY_CAP; ++i)
+        for (int i = 0; i < visibleSamples; ++i)
         {
             try
             {
@@ -262,8 +270,12 @@ private:
     void showEmptyChartState(const char *message);
     void hideEmptyChartState();
     static std::pair<lv_coord_t, lv_coord_t> computeChartRange(const lv_coord_t *history);
+    static std::pair<lv_coord_t, lv_coord_t> computeChartRange(const lv_coord_t *history, int sampleCount);
     int getMaxChartHistoryOffset(const std::vector<std::string> &chartKeys) const;
     void panChartHistory(int steps);
+    void adjustChartVisibleSamples(int deltaSamples);
+    void updateChartSampleLabel();
+    bool handleChartPinchGesture();
     void handleChartDrag(lv_event_t *e);
     bool beginDeviceNavigation(bool requireIdleRecording, bool &wasRunning);
     void finishDeviceNavigation(bool wasRunning, BaseDevice *nextDevice);

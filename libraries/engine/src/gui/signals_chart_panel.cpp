@@ -47,6 +47,14 @@ void SignalsChartPanel::create(lv_obj_t *parent)
     lv_obj_align_to(scalingLabel, chart, LV_ALIGN_OUT_TOP_LEFT, 0, -5);
     lv_obj_set_style_text_color(scalingLabel, lv_color_hex(0xD32F2F), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(scalingLabel, &lv_font_montserrat_10, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    samplesLabel = lv_label_create(parent);
+    lv_label_set_text(samplesLabel, "Samples 10");
+    lv_obj_set_width(samplesLabel, LV_SIZE_CONTENT);
+    lv_obj_set_height(samplesLabel, LV_SIZE_CONTENT);
+    lv_obj_align_to(samplesLabel, scalingLabel, LV_ALIGN_OUT_RIGHT_MID, 14, 0);
+    lv_obj_set_style_text_color(samplesLabel, lv_color_hex(0xD32F2F), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(samplesLabel, &lv_font_montserrat_10, LV_PART_MAIN | LV_STATE_DEFAULT);
 }
 
 void SignalsChartPanel::showEmptyState(const char *message)
@@ -74,7 +82,28 @@ void SignalsChartPanel::setScalingText(const char *text)
 {
     if (scalingLabel) {
         lv_label_set_text(scalingLabel, text ? text : "");
+        if (samplesLabel) {
+            lv_obj_align_to(samplesLabel, scalingLabel, LV_ALIGN_OUT_RIGHT_MID, 14, 0);
+        }
     }
+}
+
+void SignalsChartPanel::setSamplesText(const char *text)
+{
+    if (samplesLabel) {
+        lv_label_set_text(samplesLabel, text ? text : "");
+    }
+}
+
+void SignalsChartPanel::setVisibleSampleCount(int sampleCount)
+{
+    if (!chart || sampleCount <= 0) {
+        return;
+    }
+
+    lv_chart_set_point_count(chart, static_cast<uint16_t>(sampleCount));
+    lv_chart_set_div_line_count(chart, 5, sampleCount > 20 ? 10 : sampleCount);
+    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_X, 5, 0, sampleCount > 20 ? 10 : sampleCount, 1, true, 50);
 }
 
 void SignalsChartPanel::setRange(lv_coord_t minValue, lv_coord_t maxValue)
@@ -97,24 +126,24 @@ void SignalsChartPanel::clearSeries()
     lv_chart_set_all_value(chart, secondarySeries, LV_CHART_POINT_NONE);
 }
 
-void SignalsChartPanel::populatePrimarySeries(const lv_coord_t *history)
+void SignalsChartPanel::populatePrimarySeries(const lv_coord_t *history, int sampleCount)
 {
-    if (!isReady() || !history) {
+    if (!isReady() || !history || sampleCount <= 0) {
         return;
     }
 
-    for (int i = 0; i < HISTORY_CAP; ++i) {
+    for (int i = 0; i < sampleCount; ++i) {
         lv_chart_set_value_by_id(chart, primarySeries, i, history[i]);
     }
 }
 
-void SignalsChartPanel::populateSecondarySeries(const lv_coord_t *history)
+void SignalsChartPanel::populateSecondarySeries(const lv_coord_t *history, int sampleCount)
 {
-    if (!isReady() || !history) {
+    if (!isReady() || !history || sampleCount <= 0) {
         return;
     }
 
-    for (int i = 0; i < HISTORY_CAP; ++i) {
+    for (int i = 0; i < sampleCount; ++i) {
         lv_chart_set_value_by_id(chart, secondarySeries, i, history[i]);
     }
 }
