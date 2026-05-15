@@ -4,6 +4,122 @@
 
 #include <string>
 
+namespace
+{
+const lv_point_t MAIN_MENU_BG_RAY_1[] = {{380, 442}, {235, -12}};
+const lv_point_t MAIN_MENU_BG_RAY_2[] = {{380, 442}, {345, -12}};
+const lv_point_t MAIN_MENU_BG_RAY_3[] = {{380, 442}, {472, -12}};
+const lv_point_t MAIN_MENU_BG_RAY_4[] = {{380, 442}, {625, -12}};
+const lv_point_t MAIN_MENU_BG_RAY_5[] = {{-10, 392}, {246, 156}, {330, -12}};
+const lv_point_t MAIN_MENU_BG_RAY_6[] = {{770, 364}, {530, 154}, {454, -12}};
+const lv_point_t MAIN_MENU_BG_RAY_7[] = {{155, 442}, {282, 248}, {332, 128}};
+const lv_point_t MAIN_MENU_BG_RAY_8[] = {{610, 442}, {504, 250}, {466, 126}};
+
+void addMainMenuBackgroundRay(lv_obj_t *parentWidget,
+                              const lv_point_t points[],
+                              uint16_t pointCount,
+                              uint32_t color,
+                              lv_coord_t width,
+                              lv_opa_t opacity)
+{
+    lv_obj_t *ray = lv_line_create(parentWidget);
+    lv_line_set_points(ray, points, pointCount);
+    lv_obj_set_style_line_color(ray, lv_color_hex(color), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_line_width(ray, width, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_line_opa(ray, opacity, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_line_rounded(ray, true, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_clear_flag(ray, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+}
+
+void addMainMenuBackground(lv_obj_t *parentWidget)
+{
+    addMainMenuBackgroundRay(parentWidget, MAIN_MENU_BG_RAY_1, 2, 0xE0E5EC, 24, 170);
+    addMainMenuBackgroundRay(parentWidget, MAIN_MENU_BG_RAY_2, 2, 0xECEFF4, 18, 220);
+    addMainMenuBackgroundRay(parentWidget, MAIN_MENU_BG_RAY_3, 2, 0xDDE3EA, 20, 170);
+    addMainMenuBackgroundRay(parentWidget, MAIN_MENU_BG_RAY_4, 2, 0xEEF1F5, 26, 220);
+    addMainMenuBackgroundRay(parentWidget, MAIN_MENU_BG_RAY_5, 3, 0xE4E9EF, 16, 200);
+    addMainMenuBackgroundRay(parentWidget, MAIN_MENU_BG_RAY_6, 3, 0xD8DFE8, 14, 180);
+    addMainMenuBackgroundRay(parentWidget, MAIN_MENU_BG_RAY_7, 3, 0xF0F2F6, 20, 230);
+    addMainMenuBackgroundRay(parentWidget, MAIN_MENU_BG_RAY_8, 3, 0xE3E8EF, 18, 190);
+}
+
+void addMtaLogoPanelToWidget(lv_obj_t *parentWidget)
+{
+    lv_obj_t *logoGroup = lv_obj_create(parentWidget);
+    lv_obj_remove_style_all(logoGroup);
+    lv_obj_set_width(logoGroup, 100);
+    lv_obj_set_height(logoGroup, 25);
+    lv_obj_set_align(logoGroup, LV_ALIGN_BOTTOM_MID);
+    lv_obj_clear_flag(logoGroup, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t *logoCornerBottomLeft = lv_obj_create(logoGroup);
+    lv_obj_remove_style_all(logoCornerBottomLeft);
+    lv_obj_set_width(logoCornerBottomLeft, 20);
+    lv_obj_set_height(logoCornerBottomLeft, 10);
+    lv_obj_set_align(logoCornerBottomLeft, LV_ALIGN_BOTTOM_LEFT);
+    lv_obj_clear_flag(logoCornerBottomLeft, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_color(logoCornerBottomLeft, lv_color_hex(0x055DA9), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(logoCornerBottomLeft, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_clip_corner(logoCornerBottomLeft, false, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    lv_obj_t *logoCornerFillBottomLeft = lv_obj_create(logoGroup);
+    lv_obj_remove_style_all(logoCornerFillBottomLeft);
+    lv_obj_set_width(logoCornerFillBottomLeft, 15);
+    lv_obj_set_height(logoCornerFillBottomLeft, 15);
+    lv_obj_set_x(logoCornerFillBottomLeft, -5);
+    lv_obj_set_y(logoCornerFillBottomLeft, 0);
+    lv_obj_set_align(logoCornerFillBottomLeft, LV_ALIGN_BOTTOM_LEFT);
+    lv_obj_clear_flag(logoCornerFillBottomLeft, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_radius(logoCornerFillBottomLeft, 1000, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(logoCornerFillBottomLeft, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(logoCornerFillBottomLeft, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_clip_corner(logoCornerFillBottomLeft, false, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    lv_obj_t *logoCornerBottomRight = lv_obj_create(logoGroup);
+    lv_obj_remove_style_all(logoCornerBottomRight);
+    lv_obj_set_width(logoCornerBottomRight, 20);
+    lv_obj_set_height(logoCornerBottomRight, 10);
+    lv_obj_set_align(logoCornerBottomRight, LV_ALIGN_BOTTOM_RIGHT);
+    lv_obj_clear_flag(logoCornerBottomRight, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_color(logoCornerBottomRight, lv_color_hex(0x055DA9), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(logoCornerBottomRight, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_clip_corner(logoCornerBottomRight, false, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    lv_obj_t *logoCornerFillBottomRight = lv_obj_create(logoGroup);
+    lv_obj_remove_style_all(logoCornerFillBottomRight);
+    lv_obj_set_width(logoCornerFillBottomRight, 15);
+    lv_obj_set_height(logoCornerFillBottomRight, 15);
+    lv_obj_set_x(logoCornerFillBottomRight, 5);
+    lv_obj_set_y(logoCornerFillBottomRight, 0);
+    lv_obj_set_align(logoCornerFillBottomRight, LV_ALIGN_BOTTOM_RIGHT);
+    lv_obj_clear_flag(logoCornerFillBottomRight, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_radius(logoCornerFillBottomRight, 1000, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(logoCornerFillBottomRight, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(logoCornerFillBottomRight, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_clip_corner(logoCornerFillBottomRight, false, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    lv_obj_t *logoOutlay = lv_obj_create(logoGroup);
+    lv_obj_remove_style_all(logoOutlay);
+    lv_obj_set_width(logoOutlay, 80);
+    lv_obj_set_height(logoOutlay, 25);
+    lv_obj_set_align(logoOutlay, LV_ALIGN_CENTER);
+    lv_obj_clear_flag(logoOutlay, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_radius(logoOutlay, 1000, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(logoOutlay, lv_color_hex(0x055DA9), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(logoOutlay, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_clip_corner(logoOutlay, false, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    lv_obj_t *logoImage = lv_img_create(logoGroup);
+    lv_img_set_src(logoImage, &ui_img_mtalogo_png);
+    lv_obj_set_width(logoImage, LV_SIZE_CONTENT);
+    lv_obj_set_height(logoImage, LV_SIZE_CONTENT);
+    lv_obj_set_align(logoImage, LV_ALIGN_CENTER);
+    lv_obj_clear_flag(logoImage, LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_GESTURE_BUBBLE |
+                                     LV_OBJ_FLAG_SNAPPABLE | LV_OBJ_FLAG_SCROLLABLE);
+    lv_img_set_zoom(logoImage, 80);
+}
+}
+
 MainMenuGui::MainMenuGui(GuiRouter &router) : router(router)
 {
 }
@@ -50,6 +166,8 @@ void MainMenuGui::build()
     lv_obj_set_style_bg_opa(ui_Widget, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_color(ui_Widget, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(ui_Widget, 2, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    addMainMenuBackground(ui_Widget);
 
     ui_Title = lv_label_create(ui_Widget);
     lv_label_set_text(ui_Title, "Welcome");
@@ -107,6 +225,8 @@ void MainMenuGui::build()
         }
     }, LV_EVENT_ALL, this);
     lv_obj_set_style_bg_color(ui_btnDatabank, lv_color_hex(0xF77A05), LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    addMtaLogoPanelToWidget(ui_Widget);
 
     ui_VersionLabel = lv_label_create(ui_Widget);
     lv_obj_align(ui_VersionLabel, LV_ALIGN_BOTTOM_LEFT, 18, -14);
