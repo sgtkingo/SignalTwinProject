@@ -180,7 +180,7 @@ void SettingsGui::build()
     lv_obj_set_style_text_font(title, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_t *communicationPanel = lv_obj_create(ui_Widget);
-    lv_obj_set_size(communicationPanel, 260, 132);
+    lv_obj_set_size(communicationPanel, 300, 132);
     lv_obj_set_pos(communicationPanel, 26, 82);
 
     ui_CurrentMode = lv_label_create(communicationPanel);
@@ -207,7 +207,7 @@ void SettingsGui::build()
     }, LV_EVENT_ALL, this);
 
     lv_obj_t *appearancePanel = lv_obj_create(ui_Widget);
-    lv_obj_set_size(appearancePanel, 260, 132);
+    lv_obj_set_size(appearancePanel, 300, 132);
     lv_obj_set_pos(appearancePanel, 26, 226);
 
     lv_obj_t *appearanceTitle = lv_label_create(appearancePanel);
@@ -260,8 +260,8 @@ void SettingsGui::build()
     }, LV_EVENT_ALL, this);
 
     lv_obj_t *metadataPanel = lv_obj_create(ui_Widget);
-    lv_obj_set_size(metadataPanel, 420, 238);
-    lv_obj_set_pos(metadataPanel, 314, 82);
+    lv_obj_set_size(metadataPanel, 340, 278);
+    lv_obj_set_pos(metadataPanel, 354, 82);
 
     lv_obj_t *metadataTitle = lv_label_create(metadataPanel);
     lv_label_set_text(metadataTitle, "Catalog Metadata");
@@ -271,16 +271,16 @@ void SettingsGui::build()
     lv_obj_t *appLabel = lv_label_create(metadataPanel);
     lv_label_set_text(appLabel, "Application");
     lv_obj_set_pos(appLabel, 12, 50);
-    ui_ApplicationInput = createSingleLineInput(metadataPanel, 120, 42, 270);
+    ui_ApplicationInput = createSingleLineInput(metadataPanel, 80, 82, 200);
 
     lv_obj_t *versionLabel = lv_label_create(metadataPanel);
     lv_label_set_text(versionLabel, "Version");
     lv_obj_set_pos(versionLabel, 12, 96);
-    ui_VersionInput = createSingleLineInput(metadataPanel, 120, 88, 270);
+    ui_VersionInput = createSingleLineInput(metadataPanel, 80, 128, 200);
 
     lv_obj_t *saveMetadata = lv_btn_create(metadataPanel);
     lv_obj_set_size(saveMetadata, 132, 36);
-    lv_obj_set_pos(saveMetadata, 258, 138);
+    lv_obj_set_pos(saveMetadata, 178, 208);
     lv_obj_add_event_cb(saveMetadata, [](lv_event_t *e) {
         if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
             return;
@@ -400,6 +400,13 @@ void SettingsGui::refresh()
     if (ui_VersionInput) {
         lv_textarea_set_text(ui_VersionInput, router.getCatalogVersion().c_str());
     }
+
+    if(ui_AppConfigStatus){
+        lv_obj_clear_flag(ui_AppConfigStatus, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (ui_MetadataStatus) {
+        lv_obj_clear_flag(ui_MetadataStatus, LV_OBJ_FLAG_HIDDEN);   
+    }
 }
 
 void SettingsGui::init()
@@ -421,6 +428,10 @@ void SettingsGui::showSettings()
     refresh();
     hideKeyboard();
     lv_obj_clear_flag(ui_Widget, LV_OBJ_FLAG_HIDDEN);
+
+    // Reset status messages
+    lv_obj_add_flag(ui_AppConfigStatus, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(ui_MetadataStatus, LV_OBJ_FLAG_HIDDEN);
 }
 
 void SettingsGui::hideSettings()
