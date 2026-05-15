@@ -2,6 +2,10 @@
 
 #include "../helpers.hpp"
 
+#ifndef LV_SYMBOL_PLUG
+#define LV_SYMBOL_PLUG LV_SYMBOL_USB
+#endif
+
 namespace
 {
 std::string buildPinProgressLabel(const BaseDevice *device)
@@ -27,6 +31,19 @@ uint32_t getDeviceAssignmentBorderColor(const BaseDevice *device)
         return 0xD9DDE3;
     }
     return device->isPinAssignmentComplete() ? 0x2EAD5F : 0xF2C94C;
+}
+
+void addConnectedIcon(lv_obj_t *button)
+{
+    if (!button) {
+        return;
+    }
+
+    lv_obj_t *icon = lv_label_create(button);
+    lv_label_set_text(icon, LV_SYMBOL_PLUG);
+    lv_obj_align(icon, LV_ALIGN_RIGHT_MID, -8, 0);
+    lv_obj_set_style_text_color(icon, lv_color_hex(0x1B8F4D), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(icon, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
 }
 }
 
@@ -55,18 +72,7 @@ void DeviceSelectionGui::buildSelectionGui()
     lv_obj_set_pos(ui_AvailableList, 12, contentY);
     lv_obj_set_size(infoPanel, 410, contentHeight);
     lv_obj_set_pos(infoPanel, 320, contentY);
-
-    ui_DeviceTitle = lv_label_create(infoPanel);
-    lv_obj_set_width(ui_DeviceTitle, 400);
-    lv_obj_set_pos(ui_DeviceTitle, 10, 10);
-    lv_obj_set_style_text_font(ui_DeviceTitle, &lv_font_montserrat_20, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    lv_obj_set_pos(ui_DeviceDescription, 10, 50);
-
-    ui_DeviceSpecs = lv_label_create(infoPanel);
-    lv_obj_set_width(ui_DeviceSpecs, 400);
-    lv_obj_set_pos(ui_DeviceSpecs, 10, 150);
-    lv_label_set_long_mode(ui_DeviceSpecs, LV_LABEL_LONG_WRAP);
+    ui_DeviceDescription = infoPanel;
 
     ui_btnBack = DeviceCatalogBrowserLayoutFactory::createFooterButton(ui_SelectionWidget, "Back", LV_ALIGN_BOTTOM_LEFT, 12, -16);
     lv_obj_set_size(ui_btnBack, 90, 36);
@@ -101,25 +107,14 @@ void DeviceSelectionGui::buildSelectionGui()
     }, LV_EVENT_ALL, this);
 
     ui_btnPins = DeviceCatalogBrowserLayoutFactory::createFooterButton(ui_SelectionWidget, "Connect", LV_ALIGN_BOTTOM_LEFT, 250, -16);
-    lv_obj_set_size(ui_btnPins, 100, 36);
-    lv_obj_set_style_bg_color(ui_btnPins, lv_color_hex(0x2EAD5F), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_size(ui_btnPins, 130, 36);
+    ui_btnPinsLabel = lv_obj_get_child(ui_btnPins, 0);
     lv_obj_add_event_cb(ui_btnPins, [](lv_event_t *e) {
         if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
             return;
         }
         auto *self = static_cast<DeviceSelectionGui *>(lv_event_get_user_data(e));
-        self->handlePinsButtonClick();
-    }, LV_EVENT_ALL, this);
-
-    ui_btnRemove = DeviceCatalogBrowserLayoutFactory::createFooterButton(ui_SelectionWidget, "Disconnect", LV_ALIGN_BOTTOM_LEFT, 360, -16);
-    lv_obj_set_size(ui_btnRemove, 120, 36);
-    lv_obj_set_style_bg_color(ui_btnRemove, lv_color_hex(0xD96464), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_add_event_cb(ui_btnRemove, [](lv_event_t *e) {
-        if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
-            return;
-        }
-        auto *self = static_cast<DeviceSelectionGui *>(lv_event_get_user_data(e));
-        self->handleRemoveButtonClick();
+        self->handleConnectActionButtonClick();
     }, LV_EVENT_ALL, this);
 
     ui_btnStart = DeviceCatalogBrowserLayoutFactory::createFooterButton(ui_SelectionWidget, "Start Visualization", LV_ALIGN_BOTTOM_RIGHT, -10, -16);
@@ -143,12 +138,16 @@ void DeviceSelectionGui::populateAvailableList()
     const auto &devices = catalogBrowser.getDevices();
     for (size_t i = 0; i < devices.size(); ++i) {
         BaseDevice *device = devices[i];
-        const std::string label = DeviceCatalogBrowserFormatter::buildDeviceListLabel(device) + "\n" + buildPinProgressLabel(device);
+        const std::string label = DeviceCatalogBrowserFormatter::buildDeviceListLabel(device);
         lv_obj_t *button = lv_list_add_btn(ui_AvailableList, nullptr, label.c_str());
+        DeviceCatalogBrowserRenderer::styleDeviceListButton(button);
         lv_obj_set_style_bg_color(button, lv_color_hex(getDeviceAssignmentColor(device)), LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_obj_set_style_border_color(button, lv_color_hex(getDeviceAssignmentBorderColor(device)), LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_obj_set_style_border_width(button, 1, LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_obj_set_style_text_color(button, lv_color_hex(0x1C1F23), LV_PART_MAIN | LV_STATE_DEFAULT);
+        if (device && device->isPinConnectionActive()) {
+            addConnectedIcon(button);
+        }
         lv_obj_set_user_data(button, reinterpret_cast<void *>(static_cast<intptr_t>(i)));
         lv_obj_add_event_cb(button, [](lv_event_t *e) {
             if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
@@ -171,18 +170,14 @@ void DeviceSelectionGui::updateDeviceInfo()
 {
     BaseDevice *device = catalogBrowser.getSelectedDevice();
     if (!device) {
-        lv_label_set_text(ui_DeviceTitle, "No device selected");
-        lv_label_set_text(ui_DeviceDescription, "Choose a device from the list.");
-        lv_label_set_text(ui_DeviceSpecs, "");
+        DeviceCatalogBrowserRenderer::renderDeviceDetail(ui_DeviceDescription, nullptr);
+        updateConnectActionButtonState();
         return;
     }
 
     browserState.setSelectionDevice(device);
-    lv_label_set_text(ui_DeviceTitle, device->getName().c_str());
-    lv_label_set_text(ui_DeviceDescription, DeviceCatalogBrowserFormatter::buildSelectionInfoText(device).c_str());
-    const std::string specs = "Pin assignment: " + buildPinProgressLabel(device) + "\n\n" +
-                              DeviceCatalogBrowserFormatter::buildSelectionSpecsText(device);
-    lv_label_set_text(ui_DeviceSpecs, specs.c_str());
+    DeviceCatalogBrowserRenderer::renderDeviceDetail(ui_DeviceDescription, device, buildPinProgressLabel(device));
+    updateConnectActionButtonState();
 }
 
 void DeviceSelectionGui::updateStartButtonState()
@@ -197,6 +192,31 @@ void DeviceSelectionGui::updateStartButtonState()
     }
 
     lv_obj_add_state(ui_btnStart, LV_STATE_DISABLED);
+}
+
+void DeviceSelectionGui::updateConnectActionButtonState()
+{
+    if (!ui_btnPins || !ui_btnPinsLabel) {
+        return;
+    }
+
+    BaseDevice *device = getSelectedDevice();
+    if (!device) {
+        lv_label_set_text(ui_btnPinsLabel, "Connect");
+        lv_obj_set_style_bg_color(ui_btnPins, lv_color_hex(0x8C939D), LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_add_state(ui_btnPins, LV_STATE_DISABLED);
+        return;
+    }
+
+    lv_obj_clear_state(ui_btnPins, LV_STATE_DISABLED);
+    if (device->isPinConnectionActive()) {
+        lv_label_set_text(ui_btnPinsLabel, "Disconnect");
+        lv_obj_set_style_bg_color(ui_btnPins, lv_color_hex(0xD96464), LV_PART_MAIN | LV_STATE_DEFAULT);
+        return;
+    }
+
+    lv_label_set_text(ui_btnPinsLabel, "Connect");
+    lv_obj_set_style_bg_color(ui_btnPins, lv_color_hex(0x2EAD5F), LV_PART_MAIN | LV_STATE_DEFAULT);
 }
 
 void DeviceSelectionGui::handleDeviceSelection(int deviceIndex)
@@ -221,7 +241,7 @@ void DeviceSelectionGui::handleConfigureButtonClick()
     router.showLibraryEditor();
 }
 
-void DeviceSelectionGui::handlePinsButtonClick()
+void DeviceSelectionGui::handleConnectActionButtonClick()
 {
     BaseDevice *device = getSelectedDevice();
     if (!device) {
@@ -229,28 +249,22 @@ void DeviceSelectionGui::handlePinsButtonClick()
         return;
     }
 
+    if (device->isPinConnectionActive()) {
+        if (!deviceManager.disconnectAndUnassignDevice(device)) {
+            splashMessage("Failed to disconnect device.");
+            return;
+        }
+
+        populateSelectedList();
+        populateAvailableList();
+        updateDeviceInfo();
+        updateStartButtonState();
+        return;
+    }
+
     browserState.setPinMapPreviewMode(false);
     browserState.setSelectionDevice(device);
     router.showConnection();
-}
-
-void DeviceSelectionGui::handleRemoveButtonClick()
-{
-    BaseDevice *device = getSelectedDevice();
-    if (!device) {
-        splashMessage("Select a device to disconnect.");
-        return;
-    }
-
-    if (!deviceManager.disconnectAndUnassignDevice(device)) {
-        splashMessage("Failed to disconnect device.");
-        return;
-    }
-
-    populateSelectedList();
-    populateAvailableList();
-    updateDeviceInfo();
-    updateStartButtonState();
 }
 
 void DeviceSelectionGui::handleStartButtonClick()
@@ -319,6 +333,7 @@ void DeviceSelectionGui::showSelection()
     populateSelectedList();
     updateDeviceInfo();
     updateStartButtonState();
+    updateConnectActionButtonState();
     lv_obj_clear_flag(ui_SelectionWidget, LV_OBJ_FLAG_HIDDEN);
 }
 

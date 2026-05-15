@@ -87,5 +87,10 @@ Pojdme udělat hezčí DeviceCatalog který se propisuje do Library i do Selecti
 Zaprvé, device list by měl mít větší položky - používat větší písmo.
 Ale hlavní změny by měla být v detailPanelu. Výpis by měl být více grafický, labely tučně, piny jako barevné bloky, chybí obrázek device - lazy, název větším písem a tučně, description kuzívou, role jako barevný blok.. Celkově by to nemělo působit jako psaný text, ale jako layout - device nalevo nahoře uprostřed, velkým a tučným, vedle něj zmenšenina device picture, pod tím role, krátký popis, pak piny, allowed piny, a nakonec Configs a Values jako seznamy. Configs červeně, Values modře. 
 
+PR:
+V Main Screen udělej MTA štítek stejně jako je v Databank.
+
+PR: U Connection screenu dát DeviceName | Pins pod pois pins labels, a zvětšit písmo + bold. 
+
 PR: 
 Doverzování VERSION. Projed historii commitu této branche a bumpni build tolikrát kolik je celkem komitu, minor a path bumpni dle uvážení. Major verze zůstává 1.

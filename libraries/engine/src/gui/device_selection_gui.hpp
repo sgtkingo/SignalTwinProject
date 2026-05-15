@@ -25,12 +25,10 @@ private:
     lv_obj_t *ui_SelectionWidget = nullptr;
     lv_obj_t *ui_AvailableList = nullptr;
     lv_obj_t *ui_SelectedList = nullptr;
-    lv_obj_t *ui_DeviceTitle = nullptr;
     lv_obj_t *ui_DeviceDescription = nullptr;
-    lv_obj_t *ui_DeviceSpecs = nullptr;
     lv_obj_t *ui_btnConfigure = nullptr;
     lv_obj_t *ui_btnPins = nullptr;
-    lv_obj_t *ui_btnRemove = nullptr;
+    lv_obj_t *ui_btnPinsLabel = nullptr;
     lv_obj_t *ui_btnStart = nullptr;
     lv_obj_t *ui_btnBack = nullptr;
     lv_obj_t *ui_btnShowPinsMap = nullptr;
@@ -40,10 +38,10 @@ private:
     void populateSelectedList();
     void updateDeviceInfo();
     void updateStartButtonState();
+    void updateConnectActionButtonState();
     void handleDeviceSelection(int deviceIndex);
     void handleConfigureButtonClick();
-    void handlePinsButtonClick();
-    void handleRemoveButtonClick();
+    void handleConnectActionButtonClick();
     void handleStartButtonClick();
     void handleShowPinsMapButtonClick();
     void handleBackButtonClick();

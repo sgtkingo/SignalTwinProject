@@ -2,79 +2,6 @@
 
 #include <cstring>
 
-namespace
-{
-std::string buildAllowedPinsText(const DeviceDefinitionSchema &draft)
-{
-    if (draft.allowedPinsCsv.empty()) {
-        return "Any";
-    }
-    return draft.allowedPinsCsv;
-}
-
-std::string buildParamSummary(const std::vector<DeviceParamSchema> &params)
-{
-    if (params.empty()) {
-        return "- none\n";
-    }
-
-    std::string text;
-    for (const DeviceParamSchema &param : params) {
-        text += "- " + param.key;
-        if (!param.param.Unit.empty()) {
-            text += " [" + param.param.Unit + "]";
-        }
-        text += "\n";
-    }
-    return text;
-}
-
-std::string buildPinsText(const DeviceDefinitionSchema &draft)
-{
-    if (draft.pins.empty()) {
-        return "None";
-    }
-
-    std::string text;
-    for (const std::string &pin : draft.pins) {
-        if (!text.empty()) {
-            text += ", ";
-        }
-        text += pin;
-    }
-    return text;
-}
-
-std::string buildLibraryDetailText(const DeviceDefinitionSchema &draft)
-{
-    std::string detail = "Entity Draft\n";
-    detail += draft.type.empty() ? "(unnamed type)" : draft.type;
-    if (!draft.uid.empty()) {
-        detail += " (" + draft.uid + ")";
-    }
-    detail += "\n\nRole:\n";
-    switch (draft.role) {
-    case DeviceRole::ACTUATOR:
-        detail += "Actuator";
-        break;
-    case DeviceRole::HYBRID:
-        detail += "Hybrid";
-        break;
-    case DeviceRole::SENSOR:
-    default:
-        detail += "Sensor";
-        break;
-    }
-    detail += "\n\nDescription:\n";
-    detail += draft.description.empty() ? "No description available." : draft.description;
-    detail += "\n\nPins:\n" + buildPinsText(draft);
-    detail += "\n\nAllowed Pins:\n" + buildAllowedPinsText(draft);
-    detail += "\n\nValues:\n" + buildParamSummary(draft.values);
-    detail += "\nConfigs:\n" + buildParamSummary(draft.configs);
-    return detail;
-}
-}
-
 LibraryGui::LibraryGui(DeviceCatalog &deviceCatalog, DeviceBrowserState &browserState, GuiRouter &router)
     : catalogBrowser(deviceCatalog), browserState(browserState), router(router)
 {
@@ -148,6 +75,7 @@ void LibraryGui::populateDeviceList()
         BaseDevice *sensor = sensors[i];
         const std::string label = DeviceCatalogBrowserFormatter::buildDeviceListLabel(sensor);
         lv_obj_t *button = lv_list_add_btn(ui_DeviceList, nullptr, label.c_str());
+        DeviceCatalogBrowserRenderer::styleDeviceListButton(button);
         lv_obj_add_event_cb(button, [](lv_event_t *e) {
             if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
                 return;
@@ -163,7 +91,7 @@ void LibraryGui::populateDeviceList()
 
 void LibraryGui::updateDetail()
 {
-    if (!ui_DetailLabel) {
+    if (!ui_Detail) {
         return;
     }
 
@@ -172,17 +100,12 @@ void LibraryGui::updateDetail()
 
     if (draft && sensor && draft->uid == sensor->UID) {
         browserState.setLibraryDevice(sensor);
-        lv_label_set_text(ui_DetailLabel, buildLibraryDetailText(*draft).c_str());
-        return;
-    }
-
-    if (!sensor) {
-        lv_label_set_text(ui_DetailLabel, "No entity selected.");
+        DeviceCatalogBrowserRenderer::renderDeviceDetail(ui_Detail, sensor);
         return;
     }
 
     browserState.setLibraryDevice(sensor);
-    lv_label_set_text(ui_DetailLabel, DeviceCatalogBrowserFormatter::buildLibraryDetailText(sensor).c_str());
+    DeviceCatalogBrowserRenderer::renderDeviceDetail(ui_Detail, sensor);
 }
 
 void LibraryGui::handleDeleteButtonClick()

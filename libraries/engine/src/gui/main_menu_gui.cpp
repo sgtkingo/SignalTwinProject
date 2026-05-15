@@ -63,7 +63,7 @@ void MainMenuGui::build()
             self->router.showFileTransfer();
         }
     }, LV_EVENT_ALL, this);
-    
+
     ui_btnSettings = createIconButton(ui_Widget, &ui_img_settings_png, LV_ALIGN_TOP_RIGHT, -14, 14);
     lv_obj_add_event_cb(ui_btnSettings, [](lv_event_t *e) {
         if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
@@ -106,7 +106,7 @@ void MainMenuGui::build()
             self->router.openDatabankFromMainMenu();
         }
     }, LV_EVENT_ALL, this);
-    lv_obj_set_style_bg_color(ui_btnDatabank, lv_color_hex(0xFFA500), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui_btnDatabank, lv_color_hex(0xF77A05), LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_VersionLabel = lv_label_create(ui_Widget);
     lv_obj_align(ui_VersionLabel, LV_ALIGN_BOTTOM_LEFT, 18, -14);

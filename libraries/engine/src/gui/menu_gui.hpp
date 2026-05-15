@@ -22,6 +22,7 @@ private:
     lv_obj_t *ui_PinScrollContainer = nullptr;
     lv_obj_t *ui_Title = nullptr;
     lv_obj_t *ui_Subtitle = nullptr;
+    lv_obj_t *ui_DeviceSummary = nullptr;
     lv_obj_t *ui_btnBack = nullptr;
     lv_obj_t *ui_btnConnect = nullptr;
     lv_obj_t *ui_LoadingOverlay = nullptr;

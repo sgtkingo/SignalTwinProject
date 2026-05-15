@@ -163,7 +163,7 @@ void CommunicationSelectionGui::handleModeSelection(DefaultCommunicationMode mod
     const uint32_t loadingStart = showLoading("Connecting...");
     if (!deviceManager.initializeProtocolConnection()) {
         finishLoading(loadingStart, false);
-        splashMessage("VSCP init failed. Check cable connection and emulator.");
+        splashMessage("Unable to establish connection. Check cable connection and emulator.");
         return;
     }
 
@@ -222,7 +222,7 @@ void CommunicationSelectionGui::constructCommunicationSelection(void)
     lv_obj_set_style_text_color(subtitle, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
 
     createOptionButton("Cable (UART)", 70, 130, DefaultCommunicationMode::CABLE);
-    createOptionButton("Wireless Auto", 395, 130, DefaultCommunicationMode::WIRELESS_AUTO, false);
+    createOptionButton("Wireless (BT)", 395, 130, DefaultCommunicationMode::WIRELESS_AUTO, false);
     createWirelessManualButton(625, 130);
     createModeIcon(&ui_img_cable_png, 180, 226, 150);
     createModeIcon(&ui_img_bluetooth_png, 539, 232, 150);

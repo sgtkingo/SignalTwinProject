@@ -46,6 +46,13 @@ void ConnectionGui::buildMenu()
     lv_obj_align(ui_Subtitle, LV_ALIGN_TOP_MID, 0, 40);
     lv_obj_set_style_text_align(ui_Subtitle, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
 
+    ui_DeviceSummary = lv_label_create(ui_MenuWidget);
+    lv_obj_set_width(ui_DeviceSummary, 520);
+    lv_obj_align(ui_DeviceSummary, LV_ALIGN_TOP_MID, 0, 61);
+    lv_obj_set_style_text_align(ui_DeviceSummary, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_DeviceSummary, &lv_font_montserrat_20, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ui_DeviceSummary, lv_color_hex(0x1C1F23), LV_PART_MAIN | LV_STATE_DEFAULT);
+
     ui_btnBack = lv_btn_create(ui_MenuWidget);
     lv_obj_set_size(ui_btnBack, 90, 36);
     lv_obj_align(ui_btnBack, LV_ALIGN_TOP_LEFT, 12, 10);
@@ -101,6 +108,7 @@ void ConnectionGui::buildMenu()
         lv_obj_set_width(pinLabels[i], 200);
         lv_obj_center(pinLabels[i]);
         lv_obj_set_style_text_align(pinLabels[i], LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_text_font(pinLabels[i], &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
     }
 }
 
@@ -108,7 +116,8 @@ void ConnectionGui::updateHeader()
 {
     if (isPreviewMode()) {
         lv_label_set_text(ui_Title, "Pins Map");
-        lv_label_set_text(ui_Subtitle, "Read-only pin map. Select a device to assign pins.");
+        lv_label_set_text(ui_Subtitle, "Read-only pin map.");
+        lv_label_set_text(ui_DeviceSummary, "");
         if (ui_btnConnect) {
             lv_obj_add_state(ui_btnConnect, LV_STATE_DISABLED);
         }
@@ -123,14 +132,16 @@ void ConnectionGui::updateHeader()
     BaseDevice *device = browserState.getSelectionDevice();
     if (!device) {
         lv_label_set_text(ui_Subtitle, "Select a device in Selection first.");
+        lv_label_set_text(ui_DeviceSummary, "");
         return;
     }
 
-    std::string subtitle = device->getTypeName() + " | Pins " +
-                           std::to_string(device->getAssignedPinCount()) + "/" +
-                           std::to_string(device->getRequiredPinCount()) +
-                           " | Green=assign, Yellow=unassign, Red=used elsewhere, Gray=locked";
-    lv_label_set_text(ui_Subtitle, subtitle.c_str());
+    lv_label_set_text(ui_Subtitle, "Green=assign, Yellow=unassign, Red=used elsewhere, Gray=locked");
+
+    std::string summary = device->getTypeName() + " | Pins " +
+                          std::to_string(device->getAssignedPinCount()) + "/" +
+                          std::to_string(device->getRequiredPinCount());
+    lv_label_set_text(ui_DeviceSummary, summary.c_str());
 }
 
 bool ConnectionGui::isPreviewMode() const

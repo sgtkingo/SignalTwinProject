@@ -36,6 +36,12 @@ std::string buildSelectionSpecsText(const BaseDevice *device);
 std::string buildLibraryDetailText(const BaseDevice *device);
 }
 
+namespace DeviceCatalogBrowserRenderer
+{
+void renderDeviceDetail(lv_obj_t *panel, const BaseDevice *device, const std::string &footerText = "");
+void styleDeviceListButton(lv_obj_t *button);
+}
+
 struct DeviceCatalogBrowserLayoutConfig
 {
     const char *title = "";

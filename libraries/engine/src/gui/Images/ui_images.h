@@ -15,5 +15,8 @@ LV_IMG_DECLARE(ui_img_bluetooth_png);
 LV_IMG_DECLARE(ui_img_cable_png);
 LV_IMG_DECLARE(ui_img_comingsoon_png);
 LV_IMG_DECLARE(ui_img_visensors_png);
+LV_IMG_DECLARE(ui_img_placeholder_sensor);
+LV_IMG_DECLARE(ui_img_placeholder_actuator);
+LV_IMG_DECLARE(ui_img_placeholder_hybrid);
 
 #endif // UI_IMAGES_H
