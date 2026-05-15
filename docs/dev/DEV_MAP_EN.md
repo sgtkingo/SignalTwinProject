@@ -72,6 +72,8 @@ Important options:
 - `STORAGE_OPTION_SPIFFS`: default dev mode, catalog is `/DB.json`.
 - `STORAGE_OPTION_SD`: catalog is `/data/DB.json`.
 - `STORAGE_SEED_DEFAULT_DB_ON_MISSING`: in SPIFFS mode, can create the default DB from an embedded string.
+- `FILE_TRANSFER_USB_MSC_ENABLED`: enables the USB MSC bridge for Transfer Mode.
+- `FILE_TRANSFER_USB_MSC_VENDOR_ID`, `FILE_TRANSFER_USB_MSC_PRODUCT_ID`, `FILE_TRANSFER_USB_MSC_REVISION`: USB identification strings for the MSC disk.
 
 Debug logs use `debugLogMessage(source, reason, format, ...)` and have the form:
 
@@ -292,6 +294,7 @@ Main components:
 | `signals_visualization_gui.*` | Runtime visualization, chart, recording, settings overlay. |
 | `signals_*_panel.*` | Smaller panels for the runtime screen: chart, value list, toolbar, settings, feedback. |
 | `data_bundle_selection_gui.*` | Databank/DataBundle overview. |
+| `file_transfer_gui.*` | Transfer Mode screen for exposing the SD card to a computer through USB MSC. |
 | `library_gui.*`, `library_editor_gui.*` | Device catalog editing. |
 | `crash_gui.*` | Fatal error screen. |
 | `credits_gui.hpp` | Credits. |
@@ -325,6 +328,19 @@ VISUALIZATION -> DATA_BUNDLE_SELECTION -> VISUALIZATION
 ```
 
 Return behavior is decided by `databankReturnToVisualization` in `GuiNavigationPolicy`.
+
+File Transfer:
+
+```text
+MAIN_MENU -> FILE_TRANSFER -> MAIN_MENU
+DATA_BUNDLE_SELECTION export -> FILE_TRANSFER -> MAIN_MENU
+```
+
+`FILE_TRANSFER` has its own user-action layer. Opening the screen only displays
+the white preparation screen. The transfer pipeline starts only after `OK`.
+During an active session, `Back` is disabled and the session must be stopped with
+the red `End session` button, which stops USB MSC, remounts SD, and returns to
+the Main Menu.
 
 ### Runtime loop and redraw
 
@@ -380,7 +396,7 @@ GUI:
 
 Storage:
 
-- Bundles are stored under `/DataBundles/`.
+- Bundles are stored under `/records/`.
 - CSV format:
 
 ```csv
@@ -428,7 +444,60 @@ API:
 SPIFFS nuance:
 
 - it does not have real directories like SD; `ensureDirectory()` returns true.
-- `listFiles("/DataBundles/")` scans root and filters by prefix.
+- `listFiles("/records/")` scans root and filters by prefix.
+
+SD layout:
+
+- `/data/DB.json`: device catalog.
+- `/data/pics/`: device images.
+- `/data/config.json`: persistent application configuration.
+- `/records/`: DataBundle CSV records.
+
+## File Transfer / USB MSC
+
+Transfer Mode exposes the SD card to the computer as a USB Mass Storage Class
+disk. SPIFFS is never exposed; it remains an internal demo/debug storage mode.
+
+Key files:
+
+- `libraries/engine/src/gui/file_transfer_gui.*`: preparation screen, state
+  colors, `OK` session start, and `End session`.
+- `libraries/engine/src/managers/file_transfer_service.*`: transfer state
+  machine, SD lock/unlock, and bridge integration.
+- `libraries/engine/src/managers/file_transfer_usb_msc_bridge.*`: Arduino
+  `USBMSC` backend, raw `onRead`/`onWrite` callbacks over SD sectors.
+- `libraries/engine/src/managers/storage_manager.*`: `enterTransferLock()` and
+  `exitTransferLock()`.
+- `libraries/expt/src/logs/logs.*`: USB CDC aware logging; during MSC session,
+  `logMessage()` does not open `Serial` and buffers messages in RAM.
+
+Lifecycle:
+
+1. User opens the Transfer Screen.
+2. The screen shows preparation info; SD and USB MSC are not touched yet.
+3. After `OK`, the yellow `Connection...` state is drawn and `lv_timer_handler()`
+   + `lv_refr_now(nullptr)` are forced.
+4. `FileTransferService::start()` checks SD, sets `transferModeActive`, disables
+   CDC log output, and calls `storageManager().enterTransferLock()`.
+5. Storage manager unmounts SD from the HMI filesystem.
+6. `FileTransferUsbMscBridge::start()` remounts SD for raw block access, sets
+   `USBMSC` callbacks, calls `usbMsc.begin(blockCount, 512)` and `USB.begin()`.
+7. The PC sees the HMI as a Mass Storage disk.
+8. `End session` calls `FileTransferService::stop()`: `usbMsc.mediaPresent(false)`,
+   `usbMsc.end()`, SD unmount from the bridge, `storageManager().exitTransferLock()`,
+   CDC log output restore, and buffered log flush.
+
+The backend is active only when the build meets these conditions:
+
+- `FILE_TRANSFER_USB_MSC_ENABLED == 1`.
+- Arduino ESP32 core provides `USB.h` and `USBMSC.h`.
+- Board is in ESP32-S3 native USB OTG/TinyUSB mode (`ARDUINO_USB_MODE == 0`).
+- USB CDC on boot should remain enabled for the serial/log channel over the same
+  connector.
+
+If the conditions are not met, the bridge returns a readable error and the
+Transfer Screen switches to the red error state without pretending to be a USB
+disk.
 
 ## Emulator
 
@@ -558,7 +627,21 @@ Sent: ?id=cpu_temp&status=1&temp=0.21
 - DB path:
   - SPIFFS: `/DB.json`
   - SD: `/data/DB.json`
-- DataBundle path: `/DataBundles/`.
+- DataBundle path: `/records/`.
+- USB MSC transfer: `FileTransferService` + `FileTransferUsbMscBridge`; SD must
+  be locked through `StorageManager::enterTransferLock()` before being exposed
+  to the computer.
+
+### Modify File Transfer / USB MSC
+
+- UI flow: `file_transfer_gui.*`.
+- Transfer lifecycle: `FileTransferService`.
+- Raw block backend: `FileTransferUsbMscBridge`.
+- Never write to SD through HMI storage while an MSC session is active.
+- Logging during transfer must remain CDC-safe: use `setLoggerUsbCdcAvailable(false)`
+  and then `flushBufferedLogMessages()` after returning.
+- Board/build settings are as important as code: native USB OTG/TinyUSB,
+  `USBMSC.h`, `USB.h`, USB CDC on boot.
 
 ## Debugging checklist
 
@@ -603,9 +686,19 @@ Sent: ?id=cpu_temp&status=1&temp=0.21
 ### Databank shows nothing
 
 - Verify storage mount.
-- Verify `/DataBundles/`.
+- Verify `/records/`.
 - Verify CSV files through `DataBundleManager::listAllBundles()`.
 - Verify that `DataBundleSelectionGui::showDataBundles()` calls `updateBundles()`.
+
+### Transfer Mode/USB MSC does not start
+
+- Verify that the build uses `STORAGE_OPTION_SD`; SPIFFS is not exposed through MSC.
+- Verify that the SD card is physically inserted and mounts outside transfer.
+- Verify Arduino board option: ESP32-S3 native USB OTG/TinyUSB (`ARDUINO_USB_MODE == 0`).
+- Verify that the core provides `USB.h` and `USBMSC.h`.
+- If the PC does not see a disk, check the USB cable/port: it must be the native
+  ESP32-S3 USB connector, not only an external USB-UART bridge.
+- After `End session`, the log should show SD remount from `StorageManager::exitTransferLock()`.
 
 ## Code conventions and risks
 
@@ -615,6 +708,8 @@ Sent: ?id=cpu_temp&status=1&temp=0.21
 - `DeviceVisualizationSession` holds the active runtime selection; when editing the catalog, the session must be cleared.
 - The Storage API requires absolute paths with `/`.
 - SPIFFS and SD behave differently for directories; use `StorageManager`, not direct `SPIFFS`/`SD`.
+- During Transfer Mode, do not perform HMI filesystem operations on SD; the card
+  is owned by the USB host.
 - The VSCP parser is case-sensitive according to config; the emulator should keep the same semantics as the firmware.
 
 ## Quick component index
@@ -634,7 +729,8 @@ libraries/engine/src/devices/
 
 libraries/engine/src/managers/
   DeviceCatalog, DeviceManager, DeviceVisualizationSession,
-  DeviceBrowserState, DataBundleManager, StorageManager
+  DeviceBrowserState, DataBundleManager, StorageManager,
+  FileTransferService, FileTransferUsbMscBridge
 
 libraries/engine/src/gui/
   all application screens and LVGL panel helpers

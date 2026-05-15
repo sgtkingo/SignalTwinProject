@@ -77,6 +77,8 @@ Dulezite volby:
 - `STORAGE_OPTION_SPIFFS`: vychozi dev rezim, katalog je `/DB.json`.
 - `STORAGE_OPTION_SD`: katalog je `/data/DB.json`.
 - `STORAGE_SEED_DEFAULT_DB_ON_MISSING`: ve SPIFFS rezimu umi zalozit default DB z embedded stringu.
+- `FILE_TRANSFER_USB_MSC_ENABLED`: zapina USB MSC bridge pro Transfer Mode.
+- `FILE_TRANSFER_USB_MSC_VENDOR_ID`, `FILE_TRANSFER_USB_MSC_PRODUCT_ID`, `FILE_TRANSFER_USB_MSC_REVISION`: USB identifikace MSC disku.
 
 Debug logy pouzivaji `debugLogMessage(source, reason, format, ...)` a maji tvar:
 
@@ -302,6 +304,7 @@ Hlavni soucasti:
 | `signals_visualization_gui.*` | Runtime vizualizace, graf, recording, settings overlay. |
 | `signals_*_panel.*` | Mensi panely pro runtime obrazovku: graf, list hodnot, toolbar, settings, feedback. |
 | `data_bundle_selection_gui.*` | Databank/DataBundle prehled. |
+| `file_transfer_gui.*` | Transfer Mode screen pro vystaveni SD karty pocitaci pres USB MSC. |
 | `library_gui.*`, `library_editor_gui.*` | Editace device katalogu. |
 | `crash_gui.*` | Fatal error obrazovka. |
 | `credits_gui.hpp` | Credits. |
@@ -335,6 +338,18 @@ VISUALIZATION -> DATA_BUNDLE_SELECTION -> VISUALIZATION
 ```
 
 O navrat rozhoduje `databankReturnToVisualization` v `GuiNavigationPolicy`.
+
+File Transfer:
+
+```text
+MAIN_MENU -> FILE_TRANSFER -> MAIN_MENU
+DATA_BUNDLE_SELECTION export -> FILE_TRANSFER -> MAIN_MENU
+```
+
+`FILE_TRANSFER` ma vlastni user-action vrstvu. Otevreni obrazovky pouze zobrazi
+bily preparation screen. Transfer pipeline se spusti az po potvrzeni `OK`.
+Behem aktivni session je `Back` zakazane a ukonceni jde pres cervene
+`End session`, ktere stopne USB MSC, remountne SD a vrati uzivatele do Main Menu.
 
 ### Runtime loop a redraw
 
@@ -392,7 +407,7 @@ GUI:
 
 Storage:
 
-- Bundles jsou ukladane pod `/DataBundles/`.
+- Bundles jsou ukladane pod `/records/`.
 - CSV format:
 
 ```csv
@@ -440,7 +455,58 @@ API:
 SPIFFS nuance:
 
 - nema realne adresare jako SD, `ensureDirectory()` vraci true.
-- `listFiles("/DataBundles/")` prochazi root a filtruje prefix.
+- `listFiles("/records/")` prochazi root a filtruje prefix.
+
+SD layout:
+
+- `/data/DB.json`: device katalog.
+- `/data/pics/`: obrazky devices.
+- `/data/config.json`: persistentni konfigurace aplikace.
+- `/records/`: DataBundle CSV zaznamy.
+
+## File Transfer / USB MSC
+
+Transfer Mode vystavi SD kartu pocitaci jako USB Mass Storage Class disk. SPIFFS
+se nikdy nevystavuje, zustava jen pro demo/debug rezim.
+
+Klicove soubory:
+
+- `libraries/engine/src/gui/file_transfer_gui.*`: preparation screen, stavove barvy,
+  `OK` start session a `End session` ukonceni.
+- `libraries/engine/src/managers/file_transfer_service.*`: stavovy automat transferu,
+  SD lock/unlock a napojeni bridge.
+- `libraries/engine/src/managers/file_transfer_usb_msc_bridge.*`: Arduino `USBMSC`
+  backend, raw `onRead`/`onWrite` callbacky nad SD sektory.
+- `libraries/engine/src/managers/storage_manager.*`: `enterTransferLock()` a
+  `exitTransferLock()`.
+- `libraries/expt/src/logs/logs.*`: USB CDC aware logging; behem MSC session
+  `logMessage()` neotevira `Serial` a bufferuje zpravy v RAM.
+
+Lifecycle:
+
+1. Uživatel otevre Transfer Screen.
+2. Screen ukaze preparation info; zatim se nesaha na SD ani USB MSC.
+3. Po `OK` se vykresli zluty `Connection...` stav a vynuti se `lv_timer_handler()`
+   + `lv_refr_now(nullptr)`.
+4. `FileTransferService::start()` overi SD, nastavi `transferModeActive`, vypne
+   CDC logging output a zavola `storageManager().enterTransferLock()`.
+5. Storage manager odmountuje SD z HMI filesystemu.
+6. `FileTransferUsbMscBridge::start()` znovu mountne SD pro raw blokovy pristup,
+   nastavi `USBMSC` callbacky, zavola `usbMsc.begin(blockCount, 512)` a `USB.begin()`.
+7. PC vidi HMI jako Mass Storage disk.
+8. `End session` zavola `FileTransferService::stop()`: `usbMsc.mediaPresent(false)`,
+   `usbMsc.end()`, SD unmount z bridge, `storageManager().exitTransferLock()`,
+   obnoveni CDC log vystupu a flush buffered logu.
+
+Backend je aktivni jen pokud build splni podminky:
+
+- `FILE_TRANSFER_USB_MSC_ENABLED == 1`.
+- Arduino ESP32 core poskytuje `USB.h` a `USBMSC.h`.
+- Board je v ESP32-S3 native USB OTG/TinyUSB rezimu (`ARDUINO_USB_MODE == 0`).
+- Pro serial/log channel pres stejny konektor ma zustat zapnute USB CDC on boot.
+
+Pokud podminky nejsou splnene, bridge vrati srozumitelnou chybu a Transfer Screen
+prejde do cerveneho error stavu bez pokusu predstirat USB disk.
 
 ## Emulator
 
@@ -572,7 +638,20 @@ Sent: ?id=cpu_temp&status=1&temp=0.21
 - DB path:
   - SPIFFS: `/DB.json`
   - SD: `/data/DB.json`
-- DataBundle path: `/DataBundles/`.
+- DataBundle path: `/records/`.
+- USB MSC transfer: `FileTransferService` + `FileTransferUsbMscBridge`; SD musi byt
+  pred vystavenim pocitaci zamcena pres `StorageManager::enterTransferLock()`.
+
+### Menit File Transfer / USB MSC
+
+- UI flow: `file_transfer_gui.*`.
+- Transfer lifecycle: `FileTransferService`.
+- Raw block backend: `FileTransferUsbMscBridge`.
+- Nikdy nezapisovat do SD pres HMI storage, zatimco je aktivni MSC session.
+- Logovani behem transferu musi zustat CDC-safe: pouzivat `setLoggerUsbCdcAvailable(false)`
+  a po navratu `flushBufferedLogMessages()`.
+- Board/build nastaveni je stejne dulezite jako kod: native USB OTG/TinyUSB,
+  `USBMSC.h`, `USB.h`, USB CDC on boot.
 
 ## Debugging checklist
 
@@ -617,9 +696,18 @@ Sent: ?id=cpu_temp&status=1&temp=0.21
 ### Databank nic neukazuje
 
 - Overit storage mount.
-- Overit `/DataBundles/`.
+- Overit `/records/`.
 - Overit CSV soubory pres `DataBundleManager::listAllBundles()`.
 - Overit, ze `DataBundleSelectionGui::showDataBundles()` vola `updateBundles()`.
+
+### Transfer Mode/USB MSC nejde spustit
+
+- Overit, ze build pouziva `STORAGE_OPTION_SD`; SPIFFS se pres MSC nevystavuje.
+- Overit, ze SD karta je fyzicky vlozena a mount probehne mimo transfer.
+- Overit Arduino board option: ESP32-S3 native USB OTG/TinyUSB (`ARDUINO_USB_MODE == 0`).
+- Overit, ze core poskytuje `USB.h` a `USBMSC.h`.
+- Pokud PC nevidi disk, zkontrolovat USB kabel/port: musi jit o native USB konektor ESP32-S3, ne jen externi USB-UART bridge.
+- Po `End session` musi log obsahovat remount SD z `StorageManager::exitTransferLock()`.
 
 ## Kodove konvence a rizika
 
@@ -629,6 +717,7 @@ Sent: ?id=cpu_temp&status=1&temp=0.21
 - `DeviceVisualizationSession` drzi aktivni runtime vyber; pri editaci katalogu je potreba session vycistit.
 - Storage API vyzaduje absolutni cesty se `/`.
 - SPIFFS a SD se chovaji jinak u adresaru; pouzivejte `StorageManager`, ne primo `SPIFFS`/`SD`.
+- Behem Transfer Mode nevykonavat zadne HMI filesystem operace nad SD; kartu vlastni USB host.
 - VSCP parser je case-sensitive podle configu; emulator by mel drzet stejnou semantiku jako firmware.
 
 ## Rychly index komponent
@@ -648,7 +737,8 @@ libraries/engine/src/devices/
 
 libraries/engine/src/managers/
   DeviceCatalog, DeviceManager, DeviceVisualizationSession,
-  DeviceBrowserState, DataBundleManager, StorageManager
+  DeviceBrowserState, DataBundleManager, StorageManager,
+  FileTransferService, FileTransferUsbMscBridge
 
 libraries/engine/src/gui/
   all application screens and LVGL panel helpers

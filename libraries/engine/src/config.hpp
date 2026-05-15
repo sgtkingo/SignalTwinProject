@@ -98,4 +98,23 @@
 #define STORAGE_SD_PIN_CS 10
 #endif
 
+// USB Mass Storage transfer bridge. Requires ESP32-S3 native USB OTG/TinyUSB
+// support in the Arduino board configuration. Keep USB CDC enabled on boot if
+// the same connector is also used as the runtime UART/log channel.
+#ifndef FILE_TRANSFER_USB_MSC_ENABLED
+#define FILE_TRANSFER_USB_MSC_ENABLED 1
+#endif
+
+#ifndef FILE_TRANSFER_USB_MSC_VENDOR_ID
+#define FILE_TRANSFER_USB_MSC_VENDOR_ID "MTA"
+#endif
+
+#ifndef FILE_TRANSFER_USB_MSC_PRODUCT_ID
+#define FILE_TRANSFER_USB_MSC_PRODUCT_ID "SignalTwin HMI"
+#endif
+
+#ifndef FILE_TRANSFER_USB_MSC_REVISION
+#define FILE_TRANSFER_USB_MSC_REVISION "1.0"
+#endif
+
 #endif // CONFIG_ENGINE_H

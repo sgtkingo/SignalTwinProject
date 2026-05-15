@@ -15,6 +15,34 @@
 3. If you'll want to upload to the device from Arduino-IDE, select the programmer tool and port in `Tools` menu: Arduino-IDE uses the `esptool` of ESP-IDF in the background.
 4. (The `partitions.csv` file in `ui` subfolder of this sketch-folder beside `ui.ino` should override the `Huge App`/etc. partitioning scheme setting, for example to give bigger app-partition. But with v2 of esp32 package this seems not effective.)
 
+### USB / Transfer Mode settings
+
+Transfer Mode uses the ESP32-S3 native USB device stack and exposes the SD card as
+a USB Mass Storage Class disk. It does not expose SPIFFS.
+
+For Transfer Mode builds:
+
+1. Use an ESP32-S3 board/profile with native USB support.
+2. Set USB mode to native USB OTG/TinyUSB (`ARDUINO_USB_MODE == 0`). In Arduino
+   IDE this is usually the `USB-OTG (TinyUSB)` option.
+3. Keep USB CDC enabled on boot if the same USB connector is also used for
+   Serial/log output.
+4. Use the native ESP32-S3 USB connector for the PC cable. A separate USB-UART
+   bridge can provide serial logs, but it will not expose the SD card as MSC.
+5. Build with `STORAGE_OPTION_SD` when you want PC file transfer. SPIFFS is kept
+   for demo/debug storage and is not shared over USB.
+
+Relevant config flags live in [libraries/engine/src/config.hpp](/D:/Prace/MTA/SignalTwinProject/libraries/engine/src/config.hpp):
+
+- `FILE_TRANSFER_USB_MSC_ENABLED`: enables the USB MSC bridge.
+- `FILE_TRANSFER_USB_MSC_VENDOR_ID`
+- `FILE_TRANSFER_USB_MSC_PRODUCT_ID`
+- `FILE_TRANSFER_USB_MSC_REVISION`
+
+If the selected Arduino core/board mode does not provide `USB.h` and `USBMSC.h`,
+the firmware still builds, but Transfer Mode will show a backend-unavailable
+error instead of pretending to mount a drive.
+
 
 ## Compilation
 
@@ -30,12 +58,35 @@ The runtime storage backend is selected in [libraries/engine/src/config.hpp](/D:
 - `STORAGE_OPTION_SD`: persistent data is read from the SD card. The device catalog is expected at `/data/DB.json`.
 - `STORAGE_OPTION_SPIFFS`: persistent data is read from internal flash SPIFFS. The device catalog is expected at `/DB.json`.
 
+SD mode uses this shared layout:
+
+- `/data/DB.json`: device catalog.
+- `/data/pics/`: device pictures.
+- `/data/config.json`: persistent application configuration.
+- `/records/`: DataBundle CSV records.
+
 When `STORAGE_OPTION_SPIFFS` is active:
 
 - `STORAGE_SPIFFS_FORMAT_ON_FAIL` controls whether the filesystem is formatted automatically when mount fails.
 - `STORAGE_SEED_DEFAULT_DB_ON_MISSING` is enabled by default and will create `/DB.json` from the embedded default catalog on first boot if the file is missing.
 
 This means SPIFFS mode does not require a separate filesystem upload just to bootstrap the default device catalog.
+
+## Transfer Mode behavior
+
+Transfer Mode is a locked session:
+
+1. Opening the Transfer screen only shows a preparation page.
+2. After pressing `OK`, the HMI checks for an SD card and locks SD access from the
+   application.
+3. The USB MSC backend remounts the SD card for raw block read/write callbacks.
+4. The PC should see the HMI as a USB storage device.
+5. Pressing `End session` stops USB MSC, remounts SD for the HMI, restores USB CDC
+   logging, and returns to the Main Menu.
+
+Do not write to SD through HMI code while Transfer Mode is active. During that
+period the USB host owns the card. Logs are buffered in RAM while USB CDC is not
+available and are flushed after the session ends.
 
 # Libraries versions
 

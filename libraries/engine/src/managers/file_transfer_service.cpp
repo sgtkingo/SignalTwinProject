@@ -1,5 +1,6 @@
 #include "file_transfer_service.hpp"
 
+#include "file_transfer_usb_msc_bridge.hpp"
 #include "storage_manager.hpp"
 #include "expt.hpp"
 
@@ -66,29 +67,33 @@ bool FileTransferService::start()
         }
 #endif
 
-#if defined(FILE_TRANSFER_USB_MSC_ENABLED) && FILE_TRANSFER_USB_MSC_ENABLED
+        std::string bridgeError;
+        if (!fileTransferUsbMscBridge().start(bridgeError))
+        {
+            state = FileTransferState::ERROR;
+            lastMessage = bridgeError.empty() ? "USB MSC bridge backend failed to start." : bridgeError;
+            debugLogMessage(DEBUG_VERBOSE_ERRORS, "FileTransferService::start", "transfer backend failed", "%s", lastMessage.c_str());
+#if STORAGE_OPTION == STORAGE_OPTION_SD
+            storageManager().exitTransferLock();
+#endif
+            setLoggerUsbCdcAvailable(true);
+            flushBufferedLogMessages();
+            transferModeActive = false;
+            return false;
+        }
+
         state = FileTransferState::READY;
         lastMessage = "Transfer ready";
         debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "FileTransferService::start", "transfer ready", "%s", lastMessage.c_str());
         return true;
-#else
-        state = FileTransferState::ERROR;
-        lastMessage = "USB MSC bridge backend is not enabled in this build.";
-        debugLogMessage(DEBUG_VERBOSE_ERRORS, "FileTransferService::start", "transfer backend unavailable", "%s", lastMessage.c_str());
-#if STORAGE_OPTION == STORAGE_OPTION_SD
-        storageManager().exitTransferLock();
-#endif
-        setLoggerUsbCdcAvailable(true);
-        flushBufferedLogMessages();
-        transferModeActive = false;
-        return false;
-#endif
     }
     catch (const Exception &ex)
     {
         ex.print();
         state = FileTransferState::ERROR;
         lastMessage = ex.flush(0);
+        std::string bridgeError;
+        fileTransferUsbMscBridge().stop(bridgeError);
 #if STORAGE_OPTION == STORAGE_OPTION_SD
         storageManager().exitTransferLock();
 #endif
@@ -102,6 +107,8 @@ bool FileTransferService::start()
         Exception("FileTransferService::start", ex.what()).print();
         state = FileTransferState::ERROR;
         lastMessage = ex.what();
+        std::string bridgeError;
+        fileTransferUsbMscBridge().stop(bridgeError);
 #if STORAGE_OPTION == STORAGE_OPTION_SD
         storageManager().exitTransferLock();
 #endif
@@ -115,6 +122,8 @@ bool FileTransferService::start()
         Exception("FileTransferService::start", "Unknown exception").print();
         state = FileTransferState::ERROR;
         lastMessage = "Unknown exception while starting transfer.";
+        std::string bridgeError;
+        fileTransferUsbMscBridge().stop(bridgeError);
 #if STORAGE_OPTION == STORAGE_OPTION_SD
         storageManager().exitTransferLock();
 #endif
@@ -137,6 +146,9 @@ bool FileTransferService::stop()
             return true;
         }
 
+        std::string bridgeError;
+        const bool bridgeStopped = fileTransferUsbMscBridge().stop(bridgeError);
+
 #if STORAGE_OPTION == STORAGE_OPTION_SD
         if (!storageManager().exitTransferLock())
         {
@@ -144,11 +156,22 @@ bool FileTransferService::stop()
             flushBufferedLogMessages();
             transferModeActive = false;
             state = FileTransferState::ERROR;
-            lastMessage = "Failed to remount SD card after transfer.";
+            lastMessage = bridgeStopped ? "Failed to remount SD card after transfer." : bridgeError + " Failed to remount SD card after transfer.";
             debugLogMessage(DEBUG_VERBOSE_ERRORS, "FileTransferService::stop", "transfer unlock failed", "%s", lastMessage.c_str());
             return false;
         }
 #endif
+
+        if (!bridgeStopped)
+        {
+            setLoggerUsbCdcAvailable(true);
+            flushBufferedLogMessages();
+            transferModeActive = false;
+            state = FileTransferState::ERROR;
+            lastMessage = bridgeError.empty() ? "USB MSC bridge failed to stop." : bridgeError;
+            debugLogMessage(DEBUG_VERBOSE_ERRORS, "FileTransferService::stop", "transfer backend stop failed", "%s", lastMessage.c_str());
+            return false;
+        }
 
         setLoggerUsbCdcAvailable(true);
         flushBufferedLogMessages();
