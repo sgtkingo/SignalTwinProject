@@ -1,5 +1,7 @@
 # SignalTwin ✨🧬
 
+**Current development version:** `v1.2.0.63`
+
 SignalTwin Display is a lightweight **HMI/visualization client** for exploring sensor data in real time 🖥️.
 It focuses on **raw vs. processed comparisons**, **interactive inspection**, and **data capture** for later analysis
 — while educational modules live *above* this layer (e.g., in EduBoxHub or external course content).
@@ -103,6 +105,17 @@ Firmupdater automatically checks for newer versions and applies updates **with m
 
 📖 Learn more: https://github.com/sgtkingo/Firmupdater
 🌐 Online live-app: https://sgtkingo.github.io/Firmupdater/
+
+---
+
+## Versioning
+
+Project builds use `MAJOR.MINOR.PATCH.BUILD`.
+
+- Current development build: `1.2.0.63`.
+- `MAJOR` stays at `1` for this product line.
+- `MINOR` was bumped for the refactoring branch because it adds major runtime, DataBundle, device catalog, settings, transfer-mode and protocol-facing functionality.
+- `BUILD` is the number of commits on the current development branch since `main` (`63` at the time of this version bump).
 
 ---
 

@@ -1,6 +1,8 @@
 # RELEASE_NOTES
 
-## Current development changes
+## v1.2.0.63 - Refactoring development build
+
+Versioning note: this build uses `MAJOR.MINOR.PATCH.BUILD`. The major version remains `1`; the minor version was bumped for the refactoring branch feature scope; build `63` matches the number of commits on `codex/refactoring` since `main`.
 
 ### Runtime, VSCP and DB schema
 
@@ -27,6 +29,17 @@
 * DataBundle CSV includes `DeviceName`, `DeviceUid`, `SampleIndex`, `RuntimeMs`, `SignalName`, `Value`.
 * Recording uses runtime-relative milliseconds, so no RTC/NTP dependency is required.
 * Runtime chart supports autoscaling, history browsing and visible scaling labels.
+* Runtime and DataBundle graphs now support two visible signals with separate Y axes.
+* Runtime sampling can be adjusted dynamically up to 100 visible samples.
+* DataBundle Viewer includes graph and CSV modes, touch history browsing, cursor readout, autoscale and selectable signal blocks.
+* Multi-value recording now records all device values, independent of which values are currently charted.
+
+### Device catalog, settings and transfer mode
+
+* Device catalog and selection screens were redesigned with richer device details, role-aware placeholder pictures and clearer pin state indication.
+* Device pin schema now uses named `Pins` definitions and default pin maps by tag.
+* App settings can be saved to `/data/config.json`, with default communication and appearance placeholders persisted.
+* Added SD-card-oriented Transfer Mode screen and service scaffolding for USB MSC bridge workflows.
 
 ---
 
