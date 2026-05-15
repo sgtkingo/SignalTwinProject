@@ -33,6 +33,8 @@ except ModuleNotFoundError:
 PROTOCOL_API_VERSION = "1.4"
 DEFAULT_DB_VERSION = "1.0"
 DEFAULT_APP_NAME = "board"
+FLOAT_DTYPES = {"float", "double"}
+INT_DTYPES = {"int", "integer", "long"}
 
 
 def is_firmware_log_line(line: str) -> bool:
@@ -90,12 +92,14 @@ def load_catalog_defaults(path: Optional[str | Path] = None) -> tuple[Dict[str, 
         defaults = device.get("default", {})
         payload: Dict[str, Any] = {}
         value_access: Dict[str, str] = {}
+        value_dtypes: Dict[str, str] = {}
         control_defaults: Dict[str, Any] = {}
         default_values = defaults.get("values", {})
 
         for key, schema in device.get("values", {}).items():
             value = default_values.get(key, schema.get("value", 0))
             payload[key] = value
+            value_dtypes[key] = str(schema.get("dtype", "")).lower()
             access = str(schema.get("access", schema.get("direction", "read"))).lower()
             if access in {"write", "out", "output", "control"}:
                 access = "write"
@@ -113,6 +117,8 @@ def load_catalog_defaults(path: Optional[str | Path] = None) -> tuple[Dict[str, 
             payload["_restrictions"] = restrictions
         if value_access:
             payload["_value_access"] = value_access
+        if value_dtypes:
+            payload["_value_dtypes"] = value_dtypes
         if control_defaults:
             payload["_control_values"] = control_defaults
 
@@ -140,12 +146,48 @@ def load_catalog_defaults(path: Optional[str | Path] = None) -> tuple[Dict[str, 
 def default_sensor_values() -> Dict[str, Dict[str, Any]]:
     """Fallback catalog matching the current bundled DB.json."""
     return {
-        "mic_001": {"dBFS": 0.0, "peak": 0.0, "type": "SLM (dBFS)", "_role": "sensor"},
-        "cam_001": {"lux_est": 0.0, "type": "CAM Lux meter", "_role": "sensor"},
-        "cpu_temp": {"temp": 0.0, "type": "CPU Temp", "_role": "sensor"},
-        "S00": {"temp": 0.0, "alarm": "0", "type": "DS18B20", "_configs": {"Res": 2}, "_role": "sensor"},
-        "S01": {"temp": 0, "humi": 0, "type": "DHT11", "_configs": {"Unit": "C"}, "_role": "sensor"},
-        "S15": {"intensity": 0, "type": "PhotoResistor", "_configs": {"Res": 5}, "_role": "sensor"},
+        "mic_001": {
+            "dBFS": 0.0,
+            "peak": 0.0,
+            "type": "SLM (dBFS)",
+            "_value_dtypes": {"dBFS": "float", "peak": "float"},
+            "_role": "sensor",
+        },
+        "cam_001": {
+            "lux_est": 0.0,
+            "type": "CAM Lux meter",
+            "_value_dtypes": {"lux_est": "float"},
+            "_role": "sensor",
+        },
+        "cpu_temp": {
+            "temp": 0.0,
+            "type": "CPU Temp",
+            "_value_dtypes": {"temp": "float"},
+            "_role": "sensor",
+        },
+        "S00": {
+            "temp": 0.0,
+            "alarm": "0",
+            "type": "DS18B20",
+            "_configs": {"Res": 2},
+            "_value_dtypes": {"temp": "float", "alarm": "string"},
+            "_role": "sensor",
+        },
+        "S01": {
+            "temp": 0,
+            "humi": 0,
+            "type": "DHT11",
+            "_configs": {"Unit": "C"},
+            "_value_dtypes": {"temp": "int", "humi": "int"},
+            "_role": "sensor",
+        },
+        "S15": {
+            "intensity": 0,
+            "type": "PhotoResistor",
+            "_configs": {"Res": 5},
+            "_value_dtypes": {"intensity": "int"},
+            "_role": "sensor",
+        },
         "A00": {
             "Brightness": 40,
             "type": "PWM LED Driver",
@@ -153,6 +195,7 @@ def default_sensor_values() -> Dict[str, Dict[str, Any]]:
             "_control_values": {"Brightness": 40},
             "_restrictions": {"Brightness": {"min": 0, "max": 100, "step": 5}},
             "_value_access": {"Brightness": "write"},
+            "_value_dtypes": {"Brightness": "int"},
             "_role": "actuator",
         },
         "H00": {
@@ -166,6 +209,7 @@ def default_sensor_values() -> Dict[str, Dict[str, Any]]:
                 "temp": {"min": -40, "max": 120},
             },
             "_value_access": {"set_point": "write", "temp": "read"},
+            "_value_dtypes": {"set_point": "int", "temp": "int"},
             "_role": "hybrid",
         },
     }
@@ -301,6 +345,18 @@ class VSCPEmulator:
         except (TypeError, ValueError):
             return fallback
 
+    @staticmethod
+    def _is_float_dtype(dtype: Any) -> bool:
+        return str(dtype).lower() in FLOAT_DTYPES
+
+    @staticmethod
+    def _is_int_dtype(dtype: Any) -> bool:
+        return str(dtype).lower() in INT_DTYPES
+
+    @classmethod
+    def _format_float(cls, value: Any) -> str:
+        return f"{cls._to_float(value, 0.0):.2f}"
+
     def _advance_temperature_regulator(self, uid: str) -> bool:
         device = self.sensor_data.get(uid, {})
         value_access = device.get("_value_access", {})
@@ -327,24 +383,30 @@ class VSCPEmulator:
         payload = {}
         restrictions = self.sensor_data[uid].get("_restrictions", {})
         value_access = self.sensor_data[uid].get("_value_access", {})
+        value_dtypes = self.sensor_data[uid].get("_value_dtypes", {})
         regulator_updated = self._advance_temperature_regulator(uid)
         for key, value in self.sensor_data[uid].items():
             if key.startswith("_") or key == "type":
                 continue
+            dtype = value_dtypes.get(key, "")
             if value_access.get(key, "read") == "write":
                 continue
             if regulator_updated and key == "temp":
-                payload[key] = int(round(self._to_float(value, 0.0)))
+                if self._is_float_dtype(dtype):
+                    payload[key] = self._format_float(value)
+                else:
+                    payload[key] = int(round(self._to_float(value, 0.0)))
                 continue
-            if isinstance(value, (int, float)):
-                jitter = random.randint(-2, 2) if isinstance(value, int) else random.uniform(-0.5, 0.5)
-                next_value = value + jitter
+            if isinstance(value, (int, float)) or self._is_float_dtype(dtype) or self._is_int_dtype(dtype):
+                current_value = self._to_float(value, 0.0)
+                jitter = random.uniform(-0.5, 0.5) if self._is_float_dtype(dtype) else random.randint(-2, 2)
+                next_value = current_value + jitter
                 restriction = restrictions.get(key, {})
                 if "min" in restriction:
                     next_value = max(float(restriction["min"]), next_value)
                 if "max" in restriction:
                     next_value = min(float(restriction["max"]), next_value)
-                payload[key] = round(next_value, 2) if isinstance(value, float) else int(round(next_value))
+                payload[key] = self._format_float(next_value) if self._is_float_dtype(dtype) else int(round(next_value))
             else:
                 payload[key] = value
         return payload

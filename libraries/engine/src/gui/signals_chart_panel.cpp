@@ -20,9 +20,10 @@ void SignalsChartPanel::create(lv_obj_t *parent)
     lv_chart_set_div_line_count(chart, HISTORY_CAP - 1, HISTORY_CAP);
     lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_X, HISTORY_CAP / 2, 0, HISTORY_CAP, 1, true, 50);
     lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_Y, HISTORY_CAP, 5, 5, 2, true, 50);
+    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_SECONDARY_Y, HISTORY_CAP, 5, 0, 2, false, 50);
 
     primarySeries = lv_chart_add_series(chart, lv_color_hex(0x009BFF), LV_CHART_AXIS_PRIMARY_Y);
-    secondarySeries = lv_chart_add_series(chart, lv_color_hex(0xFF6B35), LV_CHART_AXIS_PRIMARY_Y);
+    secondarySeries = lv_chart_add_series(chart, lv_color_hex(0xFF6B35), LV_CHART_AXIS_SECONDARY_Y);
 
     lv_obj_set_style_bg_color(chart, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(chart, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -45,15 +46,24 @@ void SignalsChartPanel::create(lv_obj_t *parent)
     lv_obj_set_width(scalingLabel, LV_SIZE_CONTENT);
     lv_obj_set_height(scalingLabel, LV_SIZE_CONTENT);
     lv_obj_align_to(scalingLabel, chart, LV_ALIGN_OUT_TOP_LEFT, 0, -5);
-    lv_obj_set_style_text_color(scalingLabel, lv_color_hex(0xD32F2F), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(scalingLabel, lv_color_hex(0x009BFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(scalingLabel, &lv_font_montserrat_10, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    secondaryScalingLabel = lv_label_create(parent);
+    lv_label_set_text(secondaryScalingLabel, "");
+    lv_obj_set_width(secondaryScalingLabel, LV_SIZE_CONTENT);
+    lv_obj_set_height(secondaryScalingLabel, LV_SIZE_CONTENT);
+    lv_obj_align_to(secondaryScalingLabel, chart, LV_ALIGN_OUT_TOP_RIGHT, 0, -5);
+    lv_obj_set_style_text_color(secondaryScalingLabel, lv_color_hex(0xFF6B35), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(secondaryScalingLabel, &lv_font_montserrat_10, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_add_flag(secondaryScalingLabel, LV_OBJ_FLAG_HIDDEN);
 
     samplesLabel = lv_label_create(parent);
     lv_label_set_text(samplesLabel, "Samples 10");
     lv_obj_set_width(samplesLabel, LV_SIZE_CONTENT);
     lv_obj_set_height(samplesLabel, LV_SIZE_CONTENT);
-    lv_obj_align_to(samplesLabel, scalingLabel, LV_ALIGN_OUT_RIGHT_MID, 14, 0);
-    lv_obj_set_style_text_color(samplesLabel, lv_color_hex(0xD32F2F), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_align_to(samplesLabel, chart, LV_ALIGN_OUT_TOP_MID, 0, -5);
+    lv_obj_set_style_text_color(samplesLabel, lv_color_hex(0x5F6B7A), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(samplesLabel, &lv_font_montserrat_10, LV_PART_MAIN | LV_STATE_DEFAULT);
 }
 
@@ -78,13 +88,22 @@ void SignalsChartPanel::hideEmptyState()
     }
 }
 
-void SignalsChartPanel::setScalingText(const char *text)
+void SignalsChartPanel::setScalingText(const char *primaryText, const char *secondaryText)
 {
     if (scalingLabel) {
-        lv_label_set_text(scalingLabel, text ? text : "");
-        if (samplesLabel) {
-            lv_obj_align_to(samplesLabel, scalingLabel, LV_ALIGN_OUT_RIGHT_MID, 14, 0);
-        }
+        lv_label_set_text(scalingLabel, primaryText ? primaryText : "");
+    }
+
+    if (!secondaryScalingLabel) {
+        return;
+    }
+
+    if (secondaryText && secondaryText[0] != '\0') {
+        lv_label_set_text(secondaryScalingLabel, secondaryText);
+        lv_obj_clear_flag(secondaryScalingLabel, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_label_set_text(secondaryScalingLabel, "");
+        lv_obj_add_flag(secondaryScalingLabel, LV_OBJ_FLAG_HIDDEN);
     }
 }
 
@@ -106,14 +125,24 @@ void SignalsChartPanel::setVisibleSampleCount(int sampleCount)
     lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_X, 5, 0, sampleCount > 20 ? 10 : sampleCount, 1, true, 50);
 }
 
-void SignalsChartPanel::setRange(lv_coord_t minValue, lv_coord_t maxValue)
+void SignalsChartPanel::setRange(lv_coord_t primaryMinValue,
+                                 lv_coord_t primaryMaxValue,
+                                 lv_coord_t secondaryMinValue,
+                                 lv_coord_t secondaryMaxValue,
+                                 bool hasSecondarySeries)
 {
     if (!chart) {
         return;
     }
 
-    lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, minValue, maxValue);
-    lv_chart_set_range(chart, LV_CHART_AXIS_SECONDARY_Y, minValue, maxValue);
+    lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, primaryMinValue, primaryMaxValue);
+    lv_chart_set_range(
+        chart,
+        LV_CHART_AXIS_SECONDARY_Y,
+        hasSecondarySeries ? secondaryMinValue : primaryMinValue,
+        hasSecondarySeries ? secondaryMaxValue : primaryMaxValue);
+    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_Y, 5, 5, 5, 2, true, 50);
+    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_SECONDARY_Y, 5, 5, hasSecondarySeries ? 5 : 0, 2, hasSecondarySeries, 50);
 }
 
 void SignalsChartPanel::clearSeries()

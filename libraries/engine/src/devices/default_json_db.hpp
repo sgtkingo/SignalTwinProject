@@ -133,9 +133,9 @@
       "description": "DHT11 temperature and humidity sensor.",
       "values": {
         "temp": {
-          "value": 0,
+          "value": 0.0,
           "unit": "C",
-          "dtype": "int",
+          "dtype": "float",
           "restrictions": {
             "min": -40,
             "max": 80
@@ -166,7 +166,7 @@
       },
       "default": {
         "values": {
-          "temp": 0,
+          "temp": 0.0,
           "humi": 0
         },
         "configs": {

@@ -17,6 +17,7 @@ private:
     lv_obj_t *chart = nullptr;
     lv_obj_t *emptyLabel = nullptr;
     lv_obj_t *scalingLabel = nullptr;
+    lv_obj_t *secondaryScalingLabel = nullptr;
     lv_obj_t *samplesLabel = nullptr;
     lv_chart_series_t *primarySeries = nullptr;
     lv_chart_series_t *secondarySeries = nullptr;
@@ -29,10 +30,14 @@ public:
 
     void showEmptyState(const char *message);
     void hideEmptyState();
-    void setScalingText(const char *text);
+    void setScalingText(const char *primaryText, const char *secondaryText = nullptr);
     void setSamplesText(const char *text);
     void setVisibleSampleCount(int sampleCount);
-    void setRange(lv_coord_t minValue, lv_coord_t maxValue);
+    void setRange(lv_coord_t primaryMinValue,
+                  lv_coord_t primaryMaxValue,
+                  lv_coord_t secondaryMinValue,
+                  lv_coord_t secondaryMaxValue,
+                  bool hasSecondarySeries);
     void clearSeries();
     void populatePrimarySeries(const lv_coord_t *history, int sampleCount);
     void populateSecondarySeries(const lv_coord_t *history, int sampleCount);

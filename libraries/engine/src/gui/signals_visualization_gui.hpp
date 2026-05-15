@@ -70,6 +70,8 @@ private:
     int chartPinchLastDistancePx = 0;
     int chartPinchAccumulatorPx = 0;
     bool chartPinchActive = false;
+    std::string chartSelectedDeviceId;
+    std::vector<std::string> chartSelectedValueKeys;
 
     void createMainWidget();
     void createTitleLabel();
@@ -266,7 +268,13 @@ private:
     void syncControlEditorValue(size_t controlIndex, const DeviceParam &param);
     bool buildNumericHistoryForKey(const std::string &key, lv_coord_t *history, bool appendSample);
     void recordCurrentSamples(const std::vector<std::string> &valueKeys);
-    std::vector<std::string> getChartableValueKeys() const;
+    std::vector<std::string> getAvailableChartValueKeys() const;
+    std::vector<std::string> getActiveChartValueKeys();
+    void ensureActiveChartValueKeys();
+    void toggleChartValueSelection(size_t valueIndex);
+    static int chartScaleFactorForParam(const DeviceParam &param);
+    static std::string buildChartScalingText(const std::string &chartKey,
+                                             const std::unordered_map<std::string, DeviceParam> &values);
     void showEmptyChartState(const char *message);
     void hideEmptyChartState();
     static std::pair<lv_coord_t, lv_coord_t> computeChartRange(const lv_coord_t *history);
@@ -381,6 +389,7 @@ public:
      * @param btnSettings The settings button to keep above the overlay
      */
     void handleSettingsButtonClick(lv_obj_t *recordGroup, lv_obj_t *btnSettings, lv_obj_t *parentWidget);
+    void handleChartValueSelectionClick(size_t valueIndex);
 
     /**
      * @brief Handle data bundle show button click event

@@ -46,7 +46,7 @@ private:
     static constexpr const char *txt_title = "About Signal Twin";
 
     static constexpr const char *txt_intro =
-        "Signal Twin is an embedded HMI for VSCP device connection, live signal visualization, recording and DataBundle review.";
+        "Signal Twin is an embedded HMI for VSCP device connection, live signal visualization, recording and DataBundle review.\n This project was developed as part of the EduBox HUB project under the www.m-ta.cz (MTA).";
 
     static constexpr const char *txt_section_authors =
         "Authors:\n"
@@ -84,26 +84,6 @@ private:
         lv_obj_add_flag(ui_btnBackGroup, LV_OBJ_FLAG_FLOATING);
         lv_obj_align(ui_btnBackGroup, LV_ALIGN_TOP_LEFT, -15, -15);
         lv_obj_clear_flag(ui_btnBackGroup, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE); /// Flags
-
-        lv_obj_t *ui_btnBackCornerBottomLeft = lv_obj_create(ui_btnBackGroup);
-        lv_obj_remove_style_all(ui_btnBackCornerBottomLeft);
-        lv_obj_set_width(ui_btnBackCornerBottomLeft, 20);
-        lv_obj_set_height(ui_btnBackCornerBottomLeft, 20);
-        lv_obj_set_align(ui_btnBackCornerBottomLeft, LV_ALIGN_BOTTOM_LEFT);
-        lv_obj_clear_flag(ui_btnBackCornerBottomLeft, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE); /// Flags
-        lv_obj_set_style_bg_color(ui_btnBackCornerBottomLeft, lv_color_hex(0x009BFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_bg_opa(ui_btnBackCornerBottomLeft, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_clip_corner(ui_btnBackCornerBottomLeft, false, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-        lv_obj_t *ui_btnBackCornerTopRight = lv_obj_create(ui_btnBackGroup);
-        lv_obj_remove_style_all(ui_btnBackCornerTopRight);
-        lv_obj_set_width(ui_btnBackCornerTopRight, 20);
-        lv_obj_set_height(ui_btnBackCornerTopRight, 20);
-        lv_obj_set_align(ui_btnBackCornerTopRight, LV_ALIGN_TOP_RIGHT);
-        lv_obj_clear_flag(ui_btnBackCornerTopRight, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE); /// Flags
-        lv_obj_set_style_bg_color(ui_btnBackCornerTopRight, lv_color_hex(0x009BFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_bg_opa(ui_btnBackCornerTopRight, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_clip_corner(ui_btnBackCornerTopRight, false, LV_PART_MAIN | LV_STATE_DEFAULT);
 
         // Back button for returning to menu
         lv_obj_t *ui_btnBack = lv_btn_create(ui_btnBackGroup);

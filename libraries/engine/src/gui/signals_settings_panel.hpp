@@ -2,6 +2,8 @@
 #define SIGNALS_SETTINGS_PANEL_HPP
 
 #include "lvgl.h"
+#include <string>
+#include <vector>
 
 class SignalsSettingsPanel
 {
@@ -19,12 +21,15 @@ private:
     lv_obj_t *ui_SettingsSeriesColorLabel = nullptr;
     lv_obj_t *ui_SettingsPrimarySwatch = nullptr;
     lv_obj_t *ui_SettingsSecondarySwatch = nullptr;
+    lv_obj_t *ui_SettingsGraphValuesLabel = nullptr;
     lv_obj_t *ui_SettingsManualScaleButton = nullptr;
     lv_obj_t *ui_SettingsManualScaleButtonLabel = nullptr;
     lv_obj_t *ui_SettingsDataBundleLabel = nullptr;
     lv_obj_t *ui_SettingsDataBundleCountLabel = nullptr;
     lv_obj_t *ui_SettingsDataBundleShowButton = nullptr;
     lv_obj_t *ui_SettingsDataBundleShowButtonLabel = nullptr;
+    std::vector<lv_obj_t *> ui_SettingsValueBlocks;
+    std::vector<lv_obj_t *> ui_SettingsValueBlockLabels;
 
 public:
     bool isVisible() const { return ui_SettingsOverlay != nullptr; }
@@ -35,8 +40,14 @@ public:
               void *userData,
               uint32_t bundleAmount,
               bool isBundleFull,
+              const std::vector<std::string> &chartValueKeys,
+              const std::vector<std::string> &selectedChartValueKeys,
               lv_event_cb_t closeCallback,
-              lv_event_cb_t showBundlesCallback);
+              lv_event_cb_t showBundlesCallback,
+              lv_event_cb_t chartValueCallback);
+
+    void updateChartValueBlocks(const std::vector<std::string> &chartValueKeys,
+                                const std::vector<std::string> &selectedChartValueKeys);
 
     void hide();
 };

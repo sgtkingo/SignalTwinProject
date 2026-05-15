@@ -13,6 +13,7 @@
 #include "../helpers.hpp"
 #include "./images/ui_images.h"
 #include "expt.hpp"
+#include <algorithm>
 #include <cstdint>
 #include <cstdio>
 #include <utility>
@@ -372,7 +373,7 @@ bool SignalsVisualizationGui::currentDeviceSupportsRecording() const
 {
     return currentDevice &&
            currentDevice->getRole() != DeviceRole::ACTUATOR &&
-           !getChartableValueKeys().empty();
+           !getAvailableChartValueKeys().empty();
 }
 
 void SignalsVisualizationGui::updateListModeToggleState()
@@ -566,7 +567,7 @@ void SignalsVisualizationGui::recordCurrentSamples(const std::vector<std::string
         recordedCount);
 }
 
-std::vector<std::string> SignalsVisualizationGui::getChartableValueKeys() const
+std::vector<std::string> SignalsVisualizationGui::getAvailableChartValueKeys() const
 {
     std::vector<std::string> chartKeys;
     if (!currentDevice) {
@@ -587,13 +588,101 @@ std::vector<std::string> SignalsVisualizationGui::getChartableValueKeys() const
         if (it->second.Access == DeviceParamAccess::READ && isNumericType(it->second.DType)) {
             chartKeys.push_back(key);
         }
-
-        if (chartKeys.size() == 2) {
-            break;
-        }
     }
 
     return chartKeys;
+}
+
+void SignalsVisualizationGui::ensureActiveChartValueKeys()
+{
+    if (!currentDevice) {
+        chartSelectedDeviceId.clear();
+        chartSelectedValueKeys.clear();
+        return;
+    }
+
+    const std::string deviceId = currentDevice->getId();
+    const auto availableKeys = getAvailableChartValueKeys();
+    if (chartSelectedDeviceId != deviceId) {
+        chartSelectedDeviceId = deviceId;
+        chartSelectedValueKeys.clear();
+    }
+
+    std::vector<std::string> filteredKeys;
+    for (const auto &selectedKey : chartSelectedValueKeys) {
+        if (std::find(availableKeys.begin(), availableKeys.end(), selectedKey) != availableKeys.end()) {
+            filteredKeys.push_back(selectedKey);
+            if (filteredKeys.size() == 2) {
+                break;
+            }
+        }
+    }
+
+    if (filteredKeys.empty()) {
+        for (const auto &availableKey : availableKeys) {
+            if (filteredKeys.size() == 2) {
+                break;
+            }
+            filteredKeys.push_back(availableKey);
+        }
+    }
+
+    chartSelectedValueKeys = filteredKeys;
+}
+
+std::vector<std::string> SignalsVisualizationGui::getActiveChartValueKeys()
+{
+    ensureActiveChartValueKeys();
+    return chartSelectedValueKeys;
+}
+
+void SignalsVisualizationGui::toggleChartValueSelection(size_t valueIndex)
+{
+    const auto availableKeys = getAvailableChartValueKeys();
+    if (valueIndex >= availableKeys.size()) {
+        return;
+    }
+
+    ensureActiveChartValueKeys();
+    const std::string &key = availableKeys[valueIndex];
+    auto selectedIt = std::find(chartSelectedValueKeys.begin(), chartSelectedValueKeys.end(), key);
+    if (selectedIt != chartSelectedValueKeys.end()) {
+        if (chartSelectedValueKeys.size() > 1) {
+            chartSelectedValueKeys.erase(selectedIt);
+        }
+    } else if (chartSelectedValueKeys.size() < 2) {
+        chartSelectedValueKeys.push_back(key);
+    } else {
+        chartSelectedValueKeys[1] = key;
+    }
+
+    chartHistoryOffset = 0;
+    chartDragAccumulatorPx = 0;
+    chartPinchLastDistancePx = 0;
+    chartPinchAccumulatorPx = 0;
+    chartPinchActive = false;
+    updateChart(true);
+    settingsPanel.updateChartValueBlocks(availableKeys, chartSelectedValueKeys);
+}
+
+int SignalsVisualizationGui::chartScaleFactorForParam(const DeviceParam &param)
+{
+    return (param.DType == DeviceDataType::FLOAT || param.DType == DeviceDataType::DOUBLE) ? 100 : 1;
+}
+
+std::string SignalsVisualizationGui::buildChartScalingText(const std::string &chartKey,
+                                                           const std::unordered_map<std::string, DeviceParam> &values)
+{
+    if (chartKey.empty()) {
+        return "";
+    }
+
+    auto valueIt = values.find(chartKey);
+    if (valueIt == values.end()) {
+        return "";
+    }
+
+    return "Scale x" + std::to_string(chartScaleFactorForParam(valueIt->second));
 }
 
 void SignalsVisualizationGui::showEmptyChartState(const char *message)
@@ -663,7 +752,7 @@ void SignalsVisualizationGui::panChartHistory(int steps)
         return;
     }
 
-    const auto chartKeys = getChartableValueKeys();
+    const auto chartKeys = getActiveChartValueKeys();
     if (chartKeys.empty()) {
         return;
     }
@@ -712,7 +801,7 @@ void SignalsVisualizationGui::adjustChartVisibleSamples(int deltaSamples)
     chartPanel.setVisibleSampleCount(chartVisibleSampleCount);
     updateChartSampleLabel();
 
-    const auto chartKeys = getChartableValueKeys();
+    const auto chartKeys = getActiveChartValueKeys();
     const int maxOffset = getMaxChartHistoryOffset(chartKeys);
     if (chartHistoryOffset > maxOffset) {
         chartHistoryOffset = maxOffset;
@@ -902,7 +991,7 @@ void SignalsVisualizationGui::updateChart(bool force)
     if (!force && !currentDevice->getRedrawPending())
         return;
 
-    const auto chartKeys = getChartableValueKeys();
+    const auto chartKeys = getActiveChartValueKeys();
     if (chartKeys.empty())
     {
         chartPanel.setScalingText("");
@@ -918,17 +1007,11 @@ void SignalsVisualizationGui::updateChart(bool force)
         hideEmptyChartState();
         const bool appendSample = !force && currentDevice->getRedrawPending();
         const auto values = currentDevice->getValues();
-        bool usesFloatScaling = false;
-        for (size_t i = 0; i < chartKeys.size() && i < 2; ++i)
-        {
-            auto valueIt = values.find(chartKeys[i]);
-            if (valueIt != values.end() &&
-                (valueIt->second.DType == DeviceDataType::FLOAT || valueIt->second.DType == DeviceDataType::DOUBLE))
-            {
-                usesFloatScaling = true;
-            }
-        }
-        chartPanel.setScalingText(usesFloatScaling ? "Scaling x100" : "Scaling 1x");
+        const std::string primaryScalingText = buildChartScalingText(chartKeys[0], values);
+        const std::string secondaryScalingText = chartKeys.size() > 1
+                                                     ? buildChartScalingText(chartKeys[1], values)
+                                                     : "";
+        chartPanel.setScalingText(primaryScalingText.c_str(), secondaryScalingText.c_str());
         updateChartSampleLabel();
 
         lv_coord_t historyPrimary[CHART_MAX_VISIBLE_SAMPLES];
@@ -937,25 +1020,18 @@ void SignalsVisualizationGui::updateChart(bool force)
         }
 
         auto primaryRange = computeChartRange(historyPrimary, chartVisibleSampleCount);
-        lv_coord_t globalMin = primaryRange.first;
-        lv_coord_t globalMax = primaryRange.second;
 
         bool haveSecond = false;
         lv_coord_t historySecondary[CHART_MAX_VISIBLE_SAMPLES];
+        std::pair<lv_coord_t, lv_coord_t> secondaryRange = primaryRange;
         if (chartKeys.size() > 1) {
             haveSecond = buildNumericHistoryForKey(chartKeys[1], historySecondary, appendSample);
             if (haveSecond) {
-                auto secondaryRange = computeChartRange(historySecondary, chartVisibleSampleCount);
-                if (secondaryRange.first < globalMin) {
-                    globalMin = secondaryRange.first;
-                }
-                if (secondaryRange.second > globalMax) {
-                    globalMax = secondaryRange.second;
-                }
+                secondaryRange = computeChartRange(historySecondary, chartVisibleSampleCount);
             }
         }
 
-        chartPanel.setRange(globalMin, globalMax);
+        chartPanel.setRange(primaryRange.first, primaryRange.second, secondaryRange.first, secondaryRange.second, haveSecond);
         chartPanel.clearSeries();
         chartPanel.populatePrimarySeries(historyPrimary, chartVisibleSampleCount);
 
@@ -1126,7 +1202,7 @@ void SignalsVisualizationGui::handleRecordButtonClick(const char *message)
         debugLogMessage("SignalsVisualizationGui::handleRecordButtonClick", "recording stop", "device=%s", currentDevice->UID.c_str());
         if (!dataBundleManager.hasRecordingData())
         {
-            recordCurrentSamples(getChartableValueKeys());
+            recordCurrentSamples(getActiveChartValueKeys());
         }
         const bool saved = dataBundleManager.saveRecording();
         recording = false;
@@ -1209,6 +1285,8 @@ void SignalsVisualizationGui::handleClearConfirmButtonClick()
 
 void SignalsVisualizationGui::handleSettingsButtonClick(lv_obj_t *recordGroup, lv_obj_t *btnSettings,lv_obj_t *parentWidget)
 {
+    const auto availableChartValueKeys = getAvailableChartValueKeys();
+    const auto activeChartValueKeys = getActiveChartValueKeys();
     settingsPanel.show(
         parentWidget,
         recordGroup,
@@ -1216,6 +1294,8 @@ void SignalsVisualizationGui::handleSettingsButtonClick(lv_obj_t *recordGroup, l
         this,
         dataBundleManager.getDataBundleAmount(),
         dataBundleManager.isBundleStorageFull(),
+        availableChartValueKeys,
+        activeChartValueKeys,
         [](lv_event_t *e) {
             auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
             self->hideSettingsPanel();
@@ -1223,7 +1303,17 @@ void SignalsVisualizationGui::handleSettingsButtonClick(lv_obj_t *recordGroup, l
         [](lv_event_t *e) {
             auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
             self->handleDataBundleShowButtonClick();
+        },
+        [](lv_event_t *e) {
+            auto *self = static_cast<SignalsVisualizationGui *>(lv_event_get_user_data(e));
+            const int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(lv_event_get_current_target(e))));
+            self->handleChartValueSelectionClick(static_cast<size_t>(index));
         });
+}
+
+void SignalsVisualizationGui::handleChartValueSelectionClick(size_t valueIndex)
+{
+    toggleChartValueSelection(valueIndex);
 }
 
 void SignalsVisualizationGui::handleDataBundleShowButtonClick(){
