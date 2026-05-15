@@ -19,8 +19,8 @@ void SignalsListPanel::create(lv_obj_t *parent,
     textSubmittedCb = textCb;
 
     container = lv_obj_create(parent);
-    lv_obj_set_size(container, 230, 260);
-    lv_obj_set_x(container, -230);
+    lv_obj_set_size(container, 200, 260);
+    lv_obj_set_x(container, -267);
     lv_obj_set_y(container, -15);
     lv_obj_set_align(container, LV_ALIGN_CENTER);
     lv_obj_set_scroll_dir(container, LV_DIR_VER);

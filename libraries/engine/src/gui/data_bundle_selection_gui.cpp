@@ -15,8 +15,15 @@
 #include "expt.hpp"
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <cstdlib>
+
+extern int touch_point_count __attribute__((weak));
+extern int touch_last_x __attribute__((weak));
+extern int touch_last_y __attribute__((weak));
+extern int touch_second_x __attribute__((weak));
+extern int touch_second_y __attribute__((weak));
 
 namespace
 {
@@ -58,11 +65,6 @@ bool parseNumericValue(const std::string &text, double &value)
     char *end = nullptr;
     value = std::strtod(text.c_str(), &end);
     return end && *end == '\0';
-}
-
-bool textLooksScaledFloat(const std::string &text)
-{
-    return text.find('.') != std::string::npos || text.find(',') != std::string::npos;
 }
 
 uint32_t getBundleViewerColor(uint8_t index)
@@ -787,10 +789,16 @@ void DataBundleSelectionGui::parseBundleViewerCsv(const std::string &csvText)
     bundleViewerHeaders.clear();
     bundleViewerRows.clear();
     bundleViewerSignals.clear();
+    bundleViewerSelectedSignals.clear();
     bundleViewerCsvMode = false;
     bundleViewerHistoryOffset = 0;
     bundleViewerDragAccumulatorPx = 0;
-    bundleViewerCursorIndex = BUNDLE_VIEW_CHART_POINTS / 2;
+    bundleViewerVisibleSampleCount = BUNDLE_VIEW_DEFAULT_CHART_POINTS;
+    bundleViewerXTickMax = 10;
+    bundleViewerPinchLastDistancePx = 0;
+    bundleViewerPinchAccumulatorPx = 0;
+    bundleViewerPinchActive = false;
+    bundleViewerCursorIndex = bundleViewerVisibleSampleCount / 2;
     bundleViewerCursorVisible = false;
 
     size_t start = 0;
@@ -847,10 +855,7 @@ void DataBundleSelectionGui::parseBundleViewerCsv(const std::string &csvText)
 
         double numericValue = 0.0;
         row.numeric = parseNumericValue(row.value, numericValue);
-        row.scaled = row.numeric && textLooksScaledFloat(row.value);
-        row.chartValue = row.scaled
-                             ? static_cast<lv_coord_t>(std::lround(numericValue * 100.0))
-                             : static_cast<lv_coord_t>(std::lround(numericValue));
+        row.numericValue = numericValue;
 
         if (row.numeric &&
             !row.signalName.empty() &&
@@ -861,13 +866,17 @@ void DataBundleSelectionGui::parseBundleViewerCsv(const std::string &csvText)
 
         bundleViewerRows.push_back(row);
     }
+
+    ensureBundleViewerSelectedSignals();
 }
 
 void DataBundleSelectionGui::createBundleViewerContent()
 {
     ui_BundleViewerScalingLabel = lv_label_create(ui_BundleViewerPanel);
-    lv_label_set_text(ui_BundleViewerScalingLabel, "Scaling 1x");
-    lv_obj_align(ui_BundleViewerScalingLabel, LV_ALIGN_TOP_LEFT, 210, 56);
+    lv_label_set_text_fmt(ui_BundleViewerScalingLabel, "Samples %d", bundleViewerVisibleSampleCount);
+    lv_obj_set_width(ui_BundleViewerScalingLabel, 118);
+    lv_label_set_long_mode(ui_BundleViewerScalingLabel, LV_LABEL_LONG_DOT);
+    lv_obj_align(ui_BundleViewerScalingLabel, LV_ALIGN_TOP_LEFT, 590, 56);
     lv_obj_set_style_text_font(ui_BundleViewerScalingLabel, &lv_font_montserrat_10, LV_PART_MAIN);
     lv_obj_set_style_text_color(ui_BundleViewerScalingLabel, lv_color_hex(0xD32F2F), LV_PART_MAIN);
 
@@ -878,6 +887,11 @@ void DataBundleSelectionGui::createBundleViewerContent()
     lv_obj_set_style_radius(ui_BundleViewerPrimaryLegend, 5, LV_PART_MAIN);
     lv_obj_set_style_bg_color(ui_BundleViewerPrimaryLegend, lv_color_hex(getBundleViewerColor(bundleViewerPrimaryColorIndex)), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(ui_BundleViewerPrimaryLegend, 255, LV_PART_MAIN);
+    lv_obj_add_flag(ui_BundleViewerPrimaryLegend, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(ui_BundleViewerPrimaryLegend, [](lv_event_t *e)
+                        {
+        auto self = static_cast<DataBundleSelectionGui*>(lv_event_get_user_data(e));
+        self->cycleBundleViewerSignalSlot(0); }, LV_EVENT_CLICKED, this);
 
     ui_BundleViewerPrimaryLegendLabel = lv_label_create(ui_BundleViewerPrimaryLegend);
     lv_obj_set_width(ui_BundleViewerPrimaryLegendLabel, 116);
@@ -893,6 +907,11 @@ void DataBundleSelectionGui::createBundleViewerContent()
     lv_obj_set_style_radius(ui_BundleViewerSecondaryLegend, 5, LV_PART_MAIN);
     lv_obj_set_style_bg_color(ui_BundleViewerSecondaryLegend, lv_color_hex(getBundleViewerColor(bundleViewerSecondaryColorIndex)), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(ui_BundleViewerSecondaryLegend, 255, LV_PART_MAIN);
+    lv_obj_add_flag(ui_BundleViewerSecondaryLegend, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(ui_BundleViewerSecondaryLegend, [](lv_event_t *e)
+                        {
+        auto self = static_cast<DataBundleSelectionGui*>(lv_event_get_user_data(e));
+        self->cycleBundleViewerSignalSlot(1); }, LV_EVENT_CLICKED, this);
 
     ui_BundleViewerSecondaryLegendLabel = lv_label_create(ui_BundleViewerSecondaryLegend);
     lv_obj_set_width(ui_BundleViewerSecondaryLegendLabel, 116);
@@ -902,14 +921,18 @@ void DataBundleSelectionGui::createBundleViewerContent()
     lv_obj_set_style_text_color(ui_BundleViewerSecondaryLegendLabel, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
 
     ui_BundleViewerChart = lv_chart_create(ui_BundleViewerPanel);
-    lv_obj_set_size(ui_BundleViewerChart, 720, 300);
+    lv_obj_set_size(ui_BundleViewerChart, 650, 300);
     lv_obj_align(ui_BundleViewerChart, LV_ALIGN_TOP_MID, 0, 92);
     lv_obj_add_flag(ui_BundleViewerChart, LV_OBJ_FLAG_CLICKABLE);
     lv_chart_set_type(ui_BundleViewerChart, LV_CHART_TYPE_LINE);
-    lv_chart_set_point_count(ui_BundleViewerChart, BUNDLE_VIEW_CHART_POINTS);
+    lv_chart_set_update_mode(ui_BundleViewerChart, LV_CHART_UPDATE_MODE_CIRCULAR);
+    lv_chart_set_point_count(ui_BundleViewerChart, static_cast<uint16_t>(bundleViewerVisibleSampleCount));
     lv_chart_set_div_line_count(ui_BundleViewerChart, 5, 10);
-    lv_chart_set_axis_tick(ui_BundleViewerChart, LV_CHART_AXIS_PRIMARY_X, 10, 0, 10, 1, true, 40);
-    lv_chart_set_axis_tick(ui_BundleViewerChart, LV_CHART_AXIS_PRIMARY_Y, 10, 5, 5, 2, true, 45);
+    updateBundleViewerXAxisTicks();
+    lv_chart_set_axis_tick(ui_BundleViewerChart, LV_CHART_AXIS_PRIMARY_Y, 8, 4, 5, 2, true, 36);
+    lv_chart_set_axis_tick(ui_BundleViewerChart, LV_CHART_AXIS_SECONDARY_Y, 8, 4, 0, 2, false, 36);
+    lv_chart_set_range(ui_BundleViewerChart, LV_CHART_AXIS_PRIMARY_Y, BUNDLE_VIEW_PLOT_MIN, BUNDLE_VIEW_PLOT_MAX);
+    lv_chart_set_range(ui_BundleViewerChart, LV_CHART_AXIS_SECONDARY_Y, BUNDLE_VIEW_PLOT_MIN, BUNDLE_VIEW_PLOT_MAX);
     lv_obj_set_style_bg_opa(ui_BundleViewerChart, 0, LV_PART_MAIN);
     lv_obj_set_style_border_width(ui_BundleViewerChart, 2, LV_PART_MAIN);
     lv_obj_set_style_border_color(ui_BundleViewerChart, lv_color_hex(0x000000), LV_PART_MAIN);
@@ -919,18 +942,25 @@ void DataBundleSelectionGui::createBundleViewerContent()
                         {
         auto self = static_cast<DataBundleSelectionGui*>(lv_event_get_user_data(e));
         self->handleBundleViewerChartDrag(e); }, LV_EVENT_ALL, this);
+    lv_obj_add_event_cb(ui_BundleViewerChart, handleBundleViewerChartDrawPart, LV_EVENT_DRAW_PART_BEGIN, this);
 
     ui_BundleViewerPrimarySeries = lv_chart_add_series(ui_BundleViewerChart, lv_color_hex(getBundleViewerColor(bundleViewerPrimaryColorIndex)), LV_CHART_AXIS_PRIMARY_Y);
-    ui_BundleViewerSecondarySeries = lv_chart_add_series(ui_BundleViewerChart, lv_color_hex(getBundleViewerColor(bundleViewerSecondaryColorIndex)), LV_CHART_AXIS_PRIMARY_Y);
+    ui_BundleViewerSecondarySeries = lv_chart_add_series(ui_BundleViewerChart, lv_color_hex(getBundleViewerColor(bundleViewerSecondaryColorIndex)), LV_CHART_AXIS_SECONDARY_Y);
 
     ui_BundleViewerCursorLabel = lv_label_create(ui_BundleViewerPanel);
-    lv_obj_set_width(ui_BundleViewerCursorLabel, 720);
-    lv_obj_align(ui_BundleViewerCursorLabel, LV_ALIGN_BOTTOM_MID, 0, -22);
-    lv_obj_set_style_text_font(ui_BundleViewerCursorLabel, &lv_font_montserrat_12, LV_PART_MAIN);
+    lv_obj_set_width(ui_BundleViewerCursorLabel, 180);
+    lv_label_set_long_mode(ui_BundleViewerCursorLabel, LV_LABEL_LONG_DOT);
+    lv_obj_align(ui_BundleViewerCursorLabel, LV_ALIGN_TOP_LEFT, 590, 70);
+    lv_obj_set_style_text_font(ui_BundleViewerCursorLabel, &lv_font_montserrat_10, LV_PART_MAIN);
     lv_obj_set_style_text_color(ui_BundleViewerCursorLabel, lv_color_hex(0xD32F2F), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(ui_BundleViewerCursorLabel, 0, LV_PART_MAIN);
+    lv_obj_set_style_border_width(ui_BundleViewerCursorLabel, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(ui_BundleViewerCursorLabel, 0, LV_PART_MAIN);
     lv_obj_add_flag(ui_BundleViewerCursorLabel, LV_OBJ_FLAG_HIDDEN);
 
     ui_BundleViewerCursorXLine = lv_line_create(ui_BundleViewerPanel);
+    lv_obj_set_size(ui_BundleViewerCursorXLine, 780, 460);
+    lv_obj_set_pos(ui_BundleViewerCursorXLine, 0, 0);
     lv_obj_set_style_line_color(ui_BundleViewerCursorXLine, lv_color_hex(0xD32F2F), LV_PART_MAIN);
     lv_obj_set_style_line_width(ui_BundleViewerCursorXLine, 2, LV_PART_MAIN);
     lv_obj_set_style_line_dash_width(ui_BundleViewerCursorXLine, 6, LV_PART_MAIN);
@@ -938,6 +968,8 @@ void DataBundleSelectionGui::createBundleViewerContent()
     lv_obj_add_flag(ui_BundleViewerCursorXLine, LV_OBJ_FLAG_HIDDEN);
 
     ui_BundleViewerCursorYLine = lv_line_create(ui_BundleViewerPanel);
+    lv_obj_set_size(ui_BundleViewerCursorYLine, 780, 460);
+    lv_obj_set_pos(ui_BundleViewerCursorYLine, 0, 0);
     lv_obj_set_style_line_color(ui_BundleViewerCursorYLine, lv_color_hex(0xD32F2F), LV_PART_MAIN);
     lv_obj_set_style_line_width(ui_BundleViewerCursorYLine, 2, LV_PART_MAIN);
     lv_obj_set_style_line_dash_width(ui_BundleViewerCursorYLine, 6, LV_PART_MAIN);
@@ -1006,6 +1038,316 @@ void DataBundleSelectionGui::setBundleViewerMode(bool csvMode)
     lv_obj_move_foreground(ui_BundleViewerSettingsButton);
 }
 
+void DataBundleSelectionGui::ensureBundleViewerSelectedSignals()
+{
+    std::vector<std::string> filtered;
+    for (const auto &signal : bundleViewerSelectedSignals)
+    {
+        if (std::find(bundleViewerSignals.begin(), bundleViewerSignals.end(), signal) != bundleViewerSignals.end() &&
+            std::find(filtered.begin(), filtered.end(), signal) == filtered.end())
+        {
+            filtered.push_back(signal);
+            if (filtered.size() == 2)
+            {
+                break;
+            }
+        }
+    }
+
+    if (filtered.empty() && !bundleViewerSignals.empty())
+    {
+        filtered.push_back(bundleViewerSignals[0]);
+        if (bundleViewerSignals.size() > 1)
+        {
+            filtered.push_back(bundleViewerSignals[1]);
+        }
+    }
+
+    bundleViewerSelectedSignals = filtered;
+}
+
+std::vector<std::string> DataBundleSelectionGui::getBundleViewerActiveSignals()
+{
+    ensureBundleViewerSelectedSignals();
+    return bundleViewerSelectedSignals;
+}
+
+void DataBundleSelectionGui::cycleBundleViewerSignalSlot(size_t slot)
+{
+    ensureBundleViewerSelectedSignals();
+    if (bundleViewerSignals.empty() || slot > 1)
+    {
+        return;
+    }
+
+    if (slot == 0)
+    {
+        const std::string current = bundleViewerSelectedSignals.empty() ? "" : bundleViewerSelectedSignals[0];
+        auto it = std::find(bundleViewerSignals.begin(), bundleViewerSignals.end(), current);
+        size_t startIndex = it == bundleViewerSignals.end() ? 0 : (static_cast<size_t>(it - bundleViewerSignals.begin()) + 1) % bundleViewerSignals.size();
+        for (size_t i = 0; i < bundleViewerSignals.size(); ++i)
+        {
+            const std::string &candidate = bundleViewerSignals[(startIndex + i) % bundleViewerSignals.size()];
+            if (bundleViewerSelectedSignals.size() < 2 || candidate != bundleViewerSelectedSignals[1])
+            {
+                if (bundleViewerSelectedSignals.empty()) bundleViewerSelectedSignals.push_back(candidate);
+                else bundleViewerSelectedSignals[0] = candidate;
+                break;
+            }
+        }
+    }
+    else
+    {
+        const std::string primary = bundleViewerSelectedSignals.empty() ? "" : bundleViewerSelectedSignals[0];
+        const std::string current = bundleViewerSelectedSignals.size() > 1 ? bundleViewerSelectedSignals[1] : "";
+        std::vector<std::string> candidates;
+        candidates.push_back("");
+        for (const auto &signal : bundleViewerSignals)
+        {
+            if (signal != primary)
+            {
+                candidates.push_back(signal);
+            }
+        }
+
+        auto it = std::find(candidates.begin(), candidates.end(), current);
+        const size_t nextIndex = it == candidates.end() ? 0 : (static_cast<size_t>(it - candidates.begin()) + 1) % candidates.size();
+        if (candidates[nextIndex].empty())
+        {
+            if (bundleViewerSelectedSignals.size() > 1)
+            {
+                bundleViewerSelectedSignals.erase(bundleViewerSelectedSignals.begin() + 1);
+            }
+        }
+        else if (bundleViewerSelectedSignals.size() > 1)
+        {
+            bundleViewerSelectedSignals[1] = candidates[nextIndex];
+        }
+        else
+        {
+            bundleViewerSelectedSignals.push_back(candidates[nextIndex]);
+        }
+    }
+
+    bundleViewerHistoryOffset = 0;
+    bundleViewerCursorVisible = false;
+    updateBundleViewerGraph();
+}
+
+void DataBundleSelectionGui::updateBundleViewerXAxisTicks()
+{
+    if (!ui_BundleViewerChart)
+    {
+        return;
+    }
+
+    bundleViewerXTickMax = bundleViewerVisibleSampleCount <= 20 ? bundleViewerVisibleSampleCount - 1 : 10;
+    if (bundleViewerXTickMax < 1)
+    {
+        bundleViewerXTickMax = 1;
+    }
+    lv_chart_set_div_line_count(ui_BundleViewerChart, 5, bundleViewerXTickMax + 1);
+    lv_chart_set_axis_tick(ui_BundleViewerChart, LV_CHART_AXIS_PRIMARY_X, 10, 0, bundleViewerXTickMax + 1, 1, true, 40);
+}
+
+void DataBundleSelectionGui::adjustBundleViewerVisibleSamples(int deltaSamples)
+{
+    if (deltaSamples == 0 || !ui_BundleViewerChart)
+    {
+        return;
+    }
+
+    int nextCount = bundleViewerVisibleSampleCount + deltaSamples;
+    if (nextCount < BUNDLE_VIEW_MIN_CHART_POINTS) nextCount = BUNDLE_VIEW_MIN_CHART_POINTS;
+    if (nextCount > BUNDLE_VIEW_MAX_CHART_POINTS) nextCount = BUNDLE_VIEW_MAX_CHART_POINTS;
+    nextCount = (nextCount / BUNDLE_VIEW_SAMPLE_STEP) * BUNDLE_VIEW_SAMPLE_STEP;
+    if (nextCount < BUNDLE_VIEW_MIN_CHART_POINTS) nextCount = BUNDLE_VIEW_MIN_CHART_POINTS;
+    if (nextCount == bundleViewerVisibleSampleCount)
+    {
+        return;
+    }
+
+    bundleViewerVisibleSampleCount = nextCount;
+    if (bundleViewerCursorIndex >= bundleViewerVisibleSampleCount)
+    {
+        bundleViewerCursorIndex = bundleViewerVisibleSampleCount - 1;
+    }
+    lv_chart_set_point_count(ui_BundleViewerChart, static_cast<uint16_t>(bundleViewerVisibleSampleCount));
+    updateBundleViewerXAxisTicks();
+    bundleViewerDragAccumulatorPx = 0;
+    updateBundleViewerGraph();
+}
+
+bool DataBundleSelectionGui::handleBundleViewerPinchGesture()
+{
+    if (&touch_point_count == nullptr || &touch_last_x == nullptr || &touch_last_y == nullptr ||
+        &touch_second_x == nullptr || &touch_second_y == nullptr || touch_point_count < 2)
+    {
+        bundleViewerPinchActive = false;
+        bundleViewerPinchLastDistancePx = 0;
+        bundleViewerPinchAccumulatorPx = 0;
+        return false;
+    }
+
+    const int dx = touch_last_x - touch_second_x;
+    const int dy = touch_last_y - touch_second_y;
+    const int distancePx = static_cast<int>(std::sqrt(static_cast<double>(dx * dx + dy * dy)));
+    if (!bundleViewerPinchActive)
+    {
+        bundleViewerPinchActive = true;
+        bundleViewerPinchLastDistancePx = distancePx;
+        bundleViewerPinchAccumulatorPx = 0;
+        bundleViewerDragAccumulatorPx = 0;
+        return true;
+    }
+
+    bundleViewerPinchAccumulatorPx += bundleViewerPinchLastDistancePx - distancePx;
+    bundleViewerPinchLastDistancePx = distancePx;
+
+    const int pixelsPerStep = 18;
+    int sampleSteps = 0;
+    while (bundleViewerPinchAccumulatorPx >= pixelsPerStep)
+    {
+        ++sampleSteps;
+        bundleViewerPinchAccumulatorPx -= pixelsPerStep;
+    }
+    while (bundleViewerPinchAccumulatorPx <= -pixelsPerStep)
+    {
+        --sampleSteps;
+        bundleViewerPinchAccumulatorPx += pixelsPerStep;
+    }
+
+    if (sampleSteps != 0)
+    {
+        adjustBundleViewerVisibleSamples(sampleSteps * BUNDLE_VIEW_SAMPLE_STEP);
+    }
+
+    return true;
+}
+
+std::pair<double, double> DataBundleSelectionGui::computeBundleViewerRange(const std::vector<double> &values,
+                                                                           int start,
+                                                                           int pointCount)
+{
+    bool hasRange = false;
+    double minValue = 0.0;
+    double maxValue = 0.0;
+    for (int i = 0; i < pointCount; ++i)
+    {
+        const int sourceIndex = start + i;
+        if (sourceIndex < 0 || sourceIndex >= static_cast<int>(values.size()))
+        {
+            continue;
+        }
+
+        const double value = values[sourceIndex];
+        if (!hasRange)
+        {
+            minValue = value;
+            maxValue = value;
+            hasRange = true;
+        }
+        else
+        {
+            if (value < minValue) minValue = value;
+            if (value > maxValue) maxValue = value;
+        }
+    }
+
+    if (!hasRange)
+    {
+        return std::pair<double, double>(-1.0, 1.0);
+    }
+
+    if (minValue == maxValue)
+    {
+        const double delta = std::fabs(minValue) >= 10.0 ? 1.0 : 0.1;
+        minValue -= delta;
+        maxValue += delta;
+    }
+
+    const double span = maxValue - minValue;
+    const double pad = std::fabs(span / 10.0) > 0.01 ? std::fabs(span / 10.0) : 0.01;
+    return std::pair<double, double>(minValue - pad, maxValue + pad);
+}
+
+lv_coord_t DataBundleSelectionGui::mapBundleViewerValueToPlot(double value, double minValue, double maxValue)
+{
+    const double range = maxValue - minValue;
+    if (range == 0.0)
+    {
+        return (BUNDLE_VIEW_PLOT_MAX - BUNDLE_VIEW_PLOT_MIN) / 2;
+    }
+
+    double normalized = (value - minValue) / range;
+    if (normalized < 0.0) normalized = 0.0;
+    if (normalized > 1.0) normalized = 1.0;
+    return static_cast<lv_coord_t>(std::lround(BUNDLE_VIEW_PLOT_MIN + normalized * (BUNDLE_VIEW_PLOT_MAX - BUNDLE_VIEW_PLOT_MIN)));
+}
+
+void DataBundleSelectionGui::formatBundleViewerAxisLabel(char *buffer, size_t bufferSize, double value, double span)
+{
+    if (!buffer || bufferSize == 0)
+    {
+        return;
+    }
+
+    const double absSpan = std::fabs(span);
+    if (absSpan < 1.0)
+    {
+        std::snprintf(buffer, bufferSize, "%.3f", value);
+    }
+    else if (absSpan < 20.0)
+    {
+        std::snprintf(buffer, bufferSize, "%.2f", value);
+    }
+    else if (absSpan < 200.0)
+    {
+        std::snprintf(buffer, bufferSize, "%.1f", value);
+    }
+    else
+    {
+        std::snprintf(buffer, bufferSize, "%.0f", value);
+    }
+}
+
+void DataBundleSelectionGui::handleBundleViewerChartDrawPart(lv_event_t *e)
+{
+    auto *self = static_cast<DataBundleSelectionGui *>(lv_event_get_user_data(e));
+    lv_obj_draw_part_dsc_t *dsc = lv_event_get_draw_part_dsc(e);
+    if (!self || !dsc || dsc->part != LV_PART_TICKS || dsc->text == nullptr)
+    {
+        return;
+    }
+
+    if (dsc->id == LV_CHART_AXIS_PRIMARY_X)
+    {
+        const int sampleIndex = self->bundleViewerXTickMax <= 0
+                                    ? 0
+                                    : static_cast<int>(std::lround((static_cast<double>(dsc->value) / self->bundleViewerXTickMax) * (self->bundleViewerVisibleSampleCount - 1)));
+        std::snprintf(dsc->text, dsc->text_length, "%d", sampleIndex);
+        return;
+    }
+
+    if (dsc->id != LV_CHART_AXIS_PRIMARY_Y && dsc->id != LV_CHART_AXIS_SECONDARY_Y)
+    {
+        return;
+    }
+
+    const bool secondary = dsc->id == LV_CHART_AXIS_SECONDARY_Y;
+    if (secondary && !self->bundleViewerHasSecondaryRange)
+    {
+        return;
+    }
+
+    const double minValue = secondary ? self->bundleViewerSecondaryRangeMin : self->bundleViewerPrimaryRangeMin;
+    const double maxValue = secondary ? self->bundleViewerSecondaryRangeMax : self->bundleViewerPrimaryRangeMax;
+    const double span = maxValue - minValue;
+    const double normalized = static_cast<double>(dsc->value - BUNDLE_VIEW_PLOT_MIN) / static_cast<double>(BUNDLE_VIEW_PLOT_MAX - BUNDLE_VIEW_PLOT_MIN);
+    const double rawValue = minValue + normalized * span;
+    formatBundleViewerAxisLabel(dsc->text, dsc->text_length, rawValue, span);
+}
+
 void DataBundleSelectionGui::updateBundleViewerGraph()
 {
     if (!ui_BundleViewerChart || !ui_BundleViewerPrimarySeries || !ui_BundleViewerSecondarySeries)
@@ -1013,14 +1355,14 @@ void DataBundleSelectionGui::updateBundleViewerGraph()
         return;
     }
 
-    std::vector<lv_coord_t> primaryValues;
-    std::vector<lv_coord_t> secondaryValues;
+    std::vector<double> primaryValues;
+    std::vector<double> secondaryValues;
     std::vector<std::string> primaryRawValues;
     std::vector<std::string> secondaryRawValues;
-    bool usesFloatScaling = false;
 
-    const std::string primarySignal = bundleViewerSignals.empty() ? "" : bundleViewerSignals[0];
-    const std::string secondarySignal = bundleViewerSignals.size() > 1 ? bundleViewerSignals[1] : "";
+    const auto activeSignals = getBundleViewerActiveSignals();
+    const std::string primarySignal = activeSignals.empty() ? "" : activeSignals[0];
+    const std::string secondarySignal = activeSignals.size() > 1 ? activeSignals[1] : "";
 
     for (const auto &row : bundleViewerRows)
     {
@@ -1031,40 +1373,50 @@ void DataBundleSelectionGui::updateBundleViewerGraph()
 
         if (row.signalName == primarySignal)
         {
-            primaryValues.push_back(row.chartValue);
+            primaryValues.push_back(row.numericValue);
             primaryRawValues.push_back(row.value);
-            usesFloatScaling = usesFloatScaling || row.scaled;
         }
         else if (!secondarySignal.empty() && row.signalName == secondarySignal)
         {
-            secondaryValues.push_back(row.chartValue);
+            secondaryValues.push_back(row.numericValue);
             secondaryRawValues.push_back(row.value);
-            usesFloatScaling = usesFloatScaling || row.scaled;
         }
     }
 
     lv_chart_set_series_color(ui_BundleViewerChart, ui_BundleViewerPrimarySeries, lv_color_hex(getBundleViewerColor(bundleViewerPrimaryColorIndex)));
     lv_chart_set_series_color(ui_BundleViewerChart, ui_BundleViewerSecondarySeries, lv_color_hex(getBundleViewerColor(bundleViewerSecondaryColorIndex)));
+    lv_chart_set_point_count(ui_BundleViewerChart, static_cast<uint16_t>(bundleViewerVisibleSampleCount));
+    lv_chart_set_x_start_point(ui_BundleViewerChart, ui_BundleViewerPrimarySeries, 0);
+    lv_chart_set_x_start_point(ui_BundleViewerChart, ui_BundleViewerSecondarySeries, 0);
+    updateBundleViewerXAxisTicks();
     lv_chart_set_all_value(ui_BundleViewerChart, ui_BundleViewerPrimarySeries, LV_CHART_POINT_NONE);
     lv_chart_set_all_value(ui_BundleViewerChart, ui_BundleViewerSecondarySeries, LV_CHART_POINT_NONE);
 
     const int maxCount = static_cast<int>(std::max(primaryValues.size(), secondaryValues.size()));
-    const int maxOffset = maxCount > BUNDLE_VIEW_CHART_POINTS ? maxCount - BUNDLE_VIEW_CHART_POINTS : 0;
+    const int maxOffset = maxCount > bundleViewerVisibleSampleCount ? maxCount - bundleViewerVisibleSampleCount : 0;
     if (bundleViewerHistoryOffset > maxOffset)
     {
         bundleViewerHistoryOffset = maxOffset;
     }
 
-    const int start = maxCount > BUNDLE_VIEW_CHART_POINTS
-                          ? maxCount - BUNDLE_VIEW_CHART_POINTS - bundleViewerHistoryOffset
+    const int start = maxCount > bundleViewerVisibleSampleCount
+                          ? maxCount - bundleViewerVisibleSampleCount - bundleViewerHistoryOffset
                           : 0;
 
-    bool hasRange = false;
-    lv_coord_t minValue = 0;
-    lv_coord_t maxValue = 0;
-    auto applySeries = [&](lv_chart_series_t *series, const std::vector<lv_coord_t> &values)
+    const auto primaryRange = computeBundleViewerRange(primaryValues, start, bundleViewerVisibleSampleCount);
+    const bool hasSecondary = !secondaryValues.empty();
+    const auto secondaryRange = hasSecondary
+                                    ? computeBundleViewerRange(secondaryValues, start, bundleViewerVisibleSampleCount)
+                                    : primaryRange;
+    bundleViewerPrimaryRangeMin = primaryRange.first;
+    bundleViewerPrimaryRangeMax = primaryRange.second;
+    bundleViewerSecondaryRangeMin = secondaryRange.first;
+    bundleViewerSecondaryRangeMax = secondaryRange.second;
+    bundleViewerHasSecondaryRange = hasSecondary;
+
+    auto applySeries = [&](lv_chart_series_t *series, const std::vector<double> &values, double minValue, double maxValue)
     {
-        for (int i = 0; i < BUNDLE_VIEW_CHART_POINTS; ++i)
+        for (int i = 0; i < bundleViewerVisibleSampleCount; ++i)
         {
             const int sourceIndex = start + i;
             if (sourceIndex < 0 || sourceIndex >= static_cast<int>(values.size()))
@@ -1072,51 +1424,25 @@ void DataBundleSelectionGui::updateBundleViewerGraph()
                 continue;
             }
 
-            const lv_coord_t value = values[sourceIndex];
-            lv_chart_set_value_by_id(ui_BundleViewerChart, series, i, value);
-            if (!hasRange)
-            {
-                minValue = value;
-                maxValue = value;
-                hasRange = true;
-            }
-            else
-            {
-                if (value < minValue) minValue = value;
-                if (value > maxValue) maxValue = value;
-            }
+            lv_chart_set_value_by_id(ui_BundleViewerChart, series, i, mapBundleViewerValueToPlot(values[sourceIndex], minValue, maxValue));
         }
     };
 
-    applySeries(ui_BundleViewerPrimarySeries, primaryValues);
-    applySeries(ui_BundleViewerSecondarySeries, secondaryValues);
+    applySeries(ui_BundleViewerPrimarySeries, primaryValues, bundleViewerPrimaryRangeMin, bundleViewerPrimaryRangeMax);
+    applySeries(ui_BundleViewerSecondarySeries, secondaryValues, bundleViewerSecondaryRangeMin, bundleViewerSecondaryRangeMax);
+    lv_chart_set_range(ui_BundleViewerChart, LV_CHART_AXIS_PRIMARY_Y, BUNDLE_VIEW_PLOT_MIN, BUNDLE_VIEW_PLOT_MAX);
+    lv_chart_set_range(ui_BundleViewerChart, LV_CHART_AXIS_SECONDARY_Y, BUNDLE_VIEW_PLOT_MIN, BUNDLE_VIEW_PLOT_MAX);
+    lv_chart_set_axis_tick(ui_BundleViewerChart, LV_CHART_AXIS_PRIMARY_Y, 8, 4, 5, 2, true, 36);
+    lv_chart_set_axis_tick(ui_BundleViewerChart, LV_CHART_AXIS_SECONDARY_Y, 8, 4, hasSecondary ? 5 : 0, 2, hasSecondary, 36);
 
-    if (!hasRange)
+    if (bundleViewerCursorIndex >= bundleViewerVisibleSampleCount)
     {
-        minValue = -1;
-        maxValue = 1;
-    }
-    if (minValue == maxValue)
-    {
-        --minValue;
-        ++maxValue;
-    }
-
-    const lv_coord_t span = maxValue - minValue;
-    const lv_coord_t pad = (span / 10) > 1 ? (span / 10) : 1;
-    bundleViewerRangeMin = minValue - pad;
-    bundleViewerRangeMax = maxValue + pad;
-    lv_chart_set_range(ui_BundleViewerChart, LV_CHART_AXIS_PRIMARY_Y, bundleViewerRangeMin, bundleViewerRangeMax);
-    lv_chart_set_range(ui_BundleViewerChart, LV_CHART_AXIS_SECONDARY_Y, bundleViewerRangeMin, bundleViewerRangeMax);
-
-    if (bundleViewerCursorIndex >= BUNDLE_VIEW_CHART_POINTS)
-    {
-        bundleViewerCursorIndex = BUNDLE_VIEW_CHART_POINTS - 1;
+        bundleViewerCursorIndex = bundleViewerVisibleSampleCount - 1;
     }
 
     if (ui_BundleViewerScalingLabel)
     {
-        lv_label_set_text(ui_BundleViewerScalingLabel, usesFloatScaling ? "Scaling x100" : "Scaling 1x");
+        lv_label_set_text_fmt(ui_BundleViewerScalingLabel, "Samples %d", bundleViewerVisibleSampleCount);
     }
     if (ui_BundleViewerPrimaryLegend)
     {
@@ -1128,12 +1454,15 @@ void DataBundleSelectionGui::updateBundleViewerGraph()
     }
     if (ui_BundleViewerSecondaryLegend)
     {
-        lv_obj_set_style_bg_color(ui_BundleViewerSecondaryLegend, lv_color_hex(getBundleViewerColor(bundleViewerSecondaryColorIndex)), LV_PART_MAIN);
+        lv_obj_set_style_bg_color(ui_BundleViewerSecondaryLegend, lv_color_hex(hasSecondary ? getBundleViewerColor(bundleViewerSecondaryColorIndex) : 0xA8B3BF), LV_PART_MAIN);
     }
     if (ui_BundleViewerSecondaryLegendLabel)
     {
-        lv_label_set_text(ui_BundleViewerSecondaryLegendLabel, secondarySignal.empty() ? "S2" : secondarySignal.c_str());
+        lv_label_set_text(ui_BundleViewerSecondaryLegendLabel, secondarySignal.empty() ? "Add signal" : secondarySignal.c_str());
     }
+
+    lv_chart_refresh(ui_BundleViewerChart);
+    lv_obj_invalidate(ui_BundleViewerChart);
 
     if (bundleViewerCursorVisible)
     {
@@ -1143,9 +1472,6 @@ void DataBundleSelectionGui::updateBundleViewerGraph()
     {
         hideBundleViewerCursor();
     }
-
-    lv_chart_refresh(ui_BundleViewerChart);
-    lv_obj_invalidate(ui_BundleViewerChart);
 }
 
 void DataBundleSelectionGui::updateBundleViewerTable()
@@ -1185,7 +1511,7 @@ void DataBundleSelectionGui::panBundleViewerHistory(int steps)
     }
 
     int maxCount = 0;
-    for (const auto &signal : bundleViewerSignals)
+    for (const auto &signal : getBundleViewerActiveSignals())
     {
         int count = 0;
         for (const auto &row : bundleViewerRows)
@@ -1201,7 +1527,7 @@ void DataBundleSelectionGui::panBundleViewerHistory(int steps)
         }
     }
 
-    const int maxOffset = maxCount > BUNDLE_VIEW_CHART_POINTS ? maxCount - BUNDLE_VIEW_CHART_POINTS : 0;
+    const int maxOffset = maxCount > bundleViewerVisibleSampleCount ? maxCount - bundleViewerVisibleSampleCount : 0;
     int nextOffset = bundleViewerHistoryOffset + steps;
     if (nextOffset < 0) nextOffset = 0;
     if (nextOffset > maxOffset) nextOffset = maxOffset;
@@ -1220,10 +1546,18 @@ void DataBundleSelectionGui::handleBundleViewerChartDrag(lv_event_t *e)
     if (code == LV_EVENT_PRESSED || code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST)
     {
         bundleViewerDragAccumulatorPx = 0;
+        bundleViewerPinchLastDistancePx = 0;
+        bundleViewerPinchAccumulatorPx = 0;
+        bundleViewerPinchActive = false;
         if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST)
         {
             hideBundleViewerCursor();
         }
+        return;
+    }
+
+    if (code == LV_EVENT_PRESSING && handleBundleViewerPinchGesture())
+    {
         return;
     }
 
@@ -1239,16 +1573,19 @@ void DataBundleSelectionGui::handleBundleViewerChartDrag(lv_event_t *e)
         lv_indev_get_point(indev, &point);
 
         lv_area_t chartArea;
-        lv_obj_get_coords(ui_BundleViewerChart, &chartArea);
-        const int chartWidth = chartArea.x2 - chartArea.x1;
+        lv_obj_get_content_coords(ui_BundleViewerChart, &chartArea);
+        const int chartWidth = chartArea.x2 - chartArea.x1 + 1;
         if (chartWidth <= 0)
         {
             return;
         }
 
-        int pointIndex = ((point.x - chartArea.x1) * (BUNDLE_VIEW_CHART_POINTS - 1)) / chartWidth;
+        int relativeX = point.x - chartArea.x1;
+        if (relativeX < 0) relativeX = 0;
+        if (relativeX > chartWidth) relativeX = chartWidth;
+        int pointIndex = (relativeX * (bundleViewerVisibleSampleCount - 1) + chartWidth / 2) / chartWidth;
         if (pointIndex < 0) pointIndex = 0;
-        if (pointIndex >= BUNDLE_VIEW_CHART_POINTS) pointIndex = BUNDLE_VIEW_CHART_POINTS - 1;
+        if (pointIndex >= bundleViewerVisibleSampleCount) pointIndex = bundleViewerVisibleSampleCount - 1;
         showBundleViewerCursorAtIndex(pointIndex);
         return;
     }
@@ -1288,7 +1625,7 @@ void DataBundleSelectionGui::moveBundleViewerCursor(int steps)
 {
     int nextIndex = bundleViewerCursorIndex + steps;
     if (nextIndex < 0) nextIndex = 0;
-    if (nextIndex >= BUNDLE_VIEW_CHART_POINTS) nextIndex = BUNDLE_VIEW_CHART_POINTS - 1;
+    if (nextIndex >= bundleViewerVisibleSampleCount) nextIndex = bundleViewerVisibleSampleCount - 1;
     if (nextIndex == bundleViewerCursorIndex)
     {
         return;
@@ -1307,14 +1644,15 @@ void DataBundleSelectionGui::showBundleViewerCursorAtIndex(int index)
     }
 
     if (index < 0) index = 0;
-    if (index >= BUNDLE_VIEW_CHART_POINTS) index = BUNDLE_VIEW_CHART_POINTS - 1;
+    if (index >= bundleViewerVisibleSampleCount) index = bundleViewerVisibleSampleCount - 1;
     bundleViewerCursorIndex = index;
     bundleViewerCursorVisible = true;
 
-    const std::string primarySignal = bundleViewerSignals.empty() ? "" : bundleViewerSignals[0];
-    const std::string secondarySignal = bundleViewerSignals.size() > 1 ? bundleViewerSignals[1] : "";
-    std::vector<lv_coord_t> primaryValues;
-    std::vector<lv_coord_t> secondaryValues;
+    const auto activeSignals = getBundleViewerActiveSignals();
+    const std::string primarySignal = activeSignals.empty() ? "" : activeSignals[0];
+    const std::string secondarySignal = activeSignals.size() > 1 ? activeSignals[1] : "";
+    std::vector<double> primaryValues;
+    std::vector<double> secondaryValues;
     std::vector<std::string> primaryRawValues;
     std::vector<std::string> secondaryRawValues;
 
@@ -1327,57 +1665,60 @@ void DataBundleSelectionGui::showBundleViewerCursorAtIndex(int index)
 
         if (row.signalName == primarySignal)
         {
-            primaryValues.push_back(row.chartValue);
+            primaryValues.push_back(row.numericValue);
             primaryRawValues.push_back(row.value);
         }
         else if (!secondarySignal.empty() && row.signalName == secondarySignal)
         {
-            secondaryValues.push_back(row.chartValue);
+            secondaryValues.push_back(row.numericValue);
             secondaryRawValues.push_back(row.value);
         }
     }
 
     const int maxCount = static_cast<int>(std::max(primaryValues.size(), secondaryValues.size()));
-    const int start = maxCount > BUNDLE_VIEW_CHART_POINTS
-                          ? maxCount - BUNDLE_VIEW_CHART_POINTS - bundleViewerHistoryOffset
+    const int start = maxCount > bundleViewerVisibleSampleCount
+                          ? maxCount - bundleViewerVisibleSampleCount - bundleViewerHistoryOffset
                           : 0;
+    const int visibleCount = maxCount - start;
+    if (visibleCount > 0 && bundleViewerCursorIndex >= visibleCount)
+    {
+        bundleViewerCursorIndex = visibleCount - 1;
+    }
     const int sourceIndex = start + bundleViewerCursorIndex;
 
-    lv_coord_t cursorValue = bundleViewerRangeMin;
-    if (sourceIndex >= 0 && sourceIndex < static_cast<int>(primaryValues.size()))
-    {
-        cursorValue = primaryValues[sourceIndex];
-    }
-    else if (sourceIndex >= 0 && sourceIndex < static_cast<int>(secondaryValues.size()))
-    {
-        cursorValue = secondaryValues[sourceIndex];
-    }
-
     lv_area_t chartArea;
+    lv_area_t chartCoords;
     lv_area_t panelArea;
-    lv_obj_get_coords(ui_BundleViewerChart, &chartArea);
+    lv_obj_get_content_coords(ui_BundleViewerChart, &chartArea);
+    lv_obj_get_coords(ui_BundleViewerChart, &chartCoords);
     lv_obj_get_coords(ui_BundleViewerPanel, &panelArea);
 
     const lv_coord_t chartLeft = chartArea.x1 - panelArea.x1;
     const lv_coord_t chartRight = chartArea.x2 - panelArea.x1;
     const lv_coord_t chartTop = chartArea.y1 - panelArea.y1;
     const lv_coord_t chartBottom = chartArea.y2 - panelArea.y1;
-    const lv_coord_t chartWidth = chartRight - chartLeft;
-    const lv_coord_t chartHeight = chartBottom - chartTop;
-    const lv_coord_t range = bundleViewerRangeMax - bundleViewerRangeMin;
-
     lv_coord_t cursorX = chartLeft;
-    if (chartWidth > 0)
+    lv_coord_t cursorY = chartBottom;
+    lv_chart_series_t *cursorSeries = nullptr;
+    if (sourceIndex >= 0 && sourceIndex < static_cast<int>(primaryValues.size()))
     {
-        cursorX = chartLeft + static_cast<lv_coord_t>((static_cast<long>(bundleViewerCursorIndex) * chartWidth) / (BUNDLE_VIEW_CHART_POINTS - 1));
+        cursorSeries = ui_BundleViewerPrimarySeries;
+    }
+    else if (sourceIndex >= 0 && sourceIndex < static_cast<int>(secondaryValues.size()))
+    {
+        cursorSeries = ui_BundleViewerSecondarySeries;
     }
 
-    lv_coord_t cursorY = chartBottom;
-    if (chartHeight > 0 && range != 0)
+    if (cursorSeries)
     {
-        const long numerator = static_cast<long>(cursorValue - bundleViewerRangeMin) * chartHeight;
-        cursorY = chartBottom - static_cast<lv_coord_t>(numerator / range);
+        lv_point_t point;
+        lv_chart_get_point_pos_by_id(ui_BundleViewerChart, cursorSeries, static_cast<uint16_t>(bundleViewerCursorIndex), &point);
+        cursorX = chartCoords.x1 - panelArea.x1 + point.x;
+        cursorY = chartCoords.y1 - panelArea.y1 + point.y;
     }
+
+    if (cursorX < chartLeft) cursorX = chartLeft;
+    if (cursorX > chartRight) cursorX = chartRight;
     if (cursorY < chartTop) cursorY = chartTop;
     if (cursorY > chartBottom) cursorY = chartBottom;
 
@@ -1397,20 +1738,35 @@ void DataBundleSelectionGui::showBundleViewerCursorAtIndex(int index)
         const char *primaryValue = sourceIndex >= 0 && sourceIndex < static_cast<int>(primaryRawValues.size())
                                        ? primaryRawValues[sourceIndex].c_str()
                                        : "-";
-        const char *secondaryValue = sourceIndex >= 0 && sourceIndex < static_cast<int>(secondaryRawValues.size())
-                                         ? secondaryRawValues[sourceIndex].c_str()
-                                         : "-";
-        lv_label_set_text_fmt(
-            ui_BundleViewerCursorLabel,
-            "Cursor %d/%d  %s=%s  %s=%s",
-            maxCount == 0 ? 0 : sourceIndex + 1,
-            maxCount,
-            primarySignal.empty() ? "S1" : primarySignal.c_str(),
-            primaryValue,
-            secondarySignal.empty() ? "S2" : secondarySignal.c_str(),
-            secondaryValue);
+        if (secondarySignal.empty())
+        {
+            lv_label_set_text_fmt(
+                ui_BundleViewerCursorLabel,
+                "Cursor %d/%d  %s=%s",
+                maxCount == 0 ? 0 : sourceIndex + 1,
+                maxCount,
+                primarySignal.empty() ? "S1" : primarySignal.c_str(),
+                primaryValue);
+        }
+        else
+        {
+            const char *secondaryValue = sourceIndex >= 0 && sourceIndex < static_cast<int>(secondaryRawValues.size())
+                                             ? secondaryRawValues[sourceIndex].c_str()
+                                             : "-";
+            lv_label_set_text_fmt(
+                ui_BundleViewerCursorLabel,
+                "Cursor %d/%d  %s=%s  %s=%s",
+                maxCount == 0 ? 0 : sourceIndex + 1,
+                maxCount,
+                primarySignal.empty() ? "S1" : primarySignal.c_str(),
+                primaryValue,
+                secondarySignal.c_str(),
+                secondaryValue);
+        }
         lv_obj_clear_flag(ui_BundleViewerCursorLabel, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_align(ui_BundleViewerCursorLabel, LV_ALIGN_TOP_LEFT, 590, 70);
         lv_obj_move_foreground(ui_BundleViewerCursorLabel);
+        lv_obj_invalidate(ui_BundleViewerCursorLabel);
     }
 }
 
@@ -1450,7 +1806,7 @@ void DataBundleSelectionGui::showBundleViewerSettings()
         self->hideBundleViewerSettings(); }, LV_EVENT_CLICKED, this);
 
     ui_BundleViewerSettingsPanel = lv_obj_create(ui_BundleViewerSettingsOverlay);
-    lv_obj_set_size(ui_BundleViewerSettingsPanel, 220, 128);
+    lv_obj_set_size(ui_BundleViewerSettingsPanel, 220, 154);
     lv_obj_align(ui_BundleViewerSettingsPanel, LV_ALIGN_TOP_RIGHT, -54, 60);
     lv_obj_clear_flag(ui_BundleViewerSettingsPanel, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_flag(ui_BundleViewerSettingsPanel, LV_OBJ_FLAG_CLICKABLE);
@@ -1494,6 +1850,17 @@ void DataBundleSelectionGui::showBundleViewerSettings()
                         {
         auto self = static_cast<DataBundleSelectionGui*>(lv_event_get_user_data(e));
         self->cycleBundleViewerSeriesColor(false); }, LV_EVENT_CLICKED, this);
+
+    lv_obj_t *scaleLabel = lv_label_create(ui_BundleViewerSettingsPanel);
+    lv_label_set_text(scaleLabel, "Y scale");
+    lv_obj_align(scaleLabel, LV_ALIGN_TOP_LEFT, 10, 110);
+    lv_obj_set_style_text_font(scaleLabel, &lv_font_montserrat_12, LV_PART_MAIN);
+
+    lv_obj_t *scaleValue = lv_label_create(ui_BundleViewerSettingsPanel);
+    lv_label_set_text(scaleValue, "Auto scale");
+    lv_obj_align(scaleValue, LV_ALIGN_TOP_RIGHT, -12, 110);
+    lv_obj_set_style_text_font(scaleValue, &lv_font_montserrat_12, LV_PART_MAIN);
+    lv_obj_set_style_text_color(scaleValue, lv_color_hex(0xD32F2F), LV_PART_MAIN);
 
     lv_obj_move_foreground(ui_BundleViewerSettingsOverlay);
 }

@@ -38,6 +38,19 @@ const char *ROLE_OPTIONS = "Sensor\nActuator\nHybrid";
 const char *PARAM_DTYPE_OPTIONS = "int\nfloat\ndouble\nstring";
 const char *DEVICE_PICTURE_DIR = STORAGE_DEVICE_PICTURE_DIR;
 
+const lv_img_dsc_t *placeholderImageForRole(DeviceRole role)
+{
+    switch (role) {
+    case DeviceRole::ACTUATOR:
+        return &ui_img_placeholder_actuator;
+    case DeviceRole::HYBRID:
+        return &ui_img_placeholder_hybrid;
+    case DeviceRole::SENSOR:
+    default:
+        return &ui_img_placeholder_sensor;
+    }
+}
+
 bool isStoragePicturePath(const std::string &path)
 {
     return path.rfind(DEVICE_PICTURE_DIR, 0) == 0;
@@ -116,6 +129,14 @@ void LibraryEditorGui::build()
     lv_dropdown_set_options(ui_RoleDropdown, ROLE_OPTIONS);
     lv_obj_set_size(ui_RoleDropdown, 210, 34);
     lv_obj_set_pos(ui_RoleDropdown, 110, 94);
+    lv_obj_add_event_cb(ui_RoleDropdown, [](lv_event_t *e) {
+        if (lv_event_get_code(e) != LV_EVENT_VALUE_CHANGED) {
+            return;
+        }
+
+        auto *self = static_cast<LibraryEditorGui *>(lv_event_get_user_data(e));
+        self->updatePicturePreview(lv_textarea_get_text(self->ui_UidInput));
+    }, LV_EVENT_VALUE_CHANGED, this);
 
     createFieldLabel(ui_Form, "Allowed Pins", 10, 144);
     ui_AllowedPinsInput = createSingleLineInput(ui_Form, 110, 144, 210);
@@ -154,9 +175,9 @@ void LibraryEditorGui::build()
     lv_obj_set_style_border_width(ui_PicturePreview, 1, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_PictureImage = lv_img_create(ui_PicturePreview);
-    lv_img_set_src(ui_PictureImage, &ui_img_visensors_png);
+    lv_img_set_src(ui_PictureImage, placeholderImageForRole(DeviceRole::SENSOR));
     lv_img_set_zoom(ui_PictureImage, 256);
-    lv_obj_align(ui_PictureImage, LV_ALIGN_TOP_MID, 0, 18);
+    lv_obj_align(ui_PictureImage, LV_ALIGN_TOP_MID, 0, 10);
 
     ui_PictureFallbackLabel = lv_label_create(ui_PicturePreview);
     lv_label_set_text(ui_PictureFallbackLabel, "Picture not provided");
@@ -315,9 +336,14 @@ void LibraryEditorGui::updatePicturePreview(const std::string &deviceUid, const 
 #endif
 
     if (!hasPicture) {
-        lv_img_set_src(ui_PictureImage, &ui_img_visensors_png);
+        DeviceRole role = DeviceRole::SENSOR;
+        if (ui_RoleDropdown) {
+            role = getRoleFromDropdownIndex(lv_dropdown_get_selected(ui_RoleDropdown));
+        }
+
+        lv_img_set_src(ui_PictureImage, placeholderImageForRole(role));
         lv_img_set_zoom(ui_PictureImage, 256);
-        lv_obj_align(ui_PictureImage, LV_ALIGN_TOP_MID, 0, 18);
+        lv_obj_align(ui_PictureImage, LV_ALIGN_TOP_MID, 0, 10);
         lv_obj_clear_flag(ui_PictureImage, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(ui_PictureFallbackLabel, LV_OBJ_FLAG_HIDDEN);
         return;

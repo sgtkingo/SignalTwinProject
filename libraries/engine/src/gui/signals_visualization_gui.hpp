@@ -18,6 +18,7 @@
 #include <map>
 #include <string>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 #include "gui_router.hpp"
@@ -54,9 +55,11 @@ private:
     static const int CHART_MIN_VISIBLE_SAMPLES = HISTORY_CAP;
     static const int CHART_MAX_VISIBLE_SAMPLES = 100;
     static const int CHART_SAMPLE_STEP = 5;
+    static const lv_coord_t CHART_PLOT_MIN = 0;
+    static const lv_coord_t CHART_PLOT_MAX = 1000;
 
     /// Static buffers for chart data
-    std::map<std::string, std::array<lv_coord_t, CHART_HISTORY_CAP>> bufMap;
+    std::map<std::string, std::array<double, CHART_HISTORY_CAP>> bufMap;
     std::map<std::string, bool> initedMap;
     std::map<std::string, int> historyCountMap;
 
@@ -116,7 +119,7 @@ private:
      * @param history The history array to store the history
      */
     template <typename T>
-    void buildDeviceHistory(BaseDevice *device, const std::string &key, lv_coord_t *history, bool appendSample)
+    void buildDeviceHistory(BaseDevice *device, const std::string &key, double *history, bool appendSample)
     {
         if (!history || !device)
             return;
@@ -132,21 +135,14 @@ private:
         int &count = historyCountMap[historyKey];
 
         // Get current value as string and convert
-        lv_coord_t curr;
+        double curr = 0.0;
         try
         {
             std::string s = device->getValue<std::string>(key);
             const T value = convertStringToType<T>(s);
-            if (std::is_floating_point<T>::value)
-            {
-                curr = static_cast<lv_coord_t>(std::lround(value * 100.0));
-            }
-            else
-            {
-                curr = static_cast<lv_coord_t>(value);
-            }
+            curr = static_cast<double>(value);
 
-            debugLogMessage("SignalsVisualizationGui::buildDeviceHistory", "math conversion", "device=%s key=%s raw=%s chartValue=%d append=%d", device->UID.c_str(), key.c_str(), s.c_str(), curr, appendSample);
+            debugLogMessage("SignalsVisualizationGui::buildDeviceHistory", "math conversion", "device=%s key=%s raw=%s rawValue=%.4f append=%d", device->UID.c_str(), key.c_str(), s.c_str(), curr, appendSample);
         }
         catch (const std::exception &e)
         {
@@ -173,9 +169,7 @@ private:
                 }
 
                 const T historyValue = convertStringToType<T>(rawHistoryValue);
-                buf[i] = std::is_floating_point<T>::value
-                             ? static_cast<lv_coord_t>(std::lround(historyValue * 100.0))
-                             : static_cast<lv_coord_t>(historyValue);
+                buf[i] = static_cast<double>(historyValue);
             }
 
             count = HISTORY_CAP;
@@ -234,7 +228,7 @@ private:
     void clearDeviceHistoryBuffer(const std::string &key)
     {
         const std::string historyKey = makeHistoryBufferKey(currentDevice, key);
-        std::array<lv_coord_t, CHART_HISTORY_CAP> zeroBuf;
+        std::array<double, CHART_HISTORY_CAP> zeroBuf;
         zeroBuf.fill(0);
 
         bufMap[historyKey] = zeroBuf;
@@ -266,19 +260,20 @@ private:
     void toggleListMode();
     void ensureControlEditor(size_t controlIndex, const DeviceParam &param);
     void syncControlEditorValue(size_t controlIndex, const DeviceParam &param);
-    bool buildNumericHistoryForKey(const std::string &key, lv_coord_t *history, bool appendSample);
+    bool buildNumericHistoryForKey(const std::string &key, double *history, bool appendSample);
     void recordCurrentSamples(const std::vector<std::string> &valueKeys);
+    std::vector<std::string> getRecordableValueKeys() const;
     std::vector<std::string> getAvailableChartValueKeys() const;
     std::vector<std::string> getActiveChartValueKeys();
     void ensureActiveChartValueKeys();
     void toggleChartValueSelection(size_t valueIndex);
-    static int chartScaleFactorForParam(const DeviceParam &param);
     static std::string buildChartScalingText(const std::string &chartKey,
                                              const std::unordered_map<std::string, DeviceParam> &values);
     void showEmptyChartState(const char *message);
     void hideEmptyChartState();
-    static std::pair<lv_coord_t, lv_coord_t> computeChartRange(const lv_coord_t *history);
-    static std::pair<lv_coord_t, lv_coord_t> computeChartRange(const lv_coord_t *history, int sampleCount);
+    static std::pair<double, double> computeChartRange(const double *history);
+    static std::pair<double, double> computeChartRange(const double *history, int sampleCount);
+    static void mapHistoryToPlot(const double *rawHistory, lv_coord_t *plotHistory, int sampleCount, double minValue, double maxValue);
     int getMaxChartHistoryOffset(const std::vector<std::string> &chartKeys) const;
     void panChartHistory(int steps);
     void adjustChartVisibleSamples(int deltaSamples);

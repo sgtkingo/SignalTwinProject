@@ -5,22 +5,28 @@
 
 #include "signals_chart_panel.hpp"
 
+#include <cmath>
+#include <cstdio>
+
 void SignalsChartPanel::create(lv_obj_t *parent)
 {
     chart = lv_chart_create(parent);
-    lv_obj_set_width(chart, 410);
+    lv_obj_set_width(chart, 430);
     lv_obj_set_height(chart, 280);
-    lv_obj_set_x(chart, 150);
+    lv_obj_set_x(chart, 115);
     lv_obj_set_y(chart, 20);
     lv_obj_set_align(chart, LV_ALIGN_CENTER);
     lv_obj_clear_flag(chart, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE |
                                 LV_OBJ_FLAG_GESTURE_BUBBLE | LV_OBJ_FLAG_SNAPPABLE);
     lv_chart_set_type(chart, LV_CHART_TYPE_LINE);
     lv_chart_set_point_count(chart, HISTORY_CAP);
-    lv_chart_set_div_line_count(chart, HISTORY_CAP - 1, HISTORY_CAP);
-    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_X, HISTORY_CAP / 2, 0, HISTORY_CAP, 1, true, 50);
-    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_Y, HISTORY_CAP, 5, 5, 2, true, 50);
-    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_SECONDARY_Y, HISTORY_CAP, 5, 0, 2, false, 50);
+    lv_chart_set_div_line_count(chart, 5, HISTORY_CAP);
+    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_X, 5, 0, HISTORY_CAP, 1, true, 50);
+    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_Y, 8, 4, 5, 2, true, 42);
+    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_SECONDARY_Y, 8, 4, 0, 2, false, 42);
+    lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, PLOT_MIN, PLOT_MAX);
+    lv_chart_set_range(chart, LV_CHART_AXIS_SECONDARY_Y, PLOT_MIN, PLOT_MAX);
+    lv_obj_add_event_cb(chart, handleDrawPartEvent, LV_EVENT_DRAW_PART_BEGIN, this);
 
     primarySeries = lv_chart_add_series(chart, lv_color_hex(0x009BFF), LV_CHART_AXIS_PRIMARY_Y);
     secondarySeries = lv_chart_add_series(chart, lv_color_hex(0xFF6B35), LV_CHART_AXIS_SECONDARY_Y);
@@ -53,7 +59,7 @@ void SignalsChartPanel::create(lv_obj_t *parent)
     lv_label_set_text(secondaryScalingLabel, "");
     lv_obj_set_width(secondaryScalingLabel, LV_SIZE_CONTENT);
     lv_obj_set_height(secondaryScalingLabel, LV_SIZE_CONTENT);
-    lv_obj_align_to(secondaryScalingLabel, chart, LV_ALIGN_OUT_TOP_RIGHT, 0, -5);
+    lv_obj_align_to(secondaryScalingLabel, chart, LV_ALIGN_OUT_TOP_RIGHT, -42, -5);
     lv_obj_set_style_text_color(secondaryScalingLabel, lv_color_hex(0xFF6B35), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(secondaryScalingLabel, &lv_font_montserrat_10, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_add_flag(secondaryScalingLabel, LV_OBJ_FLAG_HIDDEN);
@@ -121,28 +127,86 @@ void SignalsChartPanel::setVisibleSampleCount(int sampleCount)
     }
 
     lv_chart_set_point_count(chart, static_cast<uint16_t>(sampleCount));
-    lv_chart_set_div_line_count(chart, 5, sampleCount > 20 ? 10 : sampleCount);
-    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_X, 5, 0, sampleCount > 20 ? 10 : sampleCount, 1, true, 50);
+    visibleSampleCount = sampleCount;
+    xTickMax = sampleCount <= 20 ? sampleCount - 1 : 10;
+    if (xTickMax < 1) {
+        xTickMax = 1;
+    }
+    lv_chart_set_div_line_count(chart, 5, xTickMax + 1);
+    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_X, 5, 0, xTickMax + 1, 1, true, 50);
 }
 
-void SignalsChartPanel::setRange(lv_coord_t primaryMinValue,
-                                 lv_coord_t primaryMaxValue,
-                                 lv_coord_t secondaryMinValue,
-                                 lv_coord_t secondaryMaxValue,
+void SignalsChartPanel::setRange(double primaryMinValue,
+                                 double primaryMaxValue,
+                                 double secondaryMinValue,
+                                 double secondaryMaxValue,
                                  bool hasSecondarySeries)
 {
     if (!chart) {
         return;
     }
 
-    lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, primaryMinValue, primaryMaxValue);
-    lv_chart_set_range(
-        chart,
-        LV_CHART_AXIS_SECONDARY_Y,
-        hasSecondarySeries ? secondaryMinValue : primaryMinValue,
-        hasSecondarySeries ? secondaryMaxValue : primaryMaxValue);
-    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_Y, 5, 5, 5, 2, true, 50);
-    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_SECONDARY_Y, 5, 5, hasSecondarySeries ? 5 : 0, 2, hasSecondarySeries, 50);
+    primaryRawMin = primaryMinValue;
+    primaryRawMax = primaryMaxValue;
+    secondaryRawMin = hasSecondarySeries ? secondaryMinValue : primaryMinValue;
+    secondaryRawMax = hasSecondarySeries ? secondaryMaxValue : primaryMaxValue;
+    hasSecondaryRawRange = hasSecondarySeries;
+
+    lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, PLOT_MIN, PLOT_MAX);
+    lv_chart_set_range(chart, LV_CHART_AXIS_SECONDARY_Y, PLOT_MIN, PLOT_MAX);
+    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_Y, 8, 4, 5, 2, true, 42);
+    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_SECONDARY_Y, 8, 4, hasSecondarySeries ? 5 : 0, 2, hasSecondarySeries, 42);
+}
+
+void SignalsChartPanel::formatAxisLabel(char *buffer, size_t bufferSize, double value, double span)
+{
+    if (!buffer || bufferSize == 0) {
+        return;
+    }
+
+    const double absSpan = std::fabs(span);
+    if (absSpan < 1.0) {
+        std::snprintf(buffer, bufferSize, "%.3f", value);
+    } else if (absSpan < 20.0) {
+        std::snprintf(buffer, bufferSize, "%.2f", value);
+    } else if (absSpan < 200.0) {
+        std::snprintf(buffer, bufferSize, "%.1f", value);
+    } else {
+        std::snprintf(buffer, bufferSize, "%.0f", value);
+    }
+}
+
+void SignalsChartPanel::handleDrawPartEvent(lv_event_t *e)
+{
+    auto *panel = static_cast<SignalsChartPanel *>(lv_event_get_user_data(e));
+    lv_obj_draw_part_dsc_t *dsc = lv_event_get_draw_part_dsc(e);
+    if (!panel || !dsc || dsc->part != LV_PART_TICKS || dsc->text == nullptr) {
+        return;
+    }
+
+    if (dsc->id == LV_CHART_AXIS_PRIMARY_X) {
+        const int sampleIndex = panel->xTickMax <= 0
+                                    ? 0
+                                    : static_cast<int>(std::lround((static_cast<double>(dsc->value) / panel->xTickMax) * (panel->visibleSampleCount - 1)));
+        std::snprintf(dsc->text, dsc->text_length, "%d", sampleIndex);
+        return;
+    }
+
+    if (dsc->id != LV_CHART_AXIS_PRIMARY_Y && dsc->id != LV_CHART_AXIS_SECONDARY_Y) {
+        return;
+    }
+
+    const bool secondary = dsc->id == LV_CHART_AXIS_SECONDARY_Y;
+    if (secondary && !panel->hasSecondaryRawRange) {
+        return;
+    }
+
+    const double minValue = secondary ? panel->secondaryRawMin : panel->primaryRawMin;
+    const double maxValue = secondary ? panel->secondaryRawMax : panel->primaryRawMax;
+    const double span = maxValue - minValue;
+    const double normalized = static_cast<double>(dsc->value - PLOT_MIN) / static_cast<double>(PLOT_MAX - PLOT_MIN);
+    const double rawValue = minValue + normalized * span;
+    formatAxisLabel(dsc->text, dsc->text_length, rawValue, span);
 }
 
 void SignalsChartPanel::clearSeries()

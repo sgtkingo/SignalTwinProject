@@ -219,6 +219,57 @@
         "P1"
       ]
     },
+    "S99": {
+      "uid": "S99",
+      "role": "sensor",
+      "type": "Multi Value Dummy Sensor",
+      "description": "Dummy sensor for testing multivalue runtime charts and DataBundle viewer.",
+      "values": {
+        "temp": {
+          "value": 22.5,
+          "unit": "C",
+          "dtype": "float",
+          "access": "read",
+          "restrictions": {
+            "min": -20,
+            "max": 80
+          }
+        },
+        "humi": {
+          "value": 45,
+          "unit": "%",
+          "dtype": "int",
+          "access": "read",
+          "restrictions": {
+            "min": 0,
+            "max": 100
+          }
+        },
+        "pressure": {
+          "value": 1013.25,
+          "unit": "hPa",
+          "dtype": "float",
+          "access": "read",
+          "restrictions": {
+            "min": 900,
+            "max": 1100
+          }
+        }
+      },
+      "configs": {},
+      "default": {
+        "values": {
+          "temp": 22.5,
+          "humi": 45,
+          "pressure": 1013.25
+        },
+        "pins": {}
+      },
+      "picture": "placeholder:device",
+      "Pins": [
+        "P1"
+      ]
+    },
     "A00": {
       "uid": "A00",
       "role": "actuator",

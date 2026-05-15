@@ -371,9 +371,7 @@ std::string SignalsVisualizationGui::buildUnitText(const std::string &unit, cons
 
 bool SignalsVisualizationGui::currentDeviceSupportsRecording() const
 {
-    return currentDevice &&
-           currentDevice->getRole() != DeviceRole::ACTUATOR &&
-           !getAvailableChartValueKeys().empty();
+    return currentDevice && !getRecordableValueKeys().empty();
 }
 
 void SignalsVisualizationGui::updateListModeToggleState()
@@ -508,7 +506,7 @@ void SignalsVisualizationGui::updateEditableControls(const std::unordered_map<st
     clearUnusedConfigControls(keys.size());
 }
 
-bool SignalsVisualizationGui::buildNumericHistoryForKey(const std::string &key, lv_coord_t *history, bool appendSample)
+bool SignalsVisualizationGui::buildNumericHistoryForKey(const std::string &key, double *history, bool appendSample)
 {
     if (!currentDevice || !history) {
         return false;
@@ -548,8 +546,15 @@ void SignalsVisualizationGui::recordCurrentSamples(const std::vector<std::string
     for (const auto &key : valueKeys)
     {
         auto it = values.find(key);
-        if (it == values.end() || !isNumericType(it->second.DType))
+        if (it == values.end())
         {
+            debugLogMessage(
+                DEBUG_VERBOSE_ERRORS,
+                "SignalsVisualizationGui::recordCurrentSamples",
+                "recording sample skipped",
+                "device=%s key=%s reason=value not found",
+                currentDevice->UID.c_str(),
+                key.c_str());
             continue;
         }
 
@@ -560,11 +565,30 @@ void SignalsVisualizationGui::recordCurrentSamples(const std::vector<std::string
     }
 
     debugLogMessage(
+        DEBUG_VERBOSE_IMPORTANT,
         "SignalsVisualizationGui::recordCurrentSamples",
         "recording sample",
-        "device=%s sampleCount=%u",
+        "device=%s keyCount=%u sampleCount=%u",
         currentDevice->UID.c_str(),
+        static_cast<unsigned int>(valueKeys.size()),
         recordedCount);
+}
+
+std::vector<std::string> SignalsVisualizationGui::getRecordableValueKeys() const
+{
+    std::vector<std::string> valueKeys;
+    if (!currentDevice) {
+        return valueKeys;
+    }
+
+    const auto values = currentDevice->getValues();
+    for (const auto &key : currentDevice->getValuesKeys()) {
+        if (values.find(key) != values.end()) {
+            valueKeys.push_back(key);
+        }
+    }
+
+    return valueKeys;
 }
 
 std::vector<std::string> SignalsVisualizationGui::getAvailableChartValueKeys() const
@@ -665,11 +689,6 @@ void SignalsVisualizationGui::toggleChartValueSelection(size_t valueIndex)
     settingsPanel.updateChartValueBlocks(availableKeys, chartSelectedValueKeys);
 }
 
-int SignalsVisualizationGui::chartScaleFactorForParam(const DeviceParam &param)
-{
-    return (param.DType == DeviceDataType::FLOAT || param.DType == DeviceDataType::DOUBLE) ? 100 : 1;
-}
-
 std::string SignalsVisualizationGui::buildChartScalingText(const std::string &chartKey,
                                                            const std::unordered_map<std::string, DeviceParam> &values)
 {
@@ -682,7 +701,7 @@ std::string SignalsVisualizationGui::buildChartScalingText(const std::string &ch
         return "";
     }
 
-    return "Scale x" + std::to_string(chartScaleFactorForParam(valueIt->second));
+    return "Auto scale";
 }
 
 void SignalsVisualizationGui::showEmptyChartState(const char *message)
@@ -695,19 +714,19 @@ void SignalsVisualizationGui::hideEmptyChartState()
     chartPanel.hideEmptyState();
 }
 
-std::pair<lv_coord_t, lv_coord_t> SignalsVisualizationGui::computeChartRange(const lv_coord_t *history)
+std::pair<double, double> SignalsVisualizationGui::computeChartRange(const double *history)
 {
     return computeChartRange(history, HISTORY_CAP);
 }
 
-std::pair<lv_coord_t, lv_coord_t> SignalsVisualizationGui::computeChartRange(const lv_coord_t *history, int sampleCount)
+std::pair<double, double> SignalsVisualizationGui::computeChartRange(const double *history, int sampleCount)
 {
     if (!history || sampleCount <= 0) {
-        return std::pair<lv_coord_t, lv_coord_t>(-1, 1);
+        return std::pair<double, double>(-1.0, 1.0);
     }
 
-    lv_coord_t minValue = history[0];
-    lv_coord_t maxValue = history[0];
+    double minValue = history[0];
+    double maxValue = history[0];
     for (int i = 1; i < sampleCount; ++i) {
         if (history[i] < minValue) {
             minValue = history[i];
@@ -718,14 +737,39 @@ std::pair<lv_coord_t, lv_coord_t> SignalsVisualizationGui::computeChartRange(con
     }
 
     if (minValue == maxValue) {
-        minValue -= 1;
-        maxValue += 1;
+        const double delta = std::fabs(minValue) >= 10.0 ? 1.0 : 0.1;
+        minValue -= delta;
+        maxValue += delta;
     }
 
-    const lv_coord_t span = maxValue - minValue;
-    const lv_coord_t pad = (span / 10) > 1 ? (span / 10) : 1;
-    debugLogMessage("SignalsVisualizationGui::computeChartRange", "math scaling", "min=%d max=%d pad=%d", minValue, maxValue, pad);
-    return std::pair<lv_coord_t, lv_coord_t>(minValue - pad, maxValue + pad);
+    const double span = maxValue - minValue;
+    const double pad = std::fabs(span / 10.0) > 0.01 ? std::fabs(span / 10.0) : 0.01;
+    debugLogMessage("SignalsVisualizationGui::computeChartRange", "math scaling", "min=%.4f max=%.4f pad=%.4f", minValue, maxValue, pad);
+    return std::pair<double, double>(minValue - pad, maxValue + pad);
+}
+
+void SignalsVisualizationGui::mapHistoryToPlot(const double *rawHistory, lv_coord_t *plotHistory, int sampleCount, double minValue, double maxValue)
+{
+    if (!rawHistory || !plotHistory || sampleCount <= 0) {
+        return;
+    }
+
+    const double range = maxValue - minValue;
+    for (int i = 0; i < sampleCount; ++i) {
+        if (range == 0.0) {
+            plotHistory[i] = (CHART_PLOT_MAX - CHART_PLOT_MIN) / 2;
+            continue;
+        }
+
+        double normalized = (rawHistory[i] - minValue) / range;
+        if (normalized < 0.0) {
+            normalized = 0.0;
+        } else if (normalized > 1.0) {
+            normalized = 1.0;
+        }
+
+        plotHistory[i] = static_cast<lv_coord_t>(std::lround(CHART_PLOT_MIN + normalized * (CHART_PLOT_MAX - CHART_PLOT_MIN)));
+    }
 }
 
 int SignalsVisualizationGui::getMaxChartHistoryOffset(const std::vector<std::string> &chartKeys) const
@@ -991,6 +1035,12 @@ void SignalsVisualizationGui::updateChart(bool force)
     if (!force && !currentDevice->getRedrawPending())
         return;
 
+    const bool appendSample = !force && currentDevice->getRedrawPending();
+    if (appendSample)
+    {
+        recordCurrentSamples(getRecordableValueKeys());
+    }
+
     const auto chartKeys = getActiveChartValueKeys();
     if (chartKeys.empty())
     {
@@ -1005,7 +1055,6 @@ void SignalsVisualizationGui::updateChart(bool force)
     try
     {
         hideEmptyChartState();
-        const bool appendSample = !force && currentDevice->getRedrawPending();
         const auto values = currentDevice->getValues();
         const std::string primaryScalingText = buildChartScalingText(chartKeys[0], values);
         const std::string secondaryScalingText = chartKeys.size() > 1
@@ -1014,36 +1063,35 @@ void SignalsVisualizationGui::updateChart(bool force)
         chartPanel.setScalingText(primaryScalingText.c_str(), secondaryScalingText.c_str());
         updateChartSampleLabel();
 
-        lv_coord_t historyPrimary[CHART_MAX_VISIBLE_SAMPLES];
-        if (!buildNumericHistoryForKey(chartKeys[0], historyPrimary, appendSample)) {
+        double rawHistoryPrimary[CHART_MAX_VISIBLE_SAMPLES];
+        lv_coord_t plotHistoryPrimary[CHART_MAX_VISIBLE_SAMPLES];
+        if (!buildNumericHistoryForKey(chartKeys[0], rawHistoryPrimary, appendSample)) {
             return;
         }
 
-        auto primaryRange = computeChartRange(historyPrimary, chartVisibleSampleCount);
+        auto primaryRange = computeChartRange(rawHistoryPrimary, chartVisibleSampleCount);
+        mapHistoryToPlot(rawHistoryPrimary, plotHistoryPrimary, chartVisibleSampleCount, primaryRange.first, primaryRange.second);
 
         bool haveSecond = false;
-        lv_coord_t historySecondary[CHART_MAX_VISIBLE_SAMPLES];
-        std::pair<lv_coord_t, lv_coord_t> secondaryRange = primaryRange;
+        double rawHistorySecondary[CHART_MAX_VISIBLE_SAMPLES];
+        lv_coord_t plotHistorySecondary[CHART_MAX_VISIBLE_SAMPLES];
+        std::pair<double, double> secondaryRange = primaryRange;
         if (chartKeys.size() > 1) {
-            haveSecond = buildNumericHistoryForKey(chartKeys[1], historySecondary, appendSample);
+            haveSecond = buildNumericHistoryForKey(chartKeys[1], rawHistorySecondary, appendSample);
             if (haveSecond) {
-                secondaryRange = computeChartRange(historySecondary, chartVisibleSampleCount);
+                secondaryRange = computeChartRange(rawHistorySecondary, chartVisibleSampleCount);
+                mapHistoryToPlot(rawHistorySecondary, plotHistorySecondary, chartVisibleSampleCount, secondaryRange.first, secondaryRange.second);
             }
         }
 
         chartPanel.setRange(primaryRange.first, primaryRange.second, secondaryRange.first, secondaryRange.second, haveSecond);
         chartPanel.clearSeries();
-        chartPanel.populatePrimarySeries(historyPrimary, chartVisibleSampleCount);
+        chartPanel.populatePrimarySeries(plotHistoryPrimary, chartVisibleSampleCount);
 
         if (haveSecond) {
-            chartPanel.populateSecondarySeries(historySecondary, chartVisibleSampleCount);
+            chartPanel.populateSecondarySeries(plotHistorySecondary, chartVisibleSampleCount);
         } else {
             chartPanel.hideSecondarySeries();
-        }
-
-        if (appendSample)
-        {
-            recordCurrentSamples(chartKeys);
         }
 
         chartPanel.refresh();
@@ -1191,7 +1239,7 @@ void SignalsVisualizationGui::handleRecordButtonClick(const char *message)
 
     if (!currentDeviceSupportsRecording())
     {
-        showAlert("Recording is available only for numeric device signals");
+        showAlert("Recording is available only for devices with values");
         return;
     }
 
@@ -1202,7 +1250,7 @@ void SignalsVisualizationGui::handleRecordButtonClick(const char *message)
         debugLogMessage("SignalsVisualizationGui::handleRecordButtonClick", "recording stop", "device=%s", currentDevice->UID.c_str());
         if (!dataBundleManager.hasRecordingData())
         {
-            recordCurrentSamples(getActiveChartValueKeys());
+            recordCurrentSamples(getRecordableValueKeys());
         }
         const bool saved = dataBundleManager.saveRecording();
         recording = false;
@@ -1210,13 +1258,22 @@ void SignalsVisualizationGui::handleRecordButtonClick(const char *message)
     }
     else
     {
-        debugLogMessage("SignalsVisualizationGui::handleRecordButtonClick", "recording start", "device=%s type=%s", currentDevice->UID.c_str(), currentDevice->Type.c_str());
+        const auto recordableKeys = getRecordableValueKeys();
+        debugLogMessage(
+            DEBUG_VERBOSE_IMPORTANT,
+            "SignalsVisualizationGui::handleRecordButtonClick",
+            "recording start",
+            "device=%s type=%s recordableKeys=%u",
+            currentDevice->UID.c_str(),
+            currentDevice->Type.c_str(),
+            static_cast<unsigned int>(recordableKeys.size()));
         if (!dataBundleManager.startRecording(currentDevice->Type, currentDevice->UID))
         {
             showAlert("Failed to start recording");
             return;
         }
         recording = true;
+        recordCurrentSamples(recordableKeys);
     }
 
     updateActionButtonsState();

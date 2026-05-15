@@ -14,6 +14,9 @@
 class SignalsChartPanel
 {
 private:
+    static const lv_coord_t PLOT_MIN = 0;
+    static const lv_coord_t PLOT_MAX = 1000;
+
     lv_obj_t *chart = nullptr;
     lv_obj_t *emptyLabel = nullptr;
     lv_obj_t *scalingLabel = nullptr;
@@ -21,6 +24,16 @@ private:
     lv_obj_t *samplesLabel = nullptr;
     lv_chart_series_t *primarySeries = nullptr;
     lv_chart_series_t *secondarySeries = nullptr;
+    double primaryRawMin = 0.0;
+    double primaryRawMax = 1.0;
+    double secondaryRawMin = 0.0;
+    double secondaryRawMax = 1.0;
+    bool hasSecondaryRawRange = false;
+    int visibleSampleCount = HISTORY_CAP;
+    int xTickMax = HISTORY_CAP - 1;
+
+    static void handleDrawPartEvent(lv_event_t *e);
+    static void formatAxisLabel(char *buffer, size_t bufferSize, double value, double span);
 
 public:
     void create(lv_obj_t *parent);
@@ -33,10 +46,10 @@ public:
     void setScalingText(const char *primaryText, const char *secondaryText = nullptr);
     void setSamplesText(const char *text);
     void setVisibleSampleCount(int sampleCount);
-    void setRange(lv_coord_t primaryMinValue,
-                  lv_coord_t primaryMaxValue,
-                  lv_coord_t secondaryMinValue,
-                  lv_coord_t secondaryMaxValue,
+    void setRange(double primaryMinValue,
+                  double primaryMaxValue,
+                  double secondaryMinValue,
+                  double secondaryMaxValue,
                   bool hasSecondarySeries);
     void clearSeries();
     void populatePrimarySeries(const lv_coord_t *history, int sampleCount);

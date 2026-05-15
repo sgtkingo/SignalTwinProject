@@ -15,6 +15,9 @@
 #include <Arduino.h>
 #endif
 
+#include <cctype>
+#include <cstdio>
+
 namespace
 {
 unsigned long currentRuntimeMs()
@@ -50,6 +53,52 @@ std::string getBundleFileNameFromPath(const std::string &path)
         return path;
     }
     return path.substr(separator + 1);
+}
+
+std::string makeStorageSafeBundleBase(const std::string &deviceUid, const std::string &deviceName)
+{
+    const std::string source = !deviceUid.empty() ? deviceUid : deviceName;
+    std::string safe;
+    safe.reserve(source.size());
+
+    for (char c : source) {
+        const unsigned char ch = static_cast<unsigned char>(c);
+        if (std::isalnum(ch) || c == '-' || c == '_') {
+            safe.push_back(c);
+        } else if (c == ' ' || c == '.') {
+            safe.push_back('_');
+        }
+    }
+
+    while (!safe.empty() && safe.back() == '_') {
+        safe.pop_back();
+    }
+
+    if (safe.empty()) {
+        safe = "bundle";
+    }
+
+    static const size_t MAX_BUNDLE_BASENAME_LENGTH = 14;
+    if (safe.size() > MAX_BUNDLE_BASENAME_LENGTH) {
+        safe.resize(MAX_BUNDLE_BASENAME_LENGTH);
+        while (!safe.empty() && safe.back() == '_') {
+            safe.pop_back();
+        }
+    }
+
+    return safe.empty() ? "bundle" : safe;
+}
+
+std::string makeBundlePath(const char *root, const std::string &base, unsigned int order)
+{
+    char suffix[16];
+    if (order < 100) {
+        std::snprintf(suffix, sizeof(suffix), "_%02u.csv", order);
+    } else {
+        std::snprintf(suffix, sizeof(suffix), "_%u.csv", order);
+    }
+
+    return std::string(root) + base + suffix;
 }
 }
 
@@ -143,42 +192,24 @@ bool DataBundleManager::startRecording(std::string deviceName, std::string devic
     recordingStartMs = currentRuntimeMs();
     recordingSampleCounter = 0;
 
-    uint8_t tempOrder = 1;
-    std::string temp = root + deviceName + "_0" + std::to_string(tempOrder) + ".csv";
+    if (!ensureStorageDirectories())
+    {
+        debugLogMessage(DEBUG_VERBOSE_ERRORS, "DataBundleManager::startRecording", "storage write failed", "failed to prepare %s directory", root);
+        return false;
+    }
+
+    unsigned int tempOrder = 1;
+    const std::string fileBase = makeStorageSafeBundleBase(deviceUid, deviceName);
+    std::string temp = makeBundlePath(root, fileBase, tempOrder);
     while (storageManager().exists(temp))
     {
         debugLogMessage("DataBundleManager::startRecording", "storage read", "candidate exists path=%s", temp.c_str());
-        if (tempOrder < 10)
-        {
-            std::string toRemove = "0" + std::to_string(tempOrder) + ".csv";
-            if (temp.length() >= toRemove.length())
-            {
-                temp.resize(temp.length() - toRemove.length());
-            }
-        }
-        else
-        {
-            std::string toRemove = std::to_string(tempOrder) + ".csv";
-            if (temp.length() >= toRemove.length())
-            {
-                temp.resize(temp.length() - toRemove.length());
-            }
-        }
-
         tempOrder++;
-
-        if (tempOrder < 10)
-        {
-            temp+=("0" + std::to_string(tempOrder) + ".csv");
-        }
-        else
-        {
-            temp+=(std::to_string(tempOrder) + ".csv");
-        }
+        temp = makeBundlePath(root, fileBase, tempOrder);
     }
 
     recordingBundleMetadata.filePath = temp;
-    debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DataBundleManager::startRecording", "recording start", "filePath=%s startMs=%lu", temp.c_str(), recordingStartMs);
+    debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DataBundleManager::startRecording", "recording start", "fileBase=%s filePath=%s startMs=%lu", fileBase.c_str(), temp.c_str(), recordingStartMs);
 
     // TODO: persist real recording start date/time metadata.
     //recordingBundleMetadata.startDate

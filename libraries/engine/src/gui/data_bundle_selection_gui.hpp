@@ -16,6 +16,7 @@
 #include <array>
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "gui_router.hpp"
@@ -35,7 +36,12 @@
 class DataBundleSelectionGui
 {
 private:
-    static const int BUNDLE_VIEW_CHART_POINTS = 50;
+    static const int BUNDLE_VIEW_DEFAULT_CHART_POINTS = 50;
+    static const int BUNDLE_VIEW_MIN_CHART_POINTS = 10;
+    static const int BUNDLE_VIEW_MAX_CHART_POINTS = 100;
+    static const int BUNDLE_VIEW_SAMPLE_STEP = 5;
+    static const lv_coord_t BUNDLE_VIEW_PLOT_MIN = 0;
+    static const lv_coord_t BUNDLE_VIEW_PLOT_MAX = 1000;
 
     struct BundleCsvRow
     {
@@ -43,8 +49,7 @@ private:
         std::string signalName;
         std::string value;
         bool numeric = false;
-        bool scaled = false;
-        lv_coord_t chartValue = 0;
+        double numericValue = 0.0;
     };
 
     GuiRouter &router;
@@ -115,13 +120,22 @@ private:
     std::vector<std::string> bundleViewerHeaders;           ///< CSV headers for active viewer
     std::vector<BundleCsvRow> bundleViewerRows;             ///< CSV rows for active viewer
     std::vector<std::string> bundleViewerSignals;           ///< Numeric signals available in active viewer
+    std::vector<std::string> bundleViewerSelectedSignals;    ///< Signals currently shown in graph viewer
     bool bundleViewerCsvMode = false;                       ///< True when CSV table tab is visible
     int bundleViewerHistoryOffset = 0;                      ///< Graph history pan offset
     int bundleViewerDragAccumulatorPx = 0;                  ///< Touch drag accumulator
+    int bundleViewerVisibleSampleCount = BUNDLE_VIEW_DEFAULT_CHART_POINTS; ///< Visible graph samples
+    int bundleViewerXTickMax = 10;                       ///< Max X tick label value
+    int bundleViewerPinchLastDistancePx = 0;                ///< Last two-finger distance
+    int bundleViewerPinchAccumulatorPx = 0;                 ///< Pinch-to-sample accumulator
+    bool bundleViewerPinchActive = false;                   ///< True while pinch gesture is active
     int bundleViewerCursorIndex = 0;                        ///< Cursor point in the visible graph window
     bool bundleViewerCursorVisible = false;                 ///< True while touch cursor is active
-    lv_coord_t bundleViewerRangeMin = -1;                   ///< Active graph range minimum
-    lv_coord_t bundleViewerRangeMax = 1;                    ///< Active graph range maximum
+    double bundleViewerPrimaryRangeMin = -1.0;              ///< Primary raw graph range minimum
+    double bundleViewerPrimaryRangeMax = 1.0;               ///< Primary raw graph range maximum
+    double bundleViewerSecondaryRangeMin = -1.0;            ///< Secondary raw graph range minimum
+    double bundleViewerSecondaryRangeMax = 1.0;             ///< Secondary raw graph range maximum
+    bool bundleViewerHasSecondaryRange = false;             ///< True when secondary axis has data
     lv_point_t bundleViewerCursorXPoints[2];                ///< Horizontal cursor line points
     lv_point_t bundleViewerCursorYPoints[2];                ///< Vertical cursor line points
     uint8_t bundleViewerPrimaryColorIndex = 0;              ///< Primary line color palette index
@@ -239,6 +253,19 @@ private:
      * @brief Cycle graph line color
      */
     void cycleBundleViewerSeriesColor(bool primary);
+    void ensureBundleViewerSelectedSignals();
+    std::vector<std::string> getBundleViewerActiveSignals();
+    void cycleBundleViewerSignalSlot(size_t slot);
+    void adjustBundleViewerVisibleSamples(int deltaSamples);
+    void updateBundleViewerXAxisTicks();
+    bool handleBundleViewerPinchGesture();
+
+    static std::pair<double, double> computeBundleViewerRange(const std::vector<double> &values,
+                                                              int start,
+                                                              int pointCount);
+    static lv_coord_t mapBundleViewerValueToPlot(double value, double minValue, double maxValue);
+    static void handleBundleViewerChartDrawPart(lv_event_t *e);
+    static void formatBundleViewerAxisLabel(char *buffer, size_t bufferSize, double value, double span);
 
     /**
      * @brief update data bundles currently shown

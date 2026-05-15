@@ -188,6 +188,20 @@ def default_sensor_values() -> Dict[str, Dict[str, Any]]:
             "_value_dtypes": {"intensity": "int"},
             "_role": "sensor",
         },
+        "S99": {
+            "temp": 22.5,
+            "humi": 45,
+            "pressure": 1013.25,
+            "type": "Multi Value Dummy Sensor",
+            "_restrictions": {
+                "temp": {"min": -20, "max": 80},
+                "humi": {"min": 0, "max": 100},
+                "pressure": {"min": 900, "max": 1100},
+            },
+            "_value_access": {"temp": "read", "humi": "read", "pressure": "read"},
+            "_value_dtypes": {"temp": "float", "humi": "int", "pressure": "float"},
+            "_role": "sensor",
+        },
         "A00": {
             "Brightness": 40,
             "type": "PWM LED Driver",

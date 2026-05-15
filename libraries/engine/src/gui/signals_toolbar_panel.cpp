@@ -55,7 +55,7 @@ void SignalsToolbarPanel::create(lv_obj_t *parentWidget,
     ui_btnNext = lv_btn_create(parentWidget);
     lv_obj_set_width(ui_btnNext, 80);
     lv_obj_set_height(ui_btnNext, 40);
-    lv_obj_set_x(ui_btnNext, 183);
+    lv_obj_set_x(ui_btnNext, 120);
     lv_obj_set_y(ui_btnNext, -40);
     lv_obj_set_align(ui_btnNext, LV_ALIGN_BOTTOM_LEFT);
     lv_obj_add_event_cb(ui_btnNext, nextButtonCallback, LV_EVENT_CLICKED, userData);
