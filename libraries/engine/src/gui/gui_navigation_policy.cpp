@@ -14,6 +14,7 @@ GuiState GuiNavigationPolicy::resolveBackTarget(GuiState fromState) const
     case GuiState::COMMUNICATION_SELECTION:
     case GuiState::LIBRARY:
     case GuiState::SETTINGS:
+    case GuiState::FILE_TRANSFER:
         return GuiState::MAIN_MENU;
     case GuiState::LIBRARY_EDITOR:
         return GuiState::LIBRARY;

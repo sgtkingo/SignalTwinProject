@@ -7,6 +7,7 @@
 #include "credits_gui.hpp"
 #include "data_bundle_selection_gui.hpp"
 #include "device_selection_gui.hpp"
+#include "file_transfer_gui.hpp"
 #include "gui_router.hpp"
 #include "gui_state.hpp"
 #include "library_editor_gui.hpp"
@@ -33,6 +34,7 @@ private:
     LibraryGui libraryGui;
     LibraryEditorGui libraryEditorGui;
     SettingsGui settingsGui;
+    FileTransferGui fileTransferGui;
     CrashGui crashGui;
     CreditsGui creditsGui;
     AppSelectionGui appSelectionGui;
@@ -58,6 +60,7 @@ public:
     LibraryGui &getLibraryGui() { return libraryGui; }
     LibraryEditorGui &getLibraryEditorGui() { return libraryEditorGui; }
     SettingsGui &getSettingsGui() { return settingsGui; }
+    FileTransferGui &getFileTransferGui() { return fileTransferGui; }
     CrashGui &getCrashGui() { return crashGui; }
     CreditsGui &getCreditsGui() { return creditsGui; }
     AppSelectionGui &getAppSelectionGui() { return appSelectionGui; }

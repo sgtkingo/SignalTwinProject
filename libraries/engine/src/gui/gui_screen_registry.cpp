@@ -15,6 +15,7 @@ GuiScreenRegistry::GuiScreenRegistry(DeviceCatalog &catalog,
       libraryGui(catalog, browserState, router),
       libraryEditorGui(catalog, browserState, router),
       settingsGui(router),
+      fileTransferGui(router),
       crashGui(),
       creditsGui(router),
       appSelectionGui(router),
@@ -34,6 +35,7 @@ void GuiScreenRegistry::initializeCoreScreens()
     libraryGui.init();
     libraryEditorGui.init();
     settingsGui.init();
+    fileTransferGui.init();
 }
 
 void GuiScreenRegistry::hideAll()
@@ -47,6 +49,7 @@ void GuiScreenRegistry::hideAll()
     libraryGui.hideLibrary();
     libraryEditorGui.hideEditor();
     settingsGui.hideSettings();
+    fileTransferGui.hideFileTransfer();
     crashGui.hideCrash();
     creditsGui.hideCredits();
     communicationSelectionGui.hideCommunicationSelection();
@@ -83,6 +86,9 @@ void GuiScreenRegistry::render(GuiState targetState)
         break;
     case GuiState::SETTINGS:
         settingsGui.showSettings();
+        break;
+    case GuiState::FILE_TRANSFER:
+        fileTransferGui.showFileTransfer();
         break;
     case GuiState::READY:
     case GuiState::CRASH:

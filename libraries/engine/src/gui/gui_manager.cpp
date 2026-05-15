@@ -172,6 +172,15 @@ void GuiManager::showSettings()
     navigateTo(GuiState::SETTINGS);
 }
 
+void GuiManager::showFileTransfer()
+{
+    if (!initialized) {
+        return;
+    }
+
+    navigateTo(GuiState::FILE_TRANSFER);
+}
+
 void GuiManager::showCrashScreen(const std::string &reason)
 {
     debugLogMessage("GuiManager::showCrashScreen", "gui crash", "%s", reason.c_str());

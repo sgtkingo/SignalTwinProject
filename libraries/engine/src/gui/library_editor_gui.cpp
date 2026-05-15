@@ -36,7 +36,7 @@ std::vector<std::string> splitAndTrimCsv(const std::string &csv)
 
 const char *ROLE_OPTIONS = "Sensor\nActuator\nHybrid";
 const char *PARAM_DTYPE_OPTIONS = "int\nfloat\ndouble\nstring";
-const char *DEVICE_PICTURE_DIR = "/data/pics";
+const char *DEVICE_PICTURE_DIR = STORAGE_DEVICE_PICTURE_DIR;
 
 bool isStoragePicturePath(const std::string &path)
 {

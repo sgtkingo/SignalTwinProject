@@ -54,6 +54,7 @@ public:
     void showLibrary() override;
     void showLibraryEditor() override;
     void showSettings() override;
+    void showFileTransfer() override;
     void showCrashScreen(const std::string &reason = "Unexpected error");
     void showCreditsScreen() override;
     void showAppSelectionScreen() override;

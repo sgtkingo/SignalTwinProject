@@ -11,6 +11,7 @@ enum class GuiState
     LIBRARY,
     LIBRARY_EDITOR,
     SETTINGS,
+    FILE_TRANSFER,
     READY,
     CRASH,
     CREDITS,

@@ -95,7 +95,7 @@ bool DataBundleManager::init()
 
     if (!ensureStorageDirectories())
     {
-        debugLogMessage(DEBUG_VERBOSE_ERRORS, "DataBundleManager::init", "storage write failed", "DataBundles directory failed to create");
+        debugLogMessage(DEBUG_VERBOSE_ERRORS, "DataBundleManager::init", "storage write failed", "%s directory failed to create", root);
     }
 
     debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DataBundleManager::init", "init", "initialized successfully");
@@ -110,7 +110,7 @@ bool DataBundleManager::init()
 }
 
 /**
- * @brief Initialize DataBundles directory
+ * @brief Initialize records directory
  * @return True if init was succesful, false otherwise
  */
 bool DataBundleManager::ensureStorageDirectories()

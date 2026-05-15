@@ -28,7 +28,7 @@ private:
     unsigned long recordingStartMs = 0;          ///< Runtime timestamp when active recording started
     unsigned long recordingSampleCounter = 0;    ///< Monotonic sample counter for active recording
 
-    const char* root = "/DataBundles/"; ///< Directory where all data bundles are stored
+    const char* root = STORAGE_RECORDS_DIR "/"; ///< Directory where all data bundles are stored
 
     // HELPERS
 
@@ -64,7 +64,7 @@ public:
     bool init();
 
     /**
-     * @brief Initialize directories such as DataBundles
+     * @brief Initialize directories such as records
      * @return True if init was succesful, false otherwise
      */
     bool ensureStorageDirectories();

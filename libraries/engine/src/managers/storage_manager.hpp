@@ -27,6 +27,7 @@ private:
     const char *activeStorageLabel = "Storage";
     bool initialized = false;
     bool available = false;
+    bool transferLocked = false;
 
     StorageManager() = default;
 
@@ -41,6 +42,7 @@ public:
     bool isInitialized() const { return initialized; }
     bool isAvailable() const { return available; }
     const char *getStorageLabel() const { return activeStorageLabel; }
+    bool isTransferLocked() const { return transferLocked; }
 
     bool exists(const std::string &path) const;
     bool ensureDirectory(const std::string &path);
@@ -50,6 +52,9 @@ public:
 
     uint64_t totalBytes() const;
     uint64_t usedBytes() const;
+
+    bool enterTransferLock();
+    bool exitTransferLock();
 };
 
 StorageManager &storageManager();

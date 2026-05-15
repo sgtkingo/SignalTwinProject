@@ -379,7 +379,8 @@ void DataBundleSelectionGui::createDataBundle(unsigned char i, const char *dataB
     lv_obj_set_style_radius(ui_DataBundleFooterButtonExport[i], 5, LV_PART_MAIN);
     lv_obj_add_event_cb(ui_DataBundleFooterButtonExport[i], [](lv_event_t *e)
     {
-        splashMessage("Export Data is not available."); 
+        auto self = static_cast<DataBundleSelectionGui*>(lv_event_get_user_data(e));
+        self->router.showFileTransfer();
     }, LV_EVENT_CLICKED, this);
     
     ui_DataBundleFooterButtonExportImage[i] = lv_img_create(ui_DataBundleFooterButtonExport[i]);

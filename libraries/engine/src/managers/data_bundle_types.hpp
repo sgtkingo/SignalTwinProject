@@ -6,7 +6,7 @@
 struct BundleMetadata {
     std::string deviceName;  // "DHT11"
     std::string deviceUid;   // "cpu_temp"
-    std::string filePath;    // "/DataBundles/data_12345.csv"
+    std::string filePath;    // "/records/data_12345.csv"
     std::string startDate;   // "YYYY-MM-DD"
 };
 

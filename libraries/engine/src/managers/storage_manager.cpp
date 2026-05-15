@@ -159,6 +159,59 @@ bool StorageManager::init()
     return available;
 }
 
+bool StorageManager::enterTransferLock()
+{
+#if STORAGE_OPTION != STORAGE_OPTION_SD
+    debugLogMessage(DEBUG_VERBOSE_ERRORS, "StorageManager::enterTransferLock", "transfer lock unsupported", "storage=%s", activeStorageLabel);
+    return false;
+#else
+    if (transferLocked) {
+        debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "StorageManager::enterTransferLock", "transfer lock", "already locked");
+        return true;
+    }
+
+    if (!initialized) {
+        init();
+    }
+
+    if (!available) {
+        debugLogMessage(DEBUG_VERBOSE_ERRORS, "StorageManager::enterTransferLock", "transfer lock failed", "SD unavailable");
+        return false;
+    }
+
+    debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "StorageManager::enterTransferLock", "transfer lock", "unmounting SD for USB transfer");
+    SD.end();
+    available = false;
+    transferLocked = true;
+    return true;
+#endif
+}
+
+bool StorageManager::exitTransferLock()
+{
+#if STORAGE_OPTION != STORAGE_OPTION_SD
+    return true;
+#else
+    if (!transferLocked) {
+        return true;
+    }
+
+    debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "StorageManager::exitTransferLock", "transfer unlock", "remounting SD after USB transfer");
+    SPI.begin(STORAGE_SD_PIN_SCK, STORAGE_SD_PIN_MISO, STORAGE_SD_PIN_MOSI, STORAGE_SD_PIN_CS);
+    activeFilesystem = &SD;
+    activeStorageLabel = "SD";
+    available = SD.begin(STORAGE_SD_PIN_CS);
+    transferLocked = false;
+    debugLogMessage(
+        available ? DEBUG_VERBOSE_IMPORTANT : DEBUG_VERBOSE_ERRORS,
+        "StorageManager::exitTransferLock",
+        available ? "transfer unlock" : "transfer unlock failed",
+        "SD remount result=%d",
+        available ? 1 : 0);
+    return available;
+#endif
+}
+
 bool StorageManager::exists(const std::string &path) const
 {
     if (!available || !activeFilesystem) {

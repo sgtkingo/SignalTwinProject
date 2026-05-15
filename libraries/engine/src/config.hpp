@@ -64,6 +64,23 @@
 #define STORAGE_SEED_DEFAULT_DB_ON_MISSING 0
 #endif
 
+// Shared storage layout. In SD mode these paths are visible to PC transfer mode.
+#ifndef STORAGE_DATA_DIR
+#define STORAGE_DATA_DIR "/data"
+#endif
+
+#ifndef STORAGE_DEVICE_PICTURE_DIR
+#define STORAGE_DEVICE_PICTURE_DIR "/data/pics"
+#endif
+
+#ifndef STORAGE_APP_CONFIG_PATH
+#define STORAGE_APP_CONFIG_PATH "/data/config.json"
+#endif
+
+#ifndef STORAGE_RECORDS_DIR
+#define STORAGE_RECORDS_DIR "/records"
+#endif
+
 // SD card wiring used by the display board.
 #ifndef STORAGE_SD_PIN_MOSI
 #define STORAGE_SD_PIN_MOSI 11

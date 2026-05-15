@@ -18,6 +18,7 @@ public:
     virtual void showLibrary() = 0;
     virtual void showLibraryEditor() = 0;
     virtual void showSettings() = 0;
+    virtual void showFileTransfer() = 0;
     virtual void showCreditsScreen() = 0;
     virtual void showAppSelectionScreen() = 0;
     virtual void showCommunicationSelectionScreen() = 0;

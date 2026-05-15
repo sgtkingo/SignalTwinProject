@@ -16,6 +16,7 @@ private:
     lv_obj_t *ui_btnVisualization = nullptr;
     lv_obj_t *ui_btnLibrary = nullptr;
     lv_obj_t *ui_btnDatabank = nullptr;
+    lv_obj_t *ui_btnFileTransfer = nullptr;
     lv_obj_t *ui_btnSettings = nullptr;
     lv_obj_t *ui_btnAbout = nullptr;
 
