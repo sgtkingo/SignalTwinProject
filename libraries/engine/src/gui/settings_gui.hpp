@@ -20,6 +20,7 @@ private:
     lv_obj_t *ui_ApplicationInput = nullptr;
     lv_obj_t *ui_VersionInput = nullptr;
     lv_obj_t *ui_MetadataStatus = nullptr;
+    lv_obj_t *ui_AppConfigStatus = nullptr;
     lv_obj_t *ui_Keyboard = nullptr;
 
     void build();
@@ -30,6 +31,7 @@ private:
     void handleKeyboardEvent(lv_event_t *e);
     void showKeyboardFor(lv_obj_t *textarea);
     void hideKeyboard();
+    void saveAppConfig();
     static uint16_t getModeDropdownIndex(DefaultCommunicationMode mode);
     static DefaultCommunicationMode getModeFromDropdownIndex(uint16_t index);
     static uint16_t getThemeDropdownIndex(ThemeMode mode);

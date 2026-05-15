@@ -19,8 +19,10 @@ private:
     lv_obj_t *ui_btnFileTransfer = nullptr;
     lv_obj_t *ui_btnSettings = nullptr;
     lv_obj_t *ui_btnAbout = nullptr;
+    lv_obj_t *ui_VersionLabel = nullptr;
 
     void build();
+    void refresh();
     lv_obj_t *createMenuButton(lv_obj_t *parent, const char *text, lv_align_t align, lv_coord_t x_ofs, lv_coord_t y_ofs);
     lv_obj_t *createIconButton(lv_obj_t *parent, const void *imageSource, lv_align_t align, lv_coord_t x_ofs, lv_coord_t y_ofs);
 

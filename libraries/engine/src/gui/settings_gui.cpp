@@ -318,6 +318,14 @@ void SettingsGui::build()
     lv_label_set_long_mode(ui_MetadataStatus, LV_LABEL_LONG_WRAP);
     lv_label_set_text(ui_MetadataStatus, "");
 
+    ui_AppConfigStatus = lv_label_create(ui_Widget);
+    lv_obj_set_width(ui_AppConfigStatus, 440);
+    lv_obj_align(ui_AppConfigStatus, LV_ALIGN_BOTTOM_RIGHT, -126, -58);
+    lv_label_set_long_mode(ui_AppConfigStatus, LV_LABEL_LONG_DOT);
+    lv_obj_set_style_text_align(ui_AppConfigStatus, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ui_AppConfigStatus, lv_color_hex(0x5F6B7A), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_label_set_text(ui_AppConfigStatus, "");
+
     lv_obj_t *back = lv_btn_create(ui_Widget);
     lv_obj_set_size(back, 90, 36);
     lv_obj_align(back, LV_ALIGN_BOTTOM_LEFT, 16, -14);
@@ -330,6 +338,46 @@ void SettingsGui::build()
     lv_obj_t *backLabel = lv_label_create(back);
     lv_label_set_text(backLabel, "Back");
     lv_obj_center(backLabel);
+
+    lv_obj_t *save = lv_btn_create(ui_Widget);
+    lv_obj_set_size(save, 96, 36);
+    lv_obj_align(save, LV_ALIGN_BOTTOM_RIGHT, -16, -14);
+    lv_obj_set_style_bg_color(save, lv_color_hex(0x2EAD5F), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_add_event_cb(save, [](lv_event_t *e) {
+        if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
+            return;
+        }
+
+        auto *self = static_cast<SettingsGui *>(lv_event_get_user_data(e));
+        self->saveAppConfig();
+    }, LV_EVENT_ALL, this);
+    lv_obj_t *saveLabel = lv_label_create(save);
+    lv_label_set_text(saveLabel, "Save");
+    lv_obj_center(saveLabel);
+}
+
+void SettingsGui::saveAppConfig()
+{
+    if (!ui_CommDropdown || !ui_ThemeDropdown || !ui_LanguageDropdown || !ui_AppConfigStatus) {
+        return;
+    }
+
+    hideKeyboard();
+
+    const DefaultCommunicationMode communication = getModeFromDropdownIndex(lv_dropdown_get_selected(ui_CommDropdown));
+    const ThemeMode theme = getThemeFromDropdownIndex(lv_dropdown_get_selected(ui_ThemeDropdown));
+    const LanguageMode language = getLanguageFromDropdownIndex(lv_dropdown_get_selected(ui_LanguageDropdown));
+
+    std::string error;
+    if (!router.saveAppSettings(communication, theme, language, error)) {
+        lv_obj_set_style_text_color(ui_AppConfigStatus, lv_color_hex(0xB00020), LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_label_set_text(ui_AppConfigStatus, error.empty() ? "Settings save failed." : error.c_str());
+        return;
+    }
+
+    lv_obj_set_style_text_color(ui_AppConfigStatus, lv_color_hex(0x2E7D32), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_label_set_text(ui_AppConfigStatus, "Settings saved.");
+    refresh();
 }
 
 void SettingsGui::refresh()

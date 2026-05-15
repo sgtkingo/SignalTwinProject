@@ -6,6 +6,7 @@
 #include "gui_manager.hpp"
 
 #include "../helpers.hpp"
+#include "../managers/app_config_manager.hpp"
 #include "../managers/storage_manager.hpp"
 #include "expt.hpp"
 
@@ -52,6 +53,17 @@ bool GuiManager::init(std::string configFile)
             const std::string reason = std::string("Persistent storage is not ready on ") + storageManager().getStorageLabel() + ".";
             screenRegistry.getCrashGui().showCrash(reason.c_str(), "STORAGE ERROR", LV_SYMBOL_SD_CARD);
             return false;
+        }
+
+        AppConfig appConfig;
+        std::string appConfigError;
+        if (AppConfigManager::load(appConfig, appConfigError)) {
+            appVersion = appConfig.version;
+            navigationPolicy.setDefaultCommunicationMode(appConfig.defaultCommunication);
+            navigationPolicy.setThemeMode(appConfig.theme);
+            navigationPolicy.setLanguageMode(appConfig.language);
+        } else {
+            debugLogMessage(DEBUG_VERBOSE_ERRORS, "GuiManager::init", "app config load failed", "%s", appConfigError.c_str());
         }
 
         if (!deviceCatalog.init(configFile)) {
@@ -373,6 +385,37 @@ bool GuiManager::saveCatalogMetadata(const std::string &application,
     } catch (...) {
         Exception("GuiManager::saveCatalogMetadata", "Unknown error while saving catalog metadata.").print();
         error = "Unknown error while saving catalog metadata.";
+        return false;
+    }
+}
+
+bool GuiManager::saveAppSettings(DefaultCommunicationMode defaultCommunication,
+                                 ThemeMode theme,
+                                 LanguageMode language,
+                                 std::string &error)
+{
+    try {
+        AppConfig config;
+        config.version = appVersion;
+        config.defaultCommunication = defaultCommunication;
+        config.theme = theme;
+        config.language = language;
+
+        if (!AppConfigManager::save(config, error)) {
+            return false;
+        }
+
+        navigationPolicy.setDefaultCommunicationMode(defaultCommunication);
+        navigationPolicy.setThemeMode(theme);
+        navigationPolicy.setLanguageMode(language);
+        return true;
+    } catch (const std::exception &e) {
+        Exception("GuiManager::saveAppSettings", e.what()).print();
+        error = e.what();
+        return false;
+    } catch (...) {
+        Exception("GuiManager::saveAppSettings", "Unknown error while saving app settings.").print();
+        error = "Unknown error while saving app settings.";
         return false;
     }
 }

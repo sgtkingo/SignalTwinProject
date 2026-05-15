@@ -37,6 +37,10 @@ public:
     virtual bool saveCatalogMetadata(const std::string &application,
                                      const std::string &version,
                                      std::string &error) = 0;
+    virtual bool saveAppSettings(DefaultCommunicationMode defaultCommunication,
+                                 ThemeMode theme,
+                                 LanguageMode language,
+                                 std::string &error) = 0;
 
     virtual bool shouldSelectionBackGoToMainMenu() const = 0;
     virtual DefaultCommunicationMode getDefaultCommunicationMode() const = 0;
@@ -45,6 +49,7 @@ public:
     virtual void setThemeMode(ThemeMode mode) = 0;
     virtual LanguageMode getLanguageMode() const = 0;
     virtual void setLanguageMode(LanguageMode mode) = 0;
+    virtual std::string getAppVersion() const = 0;
     virtual std::string getCatalogApplication() const = 0;
     virtual std::string getCatalogVersion() const = 0;
 };

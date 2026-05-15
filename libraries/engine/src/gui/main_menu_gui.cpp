@@ -2,6 +2,8 @@
 
 #include "./images/ui_images.h"
 
+#include <string>
+
 MainMenuGui::MainMenuGui(GuiRouter &router) : router(router)
 {
 }
@@ -102,6 +104,27 @@ void MainMenuGui::build()
         }
     }, LV_EVENT_ALL, this);
 
+    ui_VersionLabel = lv_label_create(ui_Widget);
+    lv_obj_align(ui_VersionLabel, LV_ALIGN_BOTTOM_LEFT, 18, -14);
+    lv_obj_set_style_text_color(ui_VersionLabel, lv_color_hex(0x6C7680), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_VersionLabel, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_label_set_text(ui_VersionLabel, "");
+}
+
+void MainMenuGui::refresh()
+{
+    if (!ui_VersionLabel) {
+        return;
+    }
+
+    const std::string version = router.getAppVersion();
+    if (version.empty()) {
+        lv_label_set_text(ui_VersionLabel, "");
+        return;
+    }
+
+    const std::string label = "v" + version;
+    lv_label_set_text(ui_VersionLabel, label.c_str());
 }
 
 void MainMenuGui::init()
@@ -120,6 +143,7 @@ void MainMenuGui::showMainMenu()
         return;
     }
 
+    refresh();
     lv_obj_clear_flag(ui_Widget, LV_OBJ_FLAG_HIDDEN);
 }
 

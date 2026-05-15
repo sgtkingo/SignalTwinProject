@@ -30,6 +30,7 @@ private:
     GuiRuntimePolicy runtimePolicy;                    ///< Side effects when entering/leaving GUI states
     GuiScreenRegistry screenRegistry;                  ///< Screen ownership and rendering registry
 
+    std::string appVersion;                            ///< Application version loaded from /data/config.json
     GuiState currentState;
     bool initialized;
 
@@ -79,6 +80,10 @@ public:
     bool saveCatalogMetadata(const std::string &application,
                              const std::string &version,
                              std::string &error) override;
+    bool saveAppSettings(DefaultCommunicationMode defaultCommunication,
+                         ThemeMode theme,
+                         LanguageMode language,
+                         std::string &error) override;
     bool shouldSelectionBackGoToMainMenu() const override { return navigationPolicy.shouldSelectionBackGoToMainMenu(); }
 
     DefaultCommunicationMode getDefaultCommunicationMode() const override { return navigationPolicy.getDefaultCommunicationMode(); }
@@ -87,6 +92,7 @@ public:
     void setThemeMode(ThemeMode mode) override { navigationPolicy.setThemeMode(mode); }
     LanguageMode getLanguageMode() const override { return navigationPolicy.getLanguageMode(); }
     void setLanguageMode(LanguageMode mode) override { navigationPolicy.setLanguageMode(mode); }
+    std::string getAppVersion() const override { return appVersion; }
     std::string getCatalogApplication() const override { return deviceCatalog.getApplication(); }
     std::string getCatalogVersion() const override { return deviceCatalog.getVersion(); }
 
