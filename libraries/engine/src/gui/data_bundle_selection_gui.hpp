@@ -97,6 +97,7 @@ private:
     lv_obj_t *ui_BundleViewerTable = nullptr;               ///< Bundle CSV table
     lv_obj_t *ui_BundleViewerScalingLabel = nullptr;        ///< Bundle graph scaling label
     lv_obj_t *ui_BundleViewerCursorLabel = nullptr;         ///< Bundle graph cursor label
+    lv_obj_t *ui_BundleViewerCursorValueLabel = nullptr;    ///< Bundle graph attached cursor value label
     lv_obj_t *ui_BundleViewerPrimaryLegend = nullptr;       ///< Primary signal legend
     lv_obj_t *ui_BundleViewerSecondaryLegend = nullptr;     ///< Secondary signal legend
     lv_obj_t *ui_BundleViewerPrimaryLegendLabel = nullptr;  ///< Primary signal legend text
@@ -130,6 +131,7 @@ private:
     int bundleViewerPinchAccumulatorPx = 0;                 ///< Pinch-to-sample accumulator
     bool bundleViewerPinchActive = false;                   ///< True while pinch gesture is active
     int bundleViewerCursorIndex = 0;                        ///< Cursor point in the visible graph window
+    int bundleViewerCursorSignalSlot = 0;                   ///< Cursor signal slot in the active graph window
     bool bundleViewerCursorVisible = false;                 ///< True while touch cursor is active
     double bundleViewerPrimaryRangeMin = -1.0;              ///< Primary raw graph range minimum
     double bundleViewerPrimaryRangeMax = 1.0;               ///< Primary raw graph range maximum
@@ -233,6 +235,11 @@ private:
      * @brief Show cursor at a visible graph point.
      */
     void showBundleViewerCursorAtIndex(int index);
+
+    /**
+     * @brief Show cursor at the graph point nearest to the touch point.
+     */
+    void showBundleViewerCursorNearPoint(const lv_point_t &touchPoint);
 
     /**
      * @brief Hide the touch cursor.

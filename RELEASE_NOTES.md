@@ -2,7 +2,7 @@
 
 ## v1.2.0.63 - Refactoring development build
 
-Versioning note: this build uses `MAJOR.MINOR.PATCH.BUILD`. The major version remains `1`; the minor version was bumped for the refactoring branch feature scope; build `63` matches the number of commits on `codex/refactoring` since `main`.
+Versioning note: this build is DEBUG only.
 
 ### Runtime, VSCP and DB schema
 
