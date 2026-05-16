@@ -1,6 +1,6 @@
 # SignalTwin ✨🧬
 
-**Current development version:** `v1.2.0.63`
+**Current development version:** `v1.2.0.67`
 
 SignalTwin Display is a lightweight **HMI/visualization client** for exploring sensor data in real time 🖥️.
 It focuses on **raw vs. processed comparisons**, **interactive inspection**, and **data capture** for later analysis
@@ -105,6 +105,15 @@ Firmupdater automatically checks for newer versions and applies updates **with m
 
 📖 Learn more: https://github.com/sgtkingo/Firmupdater
 🌐 Online live-app: https://sgtkingo.github.io/Firmupdater/
+
+---
+
+## Current UI and Storage Notes
+
+- Runtime and DataBundle graphs support two visible signals with separate Y axes, autoscale labels, cursor readout and adjustable visible sample count.
+- Tiny and very large float ranges are shown with compact axis scaling labels, so micro-scale and high-value signals stay readable.
+- Transfer Mode exposes SD-card data through the USB transfer workflow. After closing an active transfer session, the HMI can prompt for restart so changed files are reloaded cleanly.
+- The Main Screen shows `v<version>` in the lower-left corner and `Storage: SD` or `Storage: SPIFFS` in the lower-right corner.
 
 ---
 

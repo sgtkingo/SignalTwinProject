@@ -1,6 +1,6 @@
 # RELEASE_NOTES
 
-## v1.2.0.63 - Refactoring development build
+## v1.2.0.67 - Refactoring development build
 
 Versioning note: this build is DEBUG only.
 
@@ -32,6 +32,8 @@ Versioning note: this build is DEBUG only.
 * Runtime and DataBundle graphs now support two visible signals with separate Y axes.
 * Runtime sampling can be adjusted dynamically up to 100 visible samples.
 * DataBundle Viewer includes graph and CSV modes, touch history browsing, cursor readout, autoscale and selectable signal blocks.
+* Runtime and DataBundle axis labels now use compact formatting, max three decimals and engineering-style scale labels for tiny and very large values.
+* DataBundle Viewer scale labels are shown directly near the graph and removed from local graph settings.
 * Multi-value recording now records all device values, independent of which values are currently charted.
 
 ### Device catalog, settings and transfer mode
@@ -40,6 +42,8 @@ Versioning note: this build is DEBUG only.
 * Device pin schema now uses named `Pins` definitions and default pin maps by tag.
 * App settings can be saved to `/data/config.json`, with default communication and appearance placeholders persisted.
 * Added SD-card-oriented Transfer Mode screen and service scaffolding for USB MSC bridge workflows.
+* Transfer Mode now asks whether to restart the HMI after closing an active transfer session, so SD-card edits can be reloaded immediately.
+* Main Screen now shows the active storage backend (`Storage: SD` or `Storage: SPIFFS`) next to the existing version label.
 
 ---
 
