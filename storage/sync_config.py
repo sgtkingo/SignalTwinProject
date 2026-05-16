@@ -24,7 +24,8 @@ def repo_root() -> Path:
 
 
 def source_config() -> Path:
-    return Path(__file__).resolve().with_name("config.json")
+    # Get __file__ dir and append data/config.json to it, ensuring we get the correct path even if the script is run from a different directory.
+    return Path(__file__).resolve().parent / "data" / "config.json"
 
 
 def version_file(root: Path) -> Path:

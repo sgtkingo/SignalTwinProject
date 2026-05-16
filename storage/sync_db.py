@@ -30,7 +30,8 @@ def repo_root() -> Path:
 
 
 def source_db() -> Path:
-    return Path(__file__).resolve().with_name("DB.json")
+    return Path(__file__).resolve().parent / "data" / "DB.json"
+
 
 
 def default_json_header(root: Path) -> Path:
@@ -76,6 +77,7 @@ def sync_db(dry_run: bool = False) -> int:
 
     updated = 0
     targets = [path for path in iter_db_files(root) if path.resolve() != source.resolve()]
+    source_pics = source.parent / "pics"
     if not targets:
         print("No DB.json targets found.")
 
@@ -88,6 +90,17 @@ def sync_db(dry_run: bool = False) -> int:
             print(f"Updated {relative}")
         updated += 1
 
+        # Also copy the pics folder from the source data/ to the target's folder
+        if source_pics.exists() and source_pics.is_dir():
+            target_pics = target.parent / "pics"
+            rel_pics = target_pics.relative_to(root)
+            if dry_run:
+                print(f"Would copy pics to {rel_pics}")
+            else:
+                if target_pics.exists():
+                    shutil.rmtree(target_pics)
+                shutil.copytree(source_pics, target_pics)
+                print(f"Copied pics to {rel_pics}")
     updated += sync_default_json_header(root, source, dry_run=dry_run)
     return updated
 
