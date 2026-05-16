@@ -20,6 +20,7 @@ private:
     lv_obj_t *ui_btnSettings = nullptr;
     lv_obj_t *ui_btnAbout = nullptr;
     lv_obj_t *ui_VersionLabel = nullptr;
+    lv_obj_t *ui_StorageLabel = nullptr;
 
     void build();
     void refresh();

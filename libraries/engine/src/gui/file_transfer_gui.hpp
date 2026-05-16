@@ -25,6 +25,7 @@ private:
     lv_obj_t *ui_StopButton = nullptr;
     lv_obj_t *ui_StopButtonLabel = nullptr;
     lv_obj_t *ui_BackButton = nullptr;
+    lv_obj_t *ui_RestartDialog = nullptr;
 
     void build();
     void refresh();
@@ -32,6 +33,9 @@ private:
     void renderConnecting();
     void handleStart();
     void handleStop();
+    void showRestartPrompt();
+    void closeRestartPrompt();
+    void restartDevice();
 
 public:
     explicit FileTransferGui(GuiRouter &router);

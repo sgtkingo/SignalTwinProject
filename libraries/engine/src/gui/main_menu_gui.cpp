@@ -1,6 +1,7 @@
 #include "main_menu_gui.hpp"
 
 #include "./images/ui_images.h"
+#include "../managers/storage_manager.hpp"
 
 #include <string>
 
@@ -233,13 +234,22 @@ void MainMenuGui::build()
     lv_obj_set_style_text_color(ui_VersionLabel, lv_color_hex(0x6C7680), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_VersionLabel, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_label_set_text(ui_VersionLabel, "");
+
+    ui_StorageLabel = lv_label_create(ui_Widget);
+    lv_obj_align(ui_StorageLabel, LV_ALIGN_BOTTOM_RIGHT, -18, -14);
+    lv_obj_set_style_text_color(ui_StorageLabel, lv_color_hex(0x6C7680), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_StorageLabel, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_label_set_text(ui_StorageLabel, "");
 }
 
 void MainMenuGui::refresh()
 {
-    if (!ui_VersionLabel) {
+    if (!ui_VersionLabel || !ui_StorageLabel) {
         return;
     }
+
+    const std::string storageLabel = std::string("Storage: ") + storageManager().getStorageLabel();
+    lv_label_set_text(ui_StorageLabel, storageLabel.c_str());
 
     const std::string version = router.getAppVersion();
     if (version.empty()) {

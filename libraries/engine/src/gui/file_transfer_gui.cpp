@@ -3,12 +3,23 @@
 #include "./images/ui_images.h"
 #include "expt.hpp"
 
+#include <cstring>
+
+#ifdef ESP32
+    #include <ESP.h>
+#elif defined(ARDUINO)
+    #include <Arduino.h>
+#else
+    #include <cstdlib>
+#endif
+
 FileTransferGui::FileTransferGui(GuiRouter &router) : router(router)
 {
 }
 
 FileTransferGui::~FileTransferGui()
 {
+    closeRestartPrompt();
     transferService.stop();
 }
 
@@ -260,9 +271,77 @@ void FileTransferGui::handleStart()
 
 void FileTransferGui::handleStop()
 {
-    transferService.stop();
+    const FileTransferState previousState = transferService.getState();
+    const bool wasTransferRunning = transferService.isTransferModeActive() || previousState == FileTransferState::READY;
+    const bool stopped = transferService.stop();
     transferSessionAttempted = false;
-    router.showMainMenu();
+    if (!stopped) {
+        refresh();
+        return;
+    }
+
+    renderPreparation();
+    if (wasTransferRunning) {
+        showRestartPrompt();
+    } else {
+        router.showMainMenu();
+    }
+}
+
+void FileTransferGui::showRestartPrompt()
+{
+    closeRestartPrompt();
+
+    static const char *buttons[] = {"Restart", "Later", ""};
+    ui_RestartDialog = lv_msgbox_create(lv_scr_act(),
+                                        "Restart device?",
+                                        "Transfer session is closed. Restart HMI now to reload changes from SD card?",
+                                        buttons,
+                                        false);
+    lv_obj_set_width(ui_RestartDialog, 340);
+    lv_obj_center(ui_RestartDialog);
+    lv_obj_move_foreground(ui_RestartDialog);
+    lv_obj_add_event_cb(ui_RestartDialog, [](lv_event_t *e) {
+        if (lv_event_get_code(e) != LV_EVENT_VALUE_CHANGED) {
+            return;
+        }
+
+        auto *self = static_cast<FileTransferGui *>(lv_event_get_user_data(e));
+        lv_obj_t *msgbox = lv_event_get_current_target(e);
+        const char *btnText = lv_msgbox_get_active_btn_text(msgbox);
+
+        if (btnText && std::strcmp(btnText, "Restart") == 0) {
+            self->closeRestartPrompt();
+            self->restartDevice();
+            return;
+        }
+
+        self->closeRestartPrompt();
+        self->router.showMainMenu();
+    }, LV_EVENT_ALL, this);
+}
+
+void FileTransferGui::closeRestartPrompt()
+{
+    if (!ui_RestartDialog) {
+        return;
+    }
+
+    lv_obj_t *dialog = ui_RestartDialog;
+    ui_RestartDialog = nullptr;
+    lv_obj_del(dialog);
+}
+
+void FileTransferGui::restartDevice()
+{
+#ifdef ESP32
+    ESP.restart();
+#elif defined(ARDUINO)
+    void (*resetFunc)(void) = 0;
+    resetFunc();
+#else
+    std::exit(0);
+#endif
 }
 
 void FileTransferGui::init()
@@ -296,5 +375,6 @@ void FileTransferGui::hideFileTransfer()
         return;
     }
 
+    closeRestartPrompt();
     lv_obj_add_flag(ui_Widget, LV_OBJ_FLAG_HIDDEN);
 }
