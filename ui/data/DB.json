@@ -270,6 +270,68 @@
         "P1"
       ]
     },
+    "S98": {
+      "uid": "S98",
+      "role": "sensor",
+      "type": "Scale Stress Dummy Sensor",
+      "description": "Dummy sensor for testing chart Y-axis formatting with very small, very large and normal ranges.",
+      "values": {
+        "large": {
+          "value": 12500,
+          "unit": "u",
+          "dtype": "float",
+          "access": "read",
+          "restrictions": {
+            "min": 10000,
+            "max": 2500000
+          }
+        },
+        "tiny": {
+          "value": 0.00025,
+          "unit": "u",
+          "dtype": "float",
+          "access": "read",
+          "restrictions": {
+            "min": 0,
+            "max": 0.001
+          }
+        },
+        "normal": {
+          "value": 500,
+          "unit": "u",
+          "dtype": "float",
+          "access": "read",
+          "restrictions": {
+            "min": 0,
+            "max": 1000
+          }
+        },
+        "micro": {
+          "value": 0.00000254,
+          "unit": "u",
+          "dtype": "float",
+          "access": "read",
+          "restrictions": {
+            "min": 0,
+            "max": 0.00001
+          }
+        }
+      },
+      "configs": {},
+      "default": {
+        "values": {
+          "large": 12500,
+          "tiny": 0.00025,
+          "normal": 500,
+          "micro": 0.00000254
+        },
+        "pins": {}
+      },
+      "picture": "placeholder:device",
+      "Pins": [
+        "P1"
+      ]
+    },
     "A00": {
       "uid": "A00",
       "role": "actuator",

@@ -202,6 +202,22 @@ def default_sensor_values() -> Dict[str, Dict[str, Any]]:
             "_value_dtypes": {"temp": "float", "humi": "int", "pressure": "float"},
             "_role": "sensor",
         },
+        "S98": {
+            "large": 12500.0,
+            "tiny": 0.00025,
+            "normal": 500.0,
+            "micro": 0.00000254,
+            "type": "Scale Stress Dummy Sensor",
+            "_restrictions": {
+                "large": {"min": 10000, "max": 2500000},
+                "tiny": {"min": 0, "max": 0.001},
+                "normal": {"min": 0, "max": 1000},
+                "micro": {"min": 0, "max": 0.00001},
+            },
+            "_value_access": {"large": "read", "tiny": "read", "normal": "read", "micro": "read"},
+            "_value_dtypes": {"large": "float", "tiny": "float", "normal": "float", "micro": "float"},
+            "_role": "sensor",
+        },
         "A00": {
             "Brightness": 40,
             "type": "PWM LED Driver",
@@ -369,7 +385,15 @@ class VSCPEmulator:
 
     @classmethod
     def _format_float(cls, value: Any) -> str:
-        return f"{cls._to_float(value, 0.0):.2f}"
+        numeric = cls._to_float(value, 0.0)
+        abs_value = abs(numeric)
+        if abs_value != 0.0 and abs_value < 0.001:
+            text = f"{numeric:.9f}"
+        elif abs_value < 1.0:
+            text = f"{numeric:.6f}"
+        else:
+            text = f"{numeric:.2f}"
+        return text.rstrip("0").rstrip(".") if "." in text else text
 
     def _advance_temperature_regulator(self, uid: str) -> bool:
         device = self.sensor_data.get(uid, {})
@@ -413,9 +437,13 @@ class VSCPEmulator:
                 continue
             if isinstance(value, (int, float)) or self._is_float_dtype(dtype) or self._is_int_dtype(dtype):
                 current_value = self._to_float(value, 0.0)
-                jitter = random.uniform(-0.5, 0.5) if self._is_float_dtype(dtype) else random.randint(-2, 2)
-                next_value = current_value + jitter
                 restriction = restrictions.get(key, {})
+                if self._is_float_dtype(dtype) and "min" in restriction and "max" in restriction:
+                    span = float(restriction["max"]) - float(restriction["min"])
+                    jitter = random.uniform(-span * 0.06, span * 0.06)
+                else:
+                    jitter = random.uniform(-0.5, 0.5) if self._is_float_dtype(dtype) else random.randint(-2, 2)
+                next_value = current_value + jitter
                 if "min" in restriction:
                     next_value = max(float(restriction["min"]), next_value)
                 if "max" in restriction:

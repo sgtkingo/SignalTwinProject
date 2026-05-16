@@ -7,6 +7,7 @@
 #define SIGNALS_CHART_PANEL_HPP
 
 #include <cstddef>
+#include <string>
 #include "lvgl.h"
 
 #include "../devices/base_device.hpp"
@@ -22,6 +23,8 @@ private:
     lv_obj_t *scalingLabel = nullptr;
     lv_obj_t *secondaryScalingLabel = nullptr;
     lv_obj_t *samplesLabel = nullptr;
+    std::string primaryScalingBase;
+    std::string secondaryScalingBase;
     lv_chart_series_t *primarySeries = nullptr;
     lv_chart_series_t *secondarySeries = nullptr;
     double primaryRawMin = 0.0;
@@ -33,7 +36,11 @@ private:
     int xTickMax = HISTORY_CAP - 1;
 
     static void handleDrawPartEvent(lv_event_t *e);
-    static void formatAxisLabel(char *buffer, size_t bufferSize, double value, double span);
+    static int axisScaleExponent(double minValue, double maxValue);
+    static double axisScaleDivisor(int exponent);
+    static void formatAxisLabel(char *buffer, size_t bufferSize, double value, double span, int exponent);
+    static void applyTickLabelFont(lv_obj_draw_part_dsc_t *dsc);
+    void refreshScalingLabels();
 
 public:
     void create(lv_obj_t *parent);

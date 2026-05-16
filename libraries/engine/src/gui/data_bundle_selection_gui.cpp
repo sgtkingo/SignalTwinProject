@@ -875,11 +875,28 @@ void DataBundleSelectionGui::createBundleViewerContent()
 {
     ui_BundleViewerScalingLabel = lv_label_create(ui_BundleViewerPanel);
     lv_label_set_text_fmt(ui_BundleViewerScalingLabel, "Samples %d", bundleViewerVisibleSampleCount);
-    lv_obj_set_width(ui_BundleViewerScalingLabel, 118);
+    lv_obj_set_width(ui_BundleViewerScalingLabel, 90);
     lv_label_set_long_mode(ui_BundleViewerScalingLabel, LV_LABEL_LONG_DOT);
     lv_obj_align(ui_BundleViewerScalingLabel, LV_ALIGN_TOP_LEFT, 526, 56);
     lv_obj_set_style_text_font(ui_BundleViewerScalingLabel, &lv_font_montserrat_10, LV_PART_MAIN);
-    lv_obj_set_style_text_color(ui_BundleViewerScalingLabel, lv_color_hex(0xD32F2F), LV_PART_MAIN);
+    lv_obj_set_style_text_color(ui_BundleViewerScalingLabel, lv_color_hex(0x5F6B7A), LV_PART_MAIN);
+
+    ui_BundleViewerPrimaryScaleLabel = lv_label_create(ui_BundleViewerPanel);
+    lv_label_set_text(ui_BundleViewerPrimaryScaleLabel, "Scale: x1");
+    lv_obj_set_width(ui_BundleViewerPrimaryScaleLabel, 100);
+    lv_label_set_long_mode(ui_BundleViewerPrimaryScaleLabel, LV_LABEL_LONG_DOT);
+    lv_obj_align(ui_BundleViewerPrimaryScaleLabel, LV_ALIGN_TOP_LEFT, 626, 56);
+    lv_obj_set_style_text_font(ui_BundleViewerPrimaryScaleLabel, &lv_font_montserrat_10, LV_PART_MAIN);
+    lv_obj_set_style_text_color(ui_BundleViewerPrimaryScaleLabel, lv_color_hex(getBundleViewerColor(bundleViewerPrimaryColorIndex)), LV_PART_MAIN);
+
+    ui_BundleViewerSecondaryScaleLabel = lv_label_create(ui_BundleViewerPanel);
+    lv_label_set_text(ui_BundleViewerSecondaryScaleLabel, "Scale: x1");
+    lv_obj_set_width(ui_BundleViewerSecondaryScaleLabel, 100);
+    lv_label_set_long_mode(ui_BundleViewerSecondaryScaleLabel, LV_LABEL_LONG_DOT);
+    lv_obj_align(ui_BundleViewerSecondaryScaleLabel, LV_ALIGN_TOP_LEFT, 626, 70);
+    lv_obj_set_style_text_font(ui_BundleViewerSecondaryScaleLabel, &lv_font_montserrat_10, LV_PART_MAIN);
+    lv_obj_set_style_text_color(ui_BundleViewerSecondaryScaleLabel, lv_color_hex(getBundleViewerColor(bundleViewerSecondaryColorIndex)), LV_PART_MAIN);
+    lv_obj_add_flag(ui_BundleViewerSecondaryScaleLabel, LV_OBJ_FLAG_HIDDEN);
 
     ui_BundleViewerPrimaryLegend = lv_obj_create(ui_BundleViewerPanel);
     lv_obj_remove_style_all(ui_BundleViewerPrimaryLegend);
@@ -951,7 +968,7 @@ void DataBundleSelectionGui::createBundleViewerContent()
     ui_BundleViewerCursorLabel = lv_label_create(ui_BundleViewerPanel);
     lv_obj_set_width(ui_BundleViewerCursorLabel, 230);
     lv_label_set_long_mode(ui_BundleViewerCursorLabel, LV_LABEL_LONG_DOT);
-    lv_obj_align(ui_BundleViewerCursorLabel, LV_ALIGN_TOP_LEFT, 526, 70);
+    lv_obj_align(ui_BundleViewerCursorLabel, LV_ALIGN_TOP_LEFT, 526, 78);
     lv_obj_set_style_text_font(ui_BundleViewerCursorLabel, &lv_font_montserrat_10, LV_PART_MAIN);
     lv_obj_set_style_text_color(ui_BundleViewerCursorLabel, lv_color_hex(0xD32F2F), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(ui_BundleViewerCursorLabel, 0, LV_PART_MAIN);
@@ -1020,6 +1037,8 @@ void DataBundleSelectionGui::setBundleViewerMode(bool csvMode)
     lv_obj_t *graphObjects[] = {
         ui_BundleViewerChart,
         ui_BundleViewerScalingLabel,
+        ui_BundleViewerPrimaryScaleLabel,
+        ui_BundleViewerSecondaryScaleLabel,
         ui_BundleViewerCursorLabel,
         ui_BundleViewerCursorValueLabel,
         ui_BundleViewerPrimaryLegend,
@@ -1280,13 +1299,16 @@ std::pair<double, double> DataBundleSelectionGui::computeBundleViewerRange(const
 
     if (minValue == maxValue)
     {
-        const double delta = std::fabs(minValue) >= 10.0 ? 1.0 : 0.1;
+        const double absValue = std::fabs(minValue);
+        const double delta = absValue == 0.0 ? 1.0 : std::max(absValue * 0.1, 1e-9);
         minValue -= delta;
         maxValue += delta;
     }
 
     const double span = maxValue - minValue;
-    const double pad = std::fabs(span / 10.0) > 0.01 ? std::fabs(span / 10.0) : 0.01;
+    const double magnitude = std::max(std::fabs(minValue), std::fabs(maxValue));
+    const double minPad = magnitude == 0.0 ? 1e-9 : std::max(magnitude * 0.01, 1e-9);
+    const double pad = std::max(std::fabs(span / 10.0), minPad);
     return std::pair<double, double>(minValue - pad, maxValue + pad);
 }
 
@@ -1304,29 +1326,122 @@ lv_coord_t DataBundleSelectionGui::mapBundleViewerValueToPlot(double value, doub
     return static_cast<lv_coord_t>(std::lround(BUNDLE_VIEW_PLOT_MIN + normalized * (BUNDLE_VIEW_PLOT_MAX - BUNDLE_VIEW_PLOT_MIN)));
 }
 
-void DataBundleSelectionGui::formatBundleViewerAxisLabel(char *buffer, size_t bufferSize, double value, double span)
+int DataBundleSelectionGui::axisScaleExponent(double minValue, double maxValue)
+{
+    const double maxAbs = std::max(std::fabs(minValue), std::fabs(maxValue));
+    if (maxAbs == 0.0 || (maxAbs >= 0.001 && maxAbs <= 9999.0))
+    {
+        return 0;
+    }
+
+    int exponent = static_cast<int>(std::floor(std::log10(maxAbs) / 3.0)) * 3;
+    if (exponent > 9) exponent = 9;
+    if (exponent < -9) exponent = -9;
+    return exponent;
+}
+
+double DataBundleSelectionGui::axisScaleDivisor(int exponent)
+{
+    return exponent == 0 ? 1.0 : std::pow(10.0, static_cast<double>(exponent));
+}
+
+void DataBundleSelectionGui::formatBundleViewerAxisLabel(char *buffer, size_t bufferSize, double value, double span, int exponent)
 {
     if (!buffer || bufferSize == 0)
     {
         return;
     }
 
-    const double absSpan = std::fabs(span);
+    const double displayValue = value / axisScaleDivisor(exponent);
+    const double absSpan = std::fabs(span / axisScaleDivisor(exponent));
     if (absSpan < 1.0)
     {
-        std::snprintf(buffer, bufferSize, "%.3f", value);
+        std::snprintf(buffer, bufferSize, "%.3f", displayValue);
     }
     else if (absSpan < 20.0)
     {
-        std::snprintf(buffer, bufferSize, "%.2f", value);
+        std::snprintf(buffer, bufferSize, "%.2f", displayValue);
     }
     else if (absSpan < 200.0)
     {
-        std::snprintf(buffer, bufferSize, "%.1f", value);
+        std::snprintf(buffer, bufferSize, "%.1f", displayValue);
     }
     else
     {
-        std::snprintf(buffer, bufferSize, "%.0f", value);
+        std::snprintf(buffer, bufferSize, "%.0f", displayValue);
+    }
+
+    char *dot = std::strchr(buffer, '.');
+    if (dot)
+    {
+        char *end = buffer + std::strlen(buffer) - 1;
+        while (end > dot && *end == '0')
+        {
+            *end-- = '\0';
+        }
+        if (end == dot)
+        {
+            *end = '\0';
+        }
+    }
+}
+
+void DataBundleSelectionGui::applyBundleViewerTickLabelFont(lv_obj_draw_part_dsc_t *dsc)
+{
+    if (!dsc || !dsc->label_dsc || !dsc->text)
+    {
+        return;
+    }
+
+    const size_t length = std::strlen(dsc->text);
+    dsc->label_dsc->font = length > 5 ? &lv_font_montserrat_10 : &lv_font_montserrat_12;
+}
+
+void DataBundleSelectionGui::updateBundleViewerScaleLabel()
+{
+    if (ui_BundleViewerScalingLabel)
+    {
+        lv_label_set_text_fmt(ui_BundleViewerScalingLabel, "Samples %d", bundleViewerVisibleSampleCount);
+    }
+
+    const int primaryExponent = axisScaleExponent(bundleViewerPrimaryRangeMin, bundleViewerPrimaryRangeMax);
+    const int secondaryExponent = bundleViewerHasSecondaryRange
+                                      ? axisScaleExponent(bundleViewerSecondaryRangeMin, bundleViewerSecondaryRangeMax)
+                                      : 0;
+
+    if (ui_BundleViewerPrimaryScaleLabel)
+    {
+        if (primaryExponent == 0)
+        {
+            lv_label_set_text(ui_BundleViewerPrimaryScaleLabel, "Scale: x1");
+        }
+        else
+        {
+            lv_label_set_text_fmt(ui_BundleViewerPrimaryScaleLabel, "Scale: x1e%d", primaryExponent);
+        }
+        lv_obj_set_style_text_color(ui_BundleViewerPrimaryScaleLabel, lv_color_hex(getBundleViewerColor(bundleViewerPrimaryColorIndex)), LV_PART_MAIN);
+    }
+
+    if (ui_BundleViewerSecondaryScaleLabel)
+    {
+        if (bundleViewerHasSecondaryRange)
+        {
+            if (secondaryExponent == 0)
+            {
+                lv_label_set_text(ui_BundleViewerSecondaryScaleLabel, "Scale: x1");
+            }
+            else
+            {
+                lv_label_set_text_fmt(ui_BundleViewerSecondaryScaleLabel, "Scale: x1e%d", secondaryExponent);
+            }
+            lv_obj_set_style_text_color(ui_BundleViewerSecondaryScaleLabel, lv_color_hex(getBundleViewerColor(bundleViewerSecondaryColorIndex)), LV_PART_MAIN);
+            lv_obj_clear_flag(ui_BundleViewerSecondaryScaleLabel, LV_OBJ_FLAG_HIDDEN);
+        }
+        else
+        {
+            lv_label_set_text(ui_BundleViewerSecondaryScaleLabel, "");
+            lv_obj_add_flag(ui_BundleViewerSecondaryScaleLabel, LV_OBJ_FLAG_HIDDEN);
+        }
     }
 }
 
@@ -1345,6 +1460,7 @@ void DataBundleSelectionGui::handleBundleViewerChartDrawPart(lv_event_t *e)
                                     ? 0
                                     : static_cast<int>(std::lround((static_cast<double>(dsc->value) / self->bundleViewerXTickMax) * (self->bundleViewerVisibleSampleCount - 1)));
         std::snprintf(dsc->text, dsc->text_length, "%d", sampleIndex);
+        applyBundleViewerTickLabelFont(dsc);
         return;
     }
 
@@ -1364,7 +1480,9 @@ void DataBundleSelectionGui::handleBundleViewerChartDrawPart(lv_event_t *e)
     const double span = maxValue - minValue;
     const double normalized = static_cast<double>(dsc->value - BUNDLE_VIEW_PLOT_MIN) / static_cast<double>(BUNDLE_VIEW_PLOT_MAX - BUNDLE_VIEW_PLOT_MIN);
     const double rawValue = minValue + normalized * span;
-    formatBundleViewerAxisLabel(dsc->text, dsc->text_length, rawValue, span);
+    const int exponent = axisScaleExponent(minValue, maxValue);
+    formatBundleViewerAxisLabel(dsc->text, dsc->text_length, rawValue, span, exponent);
+    applyBundleViewerTickLabelFont(dsc);
 }
 
 void DataBundleSelectionGui::updateBundleViewerGraph()
@@ -1459,10 +1577,7 @@ void DataBundleSelectionGui::updateBundleViewerGraph()
         bundleViewerCursorIndex = bundleViewerVisibleSampleCount - 1;
     }
 
-    if (ui_BundleViewerScalingLabel)
-    {
-        lv_label_set_text_fmt(ui_BundleViewerScalingLabel, "Samples %d", bundleViewerVisibleSampleCount);
-    }
+    updateBundleViewerScaleLabel();
     if (ui_BundleViewerPrimaryLegend)
     {
         lv_obj_set_style_bg_color(ui_BundleViewerPrimaryLegend, lv_color_hex(getBundleViewerColor(bundleViewerPrimaryColorIndex)), LV_PART_MAIN);
@@ -1746,7 +1861,7 @@ void DataBundleSelectionGui::showBundleViewerCursorAtIndex(int index)
     {
         lv_label_set_text_fmt(ui_BundleViewerCursorLabel, "Cursor:%d/%d", maxCount == 0 ? 0 : sourceIndex + 1, maxCount);
         lv_obj_clear_flag(ui_BundleViewerCursorLabel, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_align(ui_BundleViewerCursorLabel, LV_ALIGN_TOP_LEFT, 526, 70);
+        lv_obj_align(ui_BundleViewerCursorLabel, LV_ALIGN_TOP_LEFT, 526, 78);
         lv_obj_move_foreground(ui_BundleViewerCursorLabel);
         lv_obj_invalidate(ui_BundleViewerCursorLabel);
     }
@@ -1926,7 +2041,7 @@ void DataBundleSelectionGui::showBundleViewerSettings()
         self->hideBundleViewerSettings(); }, LV_EVENT_CLICKED, this);
 
     ui_BundleViewerSettingsPanel = lv_obj_create(ui_BundleViewerSettingsOverlay);
-    lv_obj_set_size(ui_BundleViewerSettingsPanel, 220, 154);
+    lv_obj_set_size(ui_BundleViewerSettingsPanel, 220, 132);
     lv_obj_align(ui_BundleViewerSettingsPanel, LV_ALIGN_TOP_RIGHT, -54, 60);
     lv_obj_clear_flag(ui_BundleViewerSettingsPanel, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_flag(ui_BundleViewerSettingsPanel, LV_OBJ_FLAG_CLICKABLE);
@@ -1970,17 +2085,6 @@ void DataBundleSelectionGui::showBundleViewerSettings()
                         {
         auto self = static_cast<DataBundleSelectionGui*>(lv_event_get_user_data(e));
         self->cycleBundleViewerSeriesColor(false); }, LV_EVENT_CLICKED, this);
-
-    lv_obj_t *scaleLabel = lv_label_create(ui_BundleViewerSettingsPanel);
-    lv_label_set_text(scaleLabel, "Y scale");
-    lv_obj_align(scaleLabel, LV_ALIGN_TOP_LEFT, 10, 110);
-    lv_obj_set_style_text_font(scaleLabel, &lv_font_montserrat_12, LV_PART_MAIN);
-
-    lv_obj_t *scaleValue = lv_label_create(ui_BundleViewerSettingsPanel);
-    lv_label_set_text(scaleValue, "Auto scale");
-    lv_obj_align(scaleValue, LV_ALIGN_TOP_RIGHT, -12, 110);
-    lv_obj_set_style_text_font(scaleValue, &lv_font_montserrat_12, LV_PART_MAIN);
-    lv_obj_set_style_text_color(scaleValue, lv_color_hex(0xD32F2F), LV_PART_MAIN);
 
     lv_obj_move_foreground(ui_BundleViewerSettingsOverlay);
 }
@@ -2034,6 +2138,8 @@ void DataBundleSelectionGui::closeBundleViewer()
         ui_BundleViewerChart = nullptr;
         ui_BundleViewerTable = nullptr;
         ui_BundleViewerScalingLabel = nullptr;
+        ui_BundleViewerPrimaryScaleLabel = nullptr;
+        ui_BundleViewerSecondaryScaleLabel = nullptr;
         ui_BundleViewerCursorLabel = nullptr;
         ui_BundleViewerCursorValueLabel = nullptr;
         ui_BundleViewerPrimaryLegend = nullptr;

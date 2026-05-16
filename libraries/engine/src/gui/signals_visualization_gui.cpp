@@ -737,14 +737,17 @@ std::pair<double, double> SignalsVisualizationGui::computeChartRange(const doubl
     }
 
     if (minValue == maxValue) {
-        const double delta = std::fabs(minValue) >= 10.0 ? 1.0 : 0.1;
+        const double absValue = std::fabs(minValue);
+        const double delta = absValue == 0.0 ? 1.0 : std::max(absValue * 0.1, 1e-9);
         minValue -= delta;
         maxValue += delta;
     }
 
     const double span = maxValue - minValue;
-    const double pad = std::fabs(span / 10.0) > 0.01 ? std::fabs(span / 10.0) : 0.01;
-    debugLogMessage("SignalsVisualizationGui::computeChartRange", "math scaling", "min=%.4f max=%.4f pad=%.4f", minValue, maxValue, pad);
+    const double magnitude = std::max(std::fabs(minValue), std::fabs(maxValue));
+    const double minPad = magnitude == 0.0 ? 1e-9 : std::max(magnitude * 0.01, 1e-9);
+    const double pad = std::max(std::fabs(span / 10.0), minPad);
+    debugLogMessage("SignalsVisualizationGui::computeChartRange", "math scaling", "min=%.9f max=%.9f pad=%.9f", minValue, maxValue, pad);
     return std::pair<double, double>(minValue - pad, maxValue + pad);
 }
 

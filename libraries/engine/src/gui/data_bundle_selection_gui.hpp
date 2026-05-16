@@ -96,6 +96,8 @@ private:
     lv_obj_t *ui_BundleViewerChart = nullptr;               ///< Bundle graph chart
     lv_obj_t *ui_BundleViewerTable = nullptr;               ///< Bundle CSV table
     lv_obj_t *ui_BundleViewerScalingLabel = nullptr;        ///< Bundle graph scaling label
+    lv_obj_t *ui_BundleViewerPrimaryScaleLabel = nullptr;   ///< Primary axis scale label
+    lv_obj_t *ui_BundleViewerSecondaryScaleLabel = nullptr; ///< Secondary axis scale label
     lv_obj_t *ui_BundleViewerCursorLabel = nullptr;         ///< Bundle graph cursor label
     lv_obj_t *ui_BundleViewerCursorValueLabel = nullptr;    ///< Bundle graph attached cursor value label
     lv_obj_t *ui_BundleViewerPrimaryLegend = nullptr;       ///< Primary signal legend
@@ -272,7 +274,11 @@ private:
                                                               int pointCount);
     static lv_coord_t mapBundleViewerValueToPlot(double value, double minValue, double maxValue);
     static void handleBundleViewerChartDrawPart(lv_event_t *e);
-    static void formatBundleViewerAxisLabel(char *buffer, size_t bufferSize, double value, double span);
+    static int axisScaleExponent(double minValue, double maxValue);
+    static double axisScaleDivisor(int exponent);
+    static void formatBundleViewerAxisLabel(char *buffer, size_t bufferSize, double value, double span, int exponent);
+    static void applyBundleViewerTickLabelFont(lv_obj_draw_part_dsc_t *dsc);
+    void updateBundleViewerScaleLabel();
 
     /**
      * @brief update data bundles currently shown

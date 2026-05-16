@@ -5,8 +5,10 @@
 
 #include "signals_chart_panel.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 
 void SignalsChartPanel::create(lv_obj_t *parent)
 {
@@ -96,16 +98,39 @@ void SignalsChartPanel::hideEmptyState()
 
 void SignalsChartPanel::setScalingText(const char *primaryText, const char *secondaryText)
 {
-    if (scalingLabel) {
-        lv_label_set_text(scalingLabel, primaryText ? primaryText : "");
-    }
+    primaryScalingBase = primaryText ? primaryText : "";
+    secondaryScalingBase = secondaryText ? secondaryText : "";
+    refreshScalingLabels();
+}
 
+void SignalsChartPanel::refreshScalingLabels()
+{
     if (!secondaryScalingLabel) {
+        if (scalingLabel) {
+            lv_label_set_text(scalingLabel, primaryScalingBase.c_str());
+        }
         return;
     }
 
-    if (secondaryText && secondaryText[0] != '\0') {
-        lv_label_set_text(secondaryScalingLabel, secondaryText);
+    auto buildLabel = [](const std::string &base, double minValue, double maxValue) {
+        const int exponent = SignalsChartPanel::axisScaleExponent(minValue, maxValue);
+        if (exponent == 0) {
+            return base;
+        }
+
+        char suffix[16];
+        std::snprintf(suffix, sizeof(suffix), " x1e%d", exponent);
+        return base.empty() ? std::string(suffix + 1) : base + suffix;
+    };
+
+    if (scalingLabel) {
+        const std::string text = buildLabel(primaryScalingBase, primaryRawMin, primaryRawMax);
+        lv_label_set_text(scalingLabel, text.c_str());
+    }
+
+    if (!secondaryScalingBase.empty()) {
+        const std::string text = buildLabel(secondaryScalingBase, secondaryRawMin, secondaryRawMax);
+        lv_label_set_text(secondaryScalingLabel, text.c_str());
         lv_obj_clear_flag(secondaryScalingLabel, LV_OBJ_FLAG_HIDDEN);
     } else {
         lv_label_set_text(secondaryScalingLabel, "");
@@ -156,24 +181,65 @@ void SignalsChartPanel::setRange(double primaryMinValue,
     lv_chart_set_range(chart, LV_CHART_AXIS_SECONDARY_Y, PLOT_MIN, PLOT_MAX);
     lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_Y, 8, 4, 5, 2, true, 42);
     lv_chart_set_axis_tick(chart, LV_CHART_AXIS_SECONDARY_Y, 8, 4, hasSecondarySeries ? 5 : 0, 2, hasSecondarySeries, 42);
+    refreshScalingLabels();
 }
 
-void SignalsChartPanel::formatAxisLabel(char *buffer, size_t bufferSize, double value, double span)
+int SignalsChartPanel::axisScaleExponent(double minValue, double maxValue)
+{
+    const double maxAbs = std::max(std::fabs(minValue), std::fabs(maxValue));
+    if (maxAbs == 0.0 || (maxAbs >= 0.001 && maxAbs <= 9999.0)) {
+        return 0;
+    }
+
+    int exponent = static_cast<int>(std::floor(std::log10(maxAbs) / 3.0)) * 3;
+    if (exponent > 9) exponent = 9;
+    if (exponent < -9) exponent = -9;
+    return exponent;
+}
+
+double SignalsChartPanel::axisScaleDivisor(int exponent)
+{
+    return exponent == 0 ? 1.0 : std::pow(10.0, static_cast<double>(exponent));
+}
+
+void SignalsChartPanel::formatAxisLabel(char *buffer, size_t bufferSize, double value, double span, int exponent)
 {
     if (!buffer || bufferSize == 0) {
         return;
     }
 
-    const double absSpan = std::fabs(span);
+    const double displayValue = value / axisScaleDivisor(exponent);
+    const double absSpan = std::fabs(span / axisScaleDivisor(exponent));
     if (absSpan < 1.0) {
-        std::snprintf(buffer, bufferSize, "%.3f", value);
+        std::snprintf(buffer, bufferSize, "%.3f", displayValue);
     } else if (absSpan < 20.0) {
-        std::snprintf(buffer, bufferSize, "%.2f", value);
+        std::snprintf(buffer, bufferSize, "%.2f", displayValue);
     } else if (absSpan < 200.0) {
-        std::snprintf(buffer, bufferSize, "%.1f", value);
+        std::snprintf(buffer, bufferSize, "%.1f", displayValue);
     } else {
-        std::snprintf(buffer, bufferSize, "%.0f", value);
+        std::snprintf(buffer, bufferSize, "%.0f", displayValue);
     }
+
+    char *dot = std::strchr(buffer, '.');
+    if (dot) {
+        char *end = buffer + std::strlen(buffer) - 1;
+        while (end > dot && *end == '0') {
+            *end-- = '\0';
+        }
+        if (end == dot) {
+            *end = '\0';
+        }
+    }
+}
+
+void SignalsChartPanel::applyTickLabelFont(lv_obj_draw_part_dsc_t *dsc)
+{
+    if (!dsc || !dsc->label_dsc || !dsc->text) {
+        return;
+    }
+
+    const size_t length = std::strlen(dsc->text);
+    dsc->label_dsc->font = length > 5 ? &lv_font_montserrat_10 : &lv_font_montserrat_12;
 }
 
 void SignalsChartPanel::handleDrawPartEvent(lv_event_t *e)
@@ -189,6 +255,7 @@ void SignalsChartPanel::handleDrawPartEvent(lv_event_t *e)
                                     ? 0
                                     : static_cast<int>(std::lround((static_cast<double>(dsc->value) / panel->xTickMax) * (panel->visibleSampleCount - 1)));
         std::snprintf(dsc->text, dsc->text_length, "%d", sampleIndex);
+        applyTickLabelFont(dsc);
         return;
     }
 
@@ -206,7 +273,9 @@ void SignalsChartPanel::handleDrawPartEvent(lv_event_t *e)
     const double span = maxValue - minValue;
     const double normalized = static_cast<double>(dsc->value - PLOT_MIN) / static_cast<double>(PLOT_MAX - PLOT_MIN);
     const double rawValue = minValue + normalized * span;
-    formatAxisLabel(dsc->text, dsc->text_length, rawValue, span);
+    const int exponent = axisScaleExponent(minValue, maxValue);
+    formatAxisLabel(dsc->text, dsc->text_length, rawValue, span, exponent);
+    applyTickLabelFont(dsc);
 }
 
 void SignalsChartPanel::clearSeries()

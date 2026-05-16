@@ -143,6 +143,14 @@ class VSCPEmulator:
                 "_configs": {"speed": 2},
                 "_control_values": {"set_point": 25},
                 "_value_access": {"set_point": "write", "temp": "read"}
+            },
+            "S98": {
+                "large": {"base": 12500, "range": 250000, "trend": 100, "noise": 2500},
+                "tiny": {"base": 0.00025, "range": 0.00075, "trend": 0, "noise": 0.00005},
+                "normal": {"base": 500, "range": 500, "trend": 2, "noise": 25},
+                "micro": {"base": 0.00000254, "range": 0.000007, "trend": 0, "noise": 0.0000004},
+                "type": "Scale Stress Dummy Sensor",
+                "_value_access": {"large": "read", "tiny": "read", "normal": "read", "micro": "read"}
             }
         }
         
@@ -439,6 +447,10 @@ class VSCPEmulator:
                     # Format appropriately (int vs float)
                     if key in ["Button", "Detected", "X", "Y"] or (regulator_updated and key == "temp"):
                         sensor_info[key] = int(round(value))
+                    elif abs(value) != 0.0 and abs(value) < 0.001:
+                        sensor_info[key] = f"{value:.9f}".rstrip("0").rstrip(".")
+                    elif abs(value) < 1.0:
+                        sensor_info[key] = f"{value:.6f}".rstrip("0").rstrip(".")
                     else:
                         sensor_info[key] = round(value, 2)
                 else:
