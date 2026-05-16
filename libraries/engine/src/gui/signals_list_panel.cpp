@@ -7,6 +7,16 @@
 
 #include <cstdint>
 
+namespace
+{
+constexpr lv_coord_t RUNTIME_LIST_EDITOR_WIDTH = 142;
+constexpr lv_coord_t RUNTIME_LIST_EDITOR_HEIGHT = 34;
+constexpr lv_coord_t RUNTIME_LIST_SLIDER_HEIGHT = 16;
+constexpr lv_coord_t RUNTIME_LIST_EDITOR_RIGHT_OFFSET = -8;
+constexpr lv_coord_t RUNTIME_LIST_EDITOR_BOTTOM_OFFSET = -2;
+constexpr lv_coord_t RUNTIME_LIST_SLIDER_BOTTOM_OFFSET = -12;
+}
+
 void SignalsListPanel::create(lv_obj_t *parent,
                               void *userData,
                               lv_event_cb_t dropdownCb,
@@ -138,8 +148,8 @@ void SignalsListPanel::ensureConfigControls(size_t count)
         lv_obj_set_width(control.container, lv_pct(100));
         lv_obj_set_height(control.container, 116);
         lv_obj_clear_flag(control.container, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_set_style_pad_left(control.container, 16, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_pad_right(control.container, 10, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_pad_left(control.container, 12, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_pad_right(control.container, 8, LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_obj_set_style_pad_top(control.container, 8, LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_obj_set_style_pad_bottom(control.container, 8, LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_obj_set_style_radius(control.container, 12, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -150,32 +160,35 @@ void SignalsListPanel::ensureConfigControls(size_t count)
         control.accent = lv_obj_create(control.container);
         lv_obj_remove_style_all(control.accent);
         lv_obj_set_size(control.accent, 6, 88);
-        lv_obj_align(control.accent, LV_ALIGN_LEFT_MID, -8, 0);
+        lv_obj_align(control.accent, LV_ALIGN_LEFT_MID, -5, 0);
         lv_obj_set_style_radius(control.accent, 6, LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_obj_set_style_bg_opa(control.accent, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
         control.nameLabel = lv_label_create(control.container);
         lv_obj_align(control.nameLabel, LV_ALIGN_TOP_LEFT, 6, 0);
-        lv_obj_set_width(control.nameLabel, 150);
+        lv_obj_set_width(control.nameLabel, 100);
+        lv_label_set_long_mode(control.nameLabel, LV_LABEL_LONG_DOT);
         lv_obj_set_style_text_font(control.nameLabel, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_obj_set_style_text_color(control.nameLabel, lv_color_hex(0x24415E), LV_PART_MAIN | LV_STATE_DEFAULT);
 
         control.valueLabel = lv_label_create(control.container);
-        lv_obj_align(control.valueLabel, LV_ALIGN_TOP_RIGHT, -4, 0);
-        lv_obj_set_width(control.valueLabel, 70);
+        lv_obj_align(control.valueLabel, LV_ALIGN_TOP_RIGHT, -8, 0);
+        lv_obj_set_width(control.valueLabel, 58);
+        lv_label_set_long_mode(control.valueLabel, LV_LABEL_LONG_DOT);
         lv_obj_set_style_text_align(control.valueLabel, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_obj_set_style_text_font(control.valueLabel, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_obj_set_style_text_color(control.valueLabel, lv_color_hex(0x0B7285), LV_PART_MAIN | LV_STATE_DEFAULT);
 
         control.unitLabel = lv_label_create(control.container);
         lv_obj_align(control.unitLabel, LV_ALIGN_BOTTOM_LEFT, 6, 0);
-        lv_obj_set_width(control.unitLabel, 190);
+        lv_obj_set_width(control.unitLabel, 120);
+        lv_label_set_long_mode(control.unitLabel, LV_LABEL_LONG_DOT);
         lv_obj_set_style_text_font(control.unitLabel, &lv_font_montserrat_12, LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_obj_set_style_text_color(control.unitLabel, lv_color_hex(0x5F6B7A), LV_PART_MAIN | LV_STATE_DEFAULT);
 
         control.editor = lv_textarea_create(control.container);
-        lv_obj_set_size(control.editor, 180, 34);
-        lv_obj_align(control.editor, LV_ALIGN_BOTTOM_RIGHT, -4, -2);
+        lv_obj_set_size(control.editor, RUNTIME_LIST_EDITOR_WIDTH, RUNTIME_LIST_EDITOR_HEIGHT);
+        lv_obj_align(control.editor, LV_ALIGN_BOTTOM_RIGHT, RUNTIME_LIST_EDITOR_RIGHT_OFFSET, RUNTIME_LIST_EDITOR_BOTTOM_OFFSET);
         lv_textarea_set_one_line(control.editor, true);
         lv_textarea_set_max_length(control.editor, 24);
         lv_obj_set_user_data(control.editor, reinterpret_cast<void *>(static_cast<intptr_t>(nextIndex)));
@@ -248,8 +261,8 @@ void SignalsListPanel::ensureDropdownEditor(size_t index, const std::string &opt
     control->editor = lv_dropdown_create(control->container);
     control->usesDropdown = true;
     control->usesSlider = false;
-    lv_obj_set_size(control->editor, 180, 34);
-    lv_obj_align(control->editor, LV_ALIGN_BOTTOM_RIGHT, -4, -2);
+    lv_obj_set_size(control->editor, RUNTIME_LIST_EDITOR_WIDTH, RUNTIME_LIST_EDITOR_HEIGHT);
+    lv_obj_align(control->editor, LV_ALIGN_BOTTOM_RIGHT, RUNTIME_LIST_EDITOR_RIGHT_OFFSET, RUNTIME_LIST_EDITOR_BOTTOM_OFFSET);
     lv_obj_set_user_data(control->editor, reinterpret_cast<void *>(static_cast<intptr_t>(index)));
     if (dropdownChangedCb) {
         lv_obj_add_event_cb(control->editor, dropdownChangedCb, LV_EVENT_ALL, eventUserData);
@@ -272,8 +285,8 @@ void SignalsListPanel::ensureSliderEditor(size_t index, int minValue, int maxVal
     control->editor = lv_slider_create(control->container);
     control->usesDropdown = false;
     control->usesSlider = true;
-    lv_obj_set_size(control->editor, 180, 16);
-    lv_obj_align(control->editor, LV_ALIGN_BOTTOM_RIGHT, -4, -12);
+    lv_obj_set_size(control->editor, RUNTIME_LIST_EDITOR_WIDTH, RUNTIME_LIST_SLIDER_HEIGHT);
+    lv_obj_align(control->editor, LV_ALIGN_BOTTOM_RIGHT, RUNTIME_LIST_EDITOR_RIGHT_OFFSET, RUNTIME_LIST_SLIDER_BOTTOM_OFFSET);
     lv_obj_set_user_data(control->editor, reinterpret_cast<void *>(static_cast<intptr_t>(index)));
     if (sliderChangedCb) {
         lv_obj_add_event_cb(control->editor, sliderChangedCb, LV_EVENT_ALL, eventUserData);
@@ -295,8 +308,8 @@ void SignalsListPanel::ensureTextEditor(size_t index, const std::string &value)
         }
 
         control->editor = lv_textarea_create(control->container);
-        lv_obj_set_size(control->editor, 180, 34);
-        lv_obj_align(control->editor, LV_ALIGN_BOTTOM_RIGHT, -4, -2);
+        lv_obj_set_size(control->editor, RUNTIME_LIST_EDITOR_WIDTH, RUNTIME_LIST_EDITOR_HEIGHT);
+        lv_obj_align(control->editor, LV_ALIGN_BOTTOM_RIGHT, RUNTIME_LIST_EDITOR_RIGHT_OFFSET, RUNTIME_LIST_EDITOR_BOTTOM_OFFSET);
         lv_textarea_set_one_line(control->editor, true);
         lv_textarea_set_max_length(control->editor, 24);
         lv_obj_set_user_data(control->editor, reinterpret_cast<void *>(static_cast<intptr_t>(index)));
