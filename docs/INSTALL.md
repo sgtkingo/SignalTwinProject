@@ -4,7 +4,7 @@
 ## Prerequisites
 
 1. Arduino-IDE should be installed on your system. (The build and board was tested with v1.8.19.)
-2. In `Tools`/`Boards Manager` select and install `esp32` board-support package. (Contains the ESP toolchains for the board's Tensilica Xtensa ESP32 MCU. The board was tested with 2.0.17, the included LovyanGFX didn't like 3.0.0 and above.)
+2. In `Tools`/`Boards Manager` select and install `esp32` board-support package. (Contains the ESP toolchains for the board's Tensilica Xtensa ESP32 MCU. The current firmware was verified with `esp32` 3.1.1 on `ESP32S3 Dev Module`.)
 3. (The essence of `LovyanGFX` with the display-driver is included in the local `libraries` folder of this board-template, but if you want to us Arduino's built-in one you can delete it and install to Arduino-IDE with `Tools`/`Manage Libraries`.)
 
 
@@ -71,6 +71,39 @@ When `STORAGE_OPTION_SPIFFS` is active:
 - `STORAGE_SEED_DEFAULT_DB_ON_MISSING` is enabled by default and will create `/DB.json` from the embedded default catalog on first boot if the file is missing.
 
 This means SPIFFS mode does not require a separate filesystem upload just to bootstrap the default device catalog.
+
+## Device pictures
+
+Device pictures are resolved from the `picture` field in the device catalog entry.
+
+Supported values:
+
+- `placeholder:device`
+  Uses the built-in placeholder for the device role.
+- `filename.png`
+  Resolved relative to `STORAGE_DEVICE_PICTURE_DIR`, which defaults to `/data/pics`.
+- `/data/pics/filename.png`
+  Uses the explicit storage path directly.
+
+Example:
+
+```json
+"picture": "DS18B20.png"
+```
+
+Expected storage location in SD mode:
+
+- `/data/pics/DS18B20.png`
+
+Expected storage location in SPIFFS mode:
+
+- `/data/pics/DS18B20.png`
+
+Notes:
+
+- Library detail and Entity Edit use fixed-size previews, so the source image does not need to match the widget size exactly.
+- PNG is the recommended format for static device pictures.
+- If the picture file is missing, the UI falls back to the role placeholder and shows a warning marker in editor/detail preview.
 
 ## Transfer Mode behavior
 

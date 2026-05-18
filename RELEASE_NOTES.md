@@ -1,6 +1,6 @@
 # RELEASE_NOTES
 
-## v1.2.0.67 - Refactoring development build
+## v1.2.0.68 - Picture preview and storage update
 
 Versioning note: this build is DEBUG only.
 
@@ -39,6 +39,8 @@ Versioning note: this build is DEBUG only.
 ### Device catalog, settings and transfer mode
 
 * Device catalog and selection screens were redesigned with richer device details, role-aware placeholder pictures and clearer pin state indication.
+* Device definitions now load pictures from the explicit `picture` field instead of deriving image names from entity IDs.
+* Library detail and Entity Edit screens now render fixed-size device picture previews with placeholder fallback when the referenced asset is missing.
 * Device pin schema now uses named `Pins` definitions and default pin maps by tag.
 * App settings can be saved to `/data/config.json`, with default communication and appearance placeholders persisted.
 * Added SD-card-oriented Transfer Mode screen and service scaffolding for USB MSC bridge workflows.
