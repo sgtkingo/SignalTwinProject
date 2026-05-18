@@ -40,6 +40,13 @@ namespace DeviceCatalogBrowserRenderer
 {
 void renderDeviceDetail(lv_obj_t *panel, const BaseDevice *device, const std::string &footerText = "");
 void styleDeviceListButton(lv_obj_t *button);
+void applyImagePreview(lv_obj_t *frame,
+                       lv_obj_t *image,
+                       lv_obj_t *canvas,
+                       const void *src,
+                       lv_coord_t targetWidth,
+                       lv_coord_t targetHeight,
+                       lv_img_dsc_t **ownedPreview = nullptr);
 }
 
 struct DeviceCatalogBrowserLayoutConfig

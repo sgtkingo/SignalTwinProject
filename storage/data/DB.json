@@ -121,7 +121,7 @@
         },
         "pins": {}
       },
-      "picture": "placeholder:device",
+      "picture": "DS18B20.png",
       "Pins": [
         "DQ"
       ]

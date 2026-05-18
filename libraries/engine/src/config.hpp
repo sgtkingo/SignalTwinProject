@@ -36,7 +36,7 @@
 // Debug verbosity:
 // 1 = errors only, 2 = warnings and important operations, 3 = all debug details.
 #ifndef DEBUG_VERBOSE_LEVEL
-#define DEBUG_VERBOSE_LEVEL 2
+#define DEBUG_VERBOSE_LEVEL 3
 #endif
 
 // Storage backend selection for all persistent data access.
@@ -45,7 +45,7 @@
 
 #ifndef STORAGE_OPTION
 // Default to SPIFFS for development boards without an SD card installed.
-#define STORAGE_OPTION STORAGE_OPTION_SPIFFS
+#define STORAGE_OPTION STORAGE_OPTION_SD
 #endif
 
 // When enabled, SPIFFS will be formatted automatically if mount fails.

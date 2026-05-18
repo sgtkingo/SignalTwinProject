@@ -31,8 +31,11 @@ private:
     lv_obj_t *ui_DefaultPinsInput = nullptr;
     lv_obj_t *ui_PicturePreview = nullptr;
     lv_obj_t *ui_PictureImage = nullptr;
+    lv_obj_t *ui_PictureCanvas = nullptr;
     lv_obj_t *ui_PictureGif = nullptr;
     lv_obj_t *ui_PictureFallbackLabel = nullptr;
+    lv_obj_t *ui_PictureWarningBadge = nullptr;
+    lv_img_dsc_t *ui_PicturePreviewCache = nullptr;
     lv_obj_t *ui_DescriptionInput = nullptr;
     lv_obj_t *ui_ValuesPanel = nullptr;
     lv_obj_t *ui_ValuesList = nullptr;

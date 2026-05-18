@@ -60,6 +60,7 @@ void LibraryGui::build()
             self->handleDeleteButtonClick();
         }
     }, LV_EVENT_ALL, this);
+    lv_obj_set_style_bg_color(remove, lv_color_hex(0xFF4136), 0);
 }
 
 void LibraryGui::populateDeviceList()

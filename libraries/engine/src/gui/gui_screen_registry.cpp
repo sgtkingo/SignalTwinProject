@@ -26,16 +26,45 @@ GuiScreenRegistry::GuiScreenRegistry(DeviceCatalog &catalog,
 void GuiScreenRegistry::initializeCoreScreens()
 {
     debugLogMessage("GuiScreenRegistry::initializeCoreScreens", "gui init", "initializing core screens");
+    debugLogMessage("GuiScreenRegistry::initializeCoreScreens", "gui init", "init crashGui");
     crashGui.init();
+    debugLogMessage("GuiScreenRegistry::initializeCoreScreens", "gui init", "init crashGui done");
+
+    debugLogMessage("GuiScreenRegistry::initializeCoreScreens", "gui init", "init mainMenuGui");
     mainMenuGui.init();
+    debugLogMessage("GuiScreenRegistry::initializeCoreScreens", "gui init", "init mainMenuGui done");
+
+    debugLogMessage("GuiScreenRegistry::initializeCoreScreens", "gui init", "init connectionGui");
     connectionGui.init();
+    debugLogMessage("GuiScreenRegistry::initializeCoreScreens", "gui init", "init connectionGui done");
+
+    debugLogMessage("GuiScreenRegistry::initializeCoreScreens", "gui init", "init visualizationGui");
     visualizationGui.init();
+    debugLogMessage("GuiScreenRegistry::initializeCoreScreens", "gui init", "init visualizationGui done");
+
+    debugLogMessage("GuiScreenRegistry::initializeCoreScreens", "gui init", "init dataBundleSelectionGui");
     dataBundleSelectionGui.init();
+    debugLogMessage("GuiScreenRegistry::initializeCoreScreens", "gui init", "init dataBundleSelectionGui done");
+
+    debugLogMessage("GuiScreenRegistry::initializeCoreScreens", "gui init", "init selectionGui");
     selectionGui.init();
+    debugLogMessage("GuiScreenRegistry::initializeCoreScreens", "gui init", "init selectionGui done");
+
+    debugLogMessage("GuiScreenRegistry::initializeCoreScreens", "gui init", "init libraryGui");
     libraryGui.init();
+    debugLogMessage("GuiScreenRegistry::initializeCoreScreens", "gui init", "init libraryGui done");
+
+    debugLogMessage("GuiScreenRegistry::initializeCoreScreens", "gui init", "init libraryEditorGui");
     libraryEditorGui.init();
+    debugLogMessage("GuiScreenRegistry::initializeCoreScreens", "gui init", "init libraryEditorGui done");
+
+    debugLogMessage("GuiScreenRegistry::initializeCoreScreens", "gui init", "init settingsGui");
     settingsGui.init();
+    debugLogMessage("GuiScreenRegistry::initializeCoreScreens", "gui init", "init settingsGui done");
+
+    debugLogMessage("GuiScreenRegistry::initializeCoreScreens", "gui init", "init fileTransferGui");
     fileTransferGui.init();
+    debugLogMessage("GuiScreenRegistry::initializeCoreScreens", "gui init", "init fileTransferGui done");
 }
 
 void GuiScreenRegistry::hideAll()

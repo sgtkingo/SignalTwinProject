@@ -2,6 +2,7 @@
 
 #include "../helpers.hpp"
 #include "../managers/storage_manager.hpp"
+#include "./device_catalog_browser.hpp"
 #include "./images/ui_images.h"
 #include "lvgl_storage_fs.hpp"
 #include "expt.hpp"
@@ -11,6 +12,8 @@
 
 namespace
 {
+constexpr lv_coord_t EDITOR_PICTURE_PREVIEW_SIZE = 160;
+
 std::string trimCopy(const std::string &value)
 {
     const size_t begin = value.find_first_not_of(" \t\r\n");
@@ -61,30 +64,39 @@ bool isGifPath(const std::string &path)
     return path.size() >= 4 && path.substr(path.size() - 4) == ".gif";
 }
 
-std::string findDevicePicturePath(const std::string &deviceUid, const std::string &storedPicture = "")
+std::string findDevicePicturePath(const std::string &storedPicture = "")
 {
+    if (storedPicture.empty() || storedPicture == "placeholder:device") {
+        return "";
+    }
+
     if (!storageManager().isAvailable() && !storageManager().init()) {
-        debugLogMessage("LibraryEditorGui::findDevicePicturePath", "storage unavailable", "uid=%s", deviceUid.c_str());
+        debugLogMessage("LibraryEditorGui::findDevicePicturePath", "storage unavailable", "picture=%s", storedPicture.c_str());
         return "";
     }
     storageManager().ensureDirectory(DEVICE_PICTURE_DIR);
 
-    if (!storedPicture.empty() && isStoragePicturePath(storedPicture) && storageManager().exists(storedPicture)) {
+    if (isStoragePicturePath(storedPicture) && storageManager().exists(storedPicture)) {
         return storedPicture;
     }
 
-    const std::string uid = trimCopy(deviceUid);
-    if (uid.empty()) {
+    const std::string normalizedPicture = trimCopy(storedPicture);
+    if (normalizedPicture.empty()) {
         return "";
     }
 
-    const char *extensions[] = {".png", ".jpg", ".gif"};
-    for (const char *extension : extensions) {
-        const std::string candidate = std::string(DEVICE_PICTURE_DIR) + "/" + uid + extension;
-        if (storageManager().exists(candidate)) {
-            return candidate;
-        }
+    const std::string candidate = std::string(DEVICE_PICTURE_DIR) + "/" + normalizedPicture;
+    if (storageManager().exists(candidate)) {
+        return candidate;
     }
+
+    debugLogMessage(
+        "LibraryEditorGui::findDevicePicturePath",
+        "picture missing",
+        "stored=%s candidate=%s",
+        normalizedPicture.c_str(),
+        candidate.c_str()
+    );
 
     return "";
 }
@@ -97,6 +109,7 @@ LibraryEditorGui::LibraryEditorGui(DeviceCatalog &deviceCatalog, DeviceBrowserSt
 
 void LibraryEditorGui::build()
 {
+    debugLogMessage("LibraryEditorGui::build", "gui init", "create root");
     ui_Widget = lv_obj_create(lv_scr_act());
     lv_obj_remove_style_all(ui_Widget);
     lv_obj_set_size(ui_Widget, 760, 440);
@@ -107,8 +120,10 @@ void LibraryEditorGui::build()
     lv_obj_set_style_border_color(ui_Widget, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(ui_Widget, 2, LV_PART_MAIN | LV_STATE_DEFAULT);
 
+    debugLogMessage("LibraryEditorGui::build", "gui init", "build keyboard");
     buildKeyboard();
 
+    debugLogMessage("LibraryEditorGui::build", "gui init", "build form");
     ui_Title = lv_label_create(ui_Widget);
     lv_obj_align(ui_Title, LV_ALIGN_TOP_MID, 0, 14);
     lv_obj_set_style_text_font(ui_Title, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -165,7 +180,7 @@ void LibraryEditorGui::build()
     attachKeyboard(ui_DescriptionInput);
 
     ui_PicturePreview = lv_obj_create(ui_Form);
-    lv_obj_set_size(ui_PicturePreview, 160, 160);
+    lv_obj_set_size(ui_PicturePreview, EDITOR_PICTURE_PREVIEW_SIZE, EDITOR_PICTURE_PREVIEW_SIZE);
     lv_obj_set_pos(ui_PicturePreview, 340, 122);
     lv_obj_clear_flag(ui_PicturePreview, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_radius(ui_PicturePreview, 8, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -174,18 +189,26 @@ void LibraryEditorGui::build()
     lv_obj_set_style_border_color(ui_PicturePreview, lv_color_hex(0xD8D8D8), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(ui_PicturePreview, 1, LV_PART_MAIN | LV_STATE_DEFAULT);
 
+    debugLogMessage("LibraryEditorGui::build", "gui init", "build picture preview");
     ui_PictureImage = lv_img_create(ui_PicturePreview);
     lv_img_set_src(ui_PictureImage, placeholderImageForRole(DeviceRole::SENSOR));
     lv_img_set_zoom(ui_PictureImage, 256);
-    lv_obj_align(ui_PictureImage, LV_ALIGN_TOP_MID, 0, 10);
+    lv_obj_center(ui_PictureImage);
+    ui_PictureCanvas = lv_canvas_create(ui_PicturePreview);
+    lv_obj_remove_style_all(ui_PictureCanvas);
+    lv_obj_set_size(ui_PictureCanvas, EDITOR_PICTURE_PREVIEW_SIZE, EDITOR_PICTURE_PREVIEW_SIZE);
+    lv_obj_center(ui_PictureCanvas);
+    lv_obj_add_flag(ui_PictureCanvas, LV_OBJ_FLAG_HIDDEN);
 
     ui_PictureFallbackLabel = lv_label_create(ui_PicturePreview);
     lv_label_set_text(ui_PictureFallbackLabel, "Picture not provided");
-    lv_obj_set_style_text_color(ui_PictureFallbackLabel, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ui_PictureFallbackLabel, lv_color_hex(0xFF0000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_width(ui_PictureFallbackLabel, 146);
     lv_obj_set_style_text_align(ui_PictureFallbackLabel, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_align(ui_PictureFallbackLabel, LV_ALIGN_BOTTOM_MID, 0, -16);
+    ui_PictureWarningBadge = nullptr;
 
+    debugLogMessage("LibraryEditorGui::build", "gui init", "build params");
     ui_ValuesPanel = lv_obj_create(ui_Form);
     lv_obj_set_size(ui_ValuesPanel, 330, 250);
     lv_obj_set_pos(ui_ValuesPanel, 2, 360);
@@ -196,6 +219,7 @@ void LibraryEditorGui::build()
     lv_obj_set_pos(ui_ConfigsPanel, 342, 360);
     buildParamListSection(ui_ConfigsPanel, "Configs", &ui_ConfigsList, true);
 
+    debugLogMessage("LibraryEditorGui::build", "gui init", "build param editor");
     buildParamEditor();
 
     lv_obj_t *back = lv_btn_create(ui_Widget);
@@ -223,6 +247,7 @@ void LibraryEditorGui::build()
     lv_obj_t *saveLabel = lv_label_create(save);
     lv_label_set_text(saveLabel, "Save");
     lv_obj_center(saveLabel);
+    debugLogMessage("LibraryEditorGui::build", "gui init", "build done");
 }
 
 void LibraryEditorGui::buildParamListSection(lv_obj_t *panel, const char *title, lv_obj_t **listOut, bool configSection)
@@ -323,10 +348,12 @@ void LibraryEditorGui::updatePicturePreview(const std::string &deviceUid, const 
     if (!ui_PictureImage || !ui_PictureFallbackLabel) {
         return;
     }
+    (void)deviceUid;
 
     pictureSourcePath.clear();
-    const std::string picturePath = findDevicePicturePath(deviceUid, storedPicture);
+    const std::string picturePath = findDevicePicturePath(storedPicture);
     const bool hasPicture = !picturePath.empty();
+    const bool pictureConfigured = !storedPicture.empty() && storedPicture != "placeholder:device";
 
 #if LV_USE_GIF
     if (ui_PictureGif) {
@@ -341,20 +368,56 @@ void LibraryEditorGui::updatePicturePreview(const std::string &deviceUid, const 
             role = getRoleFromDropdownIndex(lv_dropdown_get_selected(ui_RoleDropdown));
         }
 
-        lv_img_set_src(ui_PictureImage, placeholderImageForRole(role));
-        lv_img_set_zoom(ui_PictureImage, 256);
-        lv_obj_align(ui_PictureImage, LV_ALIGN_TOP_MID, 0, 10);
+        DeviceCatalogBrowserRenderer::applyImagePreview(
+            ui_PicturePreview,
+            ui_PictureImage,
+            ui_PictureCanvas,
+            placeholderImageForRole(role),
+            EDITOR_PICTURE_PREVIEW_SIZE,
+            EDITOR_PICTURE_PREVIEW_SIZE,
+            &ui_PicturePreviewCache
+        );
         lv_obj_clear_flag(ui_PictureImage, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(ui_PictureFallbackLabel, LV_OBJ_FLAG_HIDDEN);
+        lv_label_set_text(ui_PictureFallbackLabel, pictureConfigured ? "Picture not found" : "Picture not provided");
+        if (pictureConfigured) {
+            if (!ui_PictureWarningBadge) {
+                ui_PictureWarningBadge = lv_obj_create(ui_PicturePreview);
+                lv_obj_remove_style_all(ui_PictureWarningBadge);
+                lv_obj_set_size(ui_PictureWarningBadge, 28, 28);
+                lv_obj_align(ui_PictureWarningBadge, LV_ALIGN_TOP_RIGHT, -8, 8);
+                lv_obj_set_style_radius(ui_PictureWarningBadge, LV_RADIUS_CIRCLE, LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_bg_color(ui_PictureWarningBadge, lv_color_hex(0xF28C28), LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_bg_opa(ui_PictureWarningBadge, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_t *warningText = lv_label_create(ui_PictureWarningBadge);
+                lv_label_set_text(warningText, "!");
+                lv_obj_set_style_text_color(warningText, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_text_font(warningText, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_center(warningText);
+            }
+            lv_obj_clear_flag(ui_PictureWarningBadge, LV_OBJ_FLAG_HIDDEN);
+        } else if (ui_PictureWarningBadge) {
+            lv_obj_add_flag(ui_PictureWarningBadge, LV_OBJ_FLAG_HIDDEN);
+        }
         return;
     }
 
     ensureLvglStorageFsRegistered();
     pictureSourcePath = "S:" + picturePath;
     lv_obj_add_flag(ui_PictureFallbackLabel, LV_OBJ_FLAG_HIDDEN);
+    if (ui_PictureWarningBadge) {
+        lv_obj_add_flag(ui_PictureWarningBadge, LV_OBJ_FLAG_HIDDEN);
+    }
 
 #if LV_USE_GIF
     if (isGifPath(picturePath)) {
+        if (ui_PicturePreviewCache) {
+            lv_img_buf_free(ui_PicturePreviewCache);
+            ui_PicturePreviewCache = nullptr;
+        }
+        if (ui_PictureCanvas) {
+            lv_obj_add_flag(ui_PictureCanvas, LV_OBJ_FLAG_HIDDEN);
+        }
         lv_obj_add_flag(ui_PictureImage, LV_OBJ_FLAG_HIDDEN);
         ui_PictureGif = lv_gif_create(ui_PicturePreview);
         lv_gif_set_src(ui_PictureGif, pictureSourcePath.c_str());
@@ -363,10 +426,15 @@ void LibraryEditorGui::updatePicturePreview(const std::string &deviceUid, const 
     }
 #endif
 
-    lv_img_set_src(ui_PictureImage, pictureSourcePath.c_str());
-    lv_img_set_zoom(ui_PictureImage, 256);
-    lv_obj_clear_flag(ui_PictureImage, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_center(ui_PictureImage);
+    DeviceCatalogBrowserRenderer::applyImagePreview(
+        ui_PicturePreview,
+        ui_PictureImage,
+        ui_PictureCanvas,
+        pictureSourcePath.c_str(),
+        EDITOR_PICTURE_PREVIEW_SIZE,
+        EDITOR_PICTURE_PREVIEW_SIZE,
+        &ui_PicturePreviewCache
+    );
 }
 
 void LibraryEditorGui::buildParamEditor()
@@ -878,13 +946,14 @@ void LibraryEditorGui::saveDraft()
 {
     DeviceDefinitionSchema draft;
     BaseDevice *currentLibraryDevice = browserState.getLibraryDevice();
+    const DeviceDefinitionSchema *currentDraft = browserState.getLibraryDraft();
     const std::string originalUid = currentLibraryDevice ? currentLibraryDevice->UID : "";
     const bool isNewEntity = browserState.isLibraryDraftNewEntity();
 
     draft.uid = trimCopy(lv_textarea_get_text(ui_UidInput));
     draft.type = trimCopy(lv_textarea_get_text(ui_TypeInput));
     draft.description = trimCopy(lv_textarea_get_text(ui_DescriptionInput));
-    draft.picture = findDevicePicturePath(draft.uid);
+    draft.picture = currentDraft ? currentDraft->picture : "";
     if (draft.picture.empty()) {
         draft.picture = "placeholder:device";
     }

@@ -12,6 +12,12 @@
 #ifndef CONFIG_EXPT_H
 #define CONFIG_EXPT_H
 
+#ifdef __has_include
+#if __has_include("../../engine/src/config.hpp")
+#include "../../engine/src/config.hpp"
+#endif
+#endif
+
 /// Uncomment to enable Arduino-based environments
 #define ARDUINO_H 
 #ifdef ARDUINO_H 

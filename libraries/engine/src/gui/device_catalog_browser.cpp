@@ -20,8 +20,126 @@ constexpr uint32_t COLOR_VALUE = 0x2F80ED;
 constexpr uint32_t COLOR_CONFIG = 0xD96464;
 constexpr uint32_t COLOR_PIN = 0xE9F2FF;
 constexpr uint32_t COLOR_ALLOWED_PIN = 0xEEF7ED;
+constexpr uint16_t LVGL_ZOOM_BASE = 256;
+constexpr lv_coord_t DEVICE_DETAIL_PICTURE_SIZE = 112;
 
 std::string pictureSourcePath;
+
+void freeImagePreview(lv_img_dsc_t *preview)
+{
+    if (preview) {
+        lv_img_buf_free(preview);
+    }
+}
+
+void releaseOwnedPreviewOnDelete(lv_event_t *e)
+{
+    if (lv_event_get_code(e) != LV_EVENT_DELETE) {
+        return;
+    }
+
+    freeImagePreview(static_cast<lv_img_dsc_t *>(lv_event_get_user_data(e)));
+}
+
+void centerImage(lv_obj_t *image)
+{
+    if (!image) {
+        return;
+    }
+
+    lv_img_set_angle(image, 0);
+    lv_img_set_offset_x(image, 0);
+    lv_img_set_offset_y(image, 0);
+    lv_img_set_zoom(image, LVGL_ZOOM_BASE);
+    lv_obj_center(image);
+}
+
+lv_img_dsc_t *buildFilePreview(const void *src, lv_coord_t targetWidth, lv_coord_t targetHeight)
+{
+    if (!src || targetWidth <= 0 || targetHeight <= 0) {
+        return nullptr;
+    }
+
+    lv_img_decoder_dsc_t decoder;
+    lv_memset_00(&decoder, sizeof(decoder));
+    if (lv_img_decoder_open(&decoder, src, lv_color_black(), 0) != LV_RES_OK ||
+        !decoder.img_data ||
+        decoder.header.w == 0 ||
+        decoder.header.h == 0) {
+        debugLogMessage(
+            "DeviceCatalogBrowserRenderer::buildFilePreview",
+            "picture decode failed",
+            "size=%dx%d",
+            static_cast<int>(targetWidth),
+            static_cast<int>(targetHeight)
+        );
+        lv_img_decoder_close(&decoder);
+        return nullptr;
+    }
+
+    lv_img_dsc_t sourceImage;
+    lv_memset_00(&sourceImage, sizeof(sourceImage));
+    sourceImage.header = decoder.header;
+    sourceImage.data = decoder.img_data;
+    sourceImage.data_size = lv_img_buf_get_img_size(
+        static_cast<lv_coord_t>(decoder.header.w),
+        static_cast<lv_coord_t>(decoder.header.h),
+        decoder.header.cf
+    );
+
+    lv_img_dsc_t *preview = lv_img_buf_alloc(targetWidth, targetHeight, LV_IMG_CF_TRUE_COLOR_ALPHA);
+    if (!preview) {
+        debugLogMessage(
+            "DeviceCatalogBrowserRenderer::buildFilePreview",
+            "preview alloc failed",
+            "size=%dx%d",
+            static_cast<int>(targetWidth),
+            static_cast<int>(targetHeight)
+        );
+        lv_img_decoder_close(&decoder);
+        return nullptr;
+    }
+
+    lv_memset_00(const_cast<uint8_t *>(preview->data), preview->data_size);
+
+    const double sourceWidth = static_cast<double>(decoder.header.w);
+    const double sourceHeight = static_cast<double>(decoder.header.h);
+    const double scaleX = static_cast<double>(targetWidth) / sourceWidth;
+    const double scaleY = static_cast<double>(targetHeight) / sourceHeight;
+    const double coverScale = scaleX > scaleY ? scaleX : scaleY;
+    const double sampledWidth = static_cast<double>(targetWidth) / coverScale;
+    const double sampledHeight = static_cast<double>(targetHeight) / coverScale;
+    const double offsetX = (sourceWidth - sampledWidth) * 0.5;
+    const double offsetY = (sourceHeight - sampledHeight) * 0.5;
+
+    for (lv_coord_t y = 0; y < targetHeight; ++y) {
+        const double srcYf = offsetY + ((static_cast<double>(y) + 0.5) * sampledHeight / static_cast<double>(targetHeight));
+        lv_coord_t srcY = static_cast<lv_coord_t>(srcYf);
+        if (srcY < 0) {
+            srcY = 0;
+        } else if (srcY >= static_cast<lv_coord_t>(decoder.header.h)) {
+            srcY = static_cast<lv_coord_t>(decoder.header.h - 1);
+        }
+
+        for (lv_coord_t x = 0; x < targetWidth; ++x) {
+            const double srcXf = offsetX + ((static_cast<double>(x) + 0.5) * sampledWidth / static_cast<double>(targetWidth));
+            lv_coord_t srcX = static_cast<lv_coord_t>(srcXf);
+            if (srcX < 0) {
+                srcX = 0;
+            } else if (srcX >= static_cast<lv_coord_t>(decoder.header.w)) {
+                srcX = static_cast<lv_coord_t>(decoder.header.w - 1);
+            }
+
+            const lv_color_t color = lv_img_buf_get_px_color(&sourceImage, srcX, srcY, lv_color_black());
+            const lv_opa_t alpha = lv_img_buf_get_px_alpha(&sourceImage, srcX, srcY);
+            lv_img_buf_set_px_color(preview, x, y, color);
+            lv_img_buf_set_px_alpha(preview, x, y, alpha);
+        }
+    }
+
+    lv_img_decoder_close(&decoder);
+    return preview;
+}
 
 std::string buildAllowedPinsText(const BaseDevice *device)
 {
@@ -278,17 +396,27 @@ std::string findDevicePicturePath(const BaseDevice *device)
     }
 
     const std::string storedPicture = device->getPicture();
-    if (!storedPicture.empty() && isStoragePicturePath(storedPicture) && storageManager().exists(storedPicture)) {
+    if (storedPicture.empty() || storedPicture == "placeholder:device") {
+        return "";
+    }
+
+    if (isStoragePicturePath(storedPicture) && storageManager().exists(storedPicture)) {
         return storedPicture;
     }
 
-    const char *extensions[] = {".png", ".jpg", ".gif"};
-    for (const char *extension : extensions) {
-        const std::string candidate = std::string(STORAGE_DEVICE_PICTURE_DIR) + "/" + device->UID + extension;
-        if (storageManager().exists(candidate)) {
-            return candidate;
-        }
+    const std::string candidate = std::string(STORAGE_DEVICE_PICTURE_DIR) + "/" + storedPicture;
+    if (storageManager().exists(candidate)) {
+        return candidate;
     }
+
+    debugLogMessage(
+        "DeviceCatalogBrowser::findDevicePicturePath",
+        "picture missing",
+        "uid=%s picture=%s candidate=%s",
+        device->UID.c_str(),
+        storedPicture.c_str(),
+        candidate.c_str()
+    );
 
     return "";
 }
@@ -304,21 +432,50 @@ void renderPicture(lv_obj_t *parent, const BaseDevice *device)
     lv_obj_set_style_bg_opa(picture, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_color(picture, lv_color_hex(COLOR_BORDER), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(picture, 1, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_clip_corner(picture, true, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_t *image = lv_img_create(picture);
+    lv_obj_t *canvas = lv_canvas_create(picture);
+    lv_obj_remove_style_all(canvas);
+    lv_obj_set_size(canvas, DEVICE_DETAIL_PICTURE_SIZE, DEVICE_DETAIL_PICTURE_SIZE);
+    lv_obj_center(canvas);
+    lv_obj_add_flag(canvas, LV_OBJ_FLAG_HIDDEN);
     const std::string imagePath = findDevicePicturePath(device);
+    const bool pictureConfigured = device && !device->getPicture().empty() && device->getPicture() != "placeholder:device";
     if (imagePath.empty()) {
+        lv_obj_add_flag(canvas, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(image, LV_OBJ_FLAG_HIDDEN);
         lv_img_set_src(image, placeholderImageForRole(device ? device->getRole() : DeviceRole::SENSOR));
-        lv_img_set_zoom(image, 256);
+        lv_img_set_zoom(image, LVGL_ZOOM_BASE);
         lv_obj_center(image);
+
+        if (pictureConfigured) {
+            lv_obj_t *warningBadge = lv_obj_create(picture);
+            lv_obj_remove_style_all(warningBadge);
+            lv_obj_set_size(warningBadge, 24, 24);
+            lv_obj_align(warningBadge, LV_ALIGN_TOP_RIGHT, -6, 6);
+            lv_obj_set_style_radius(warningBadge, LV_RADIUS_CIRCLE, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_bg_color(warningBadge, lv_color_hex(0xF28C28), LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_bg_opa(warningBadge, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_t *warningText = lv_label_create(warningBadge);
+            lv_label_set_text(warningText, "!");
+            lv_obj_set_style_text_color(warningText, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_text_font(warningText, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_center(warningText);
+        }
         return;
     }
 
     ensureLvglStorageFsRegistered();
     pictureSourcePath = "S:" + imagePath;
-    lv_img_set_src(image, pictureSourcePath.c_str());
-    lv_img_set_zoom(image, 180);
-    lv_obj_center(image);
+    DeviceCatalogBrowserRenderer::applyImagePreview(
+        picture,
+        image,
+        canvas,
+        pictureSourcePath.c_str(),
+        DEVICE_DETAIL_PICTURE_SIZE,
+        DEVICE_DETAIL_PICTURE_SIZE
+    );
 }
 
 void createSectionTitle(lv_obj_t *parent, const std::string &title, lv_coord_t x, lv_coord_t y, uint32_t color)
@@ -428,6 +585,83 @@ void DeviceCatalogBrowserRenderer::styleDeviceListButton(lv_obj_t *button)
         lv_obj_set_style_text_font(label, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
     }
+}
+
+void DeviceCatalogBrowserRenderer::applyImagePreview(lv_obj_t *frame,
+                                                     lv_obj_t *image,
+                                                     lv_obj_t *canvas,
+                                                     const void *src,
+                                                     lv_coord_t targetWidth,
+                                                     lv_coord_t targetHeight,
+                                                     lv_img_dsc_t **ownedPreview)
+{
+    if (!frame || !image || !canvas || !src) {
+        return;
+    }
+
+    if (lv_img_src_get_type(src) != LV_IMG_SRC_FILE) {
+        if (ownedPreview && *ownedPreview) {
+            freeImagePreview(*ownedPreview);
+            *ownedPreview = nullptr;
+        }
+        lv_obj_add_flag(canvas, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(image, LV_OBJ_FLAG_HIDDEN);
+        lv_img_set_src(image, src);
+        centerImage(image);
+        return;
+    }
+
+    if (targetWidth <= 0 || targetHeight <= 0) {
+        debugLogMessage(
+            "DeviceCatalogBrowserRenderer::applyImagePreview",
+            "invalid target size",
+            "size=%dx%d",
+            static_cast<int>(targetWidth),
+            static_cast<int>(targetHeight)
+        );
+        return;
+    }
+
+    lv_img_dsc_t *preview = buildFilePreview(src, targetWidth, targetHeight);
+    if (!preview) {
+        if (ownedPreview && *ownedPreview) {
+            freeImagePreview(*ownedPreview);
+            *ownedPreview = nullptr;
+        }
+        lv_obj_add_flag(canvas, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(image, LV_OBJ_FLAG_HIDDEN);
+        lv_img_set_src(image, src);
+        centerImage(image);
+        return;
+    }
+
+    if (ownedPreview) {
+        if (*ownedPreview) {
+            freeImagePreview(*ownedPreview);
+        }
+        *ownedPreview = preview;
+    } else {
+        lv_obj_add_event_cb(canvas, releaseOwnedPreviewOnDelete, LV_EVENT_DELETE, preview);
+    }
+
+    lv_canvas_set_buffer(
+        canvas,
+        const_cast<uint8_t *>(preview->data),
+        targetWidth,
+        targetHeight,
+        preview->header.cf
+    );
+    lv_obj_set_size(canvas, targetWidth, targetHeight);
+    lv_obj_center(canvas);
+    lv_obj_clear_flag(canvas, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(image, LV_OBJ_FLAG_HIDDEN);
+    debugLogMessage(
+        "DeviceCatalogBrowserRenderer::applyImagePreview",
+        "preview ready",
+        "size=%dx%d",
+        static_cast<int>(preview->header.w),
+        static_cast<int>(preview->header.h)
+    );
 }
 
 void DeviceCatalogBrowserRenderer::renderDeviceDetail(lv_obj_t *panel, const BaseDevice *device, const std::string &footerText)

@@ -189,7 +189,7 @@ void FileTransferGui::refresh()
     }
 
     if (state == FileTransferState::ERROR || state == FileTransferState::UNSUPPORTED) {
-        lv_obj_set_style_bg_color(ui_Widget, lv_color_hex(0xD96464), LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_bg_color(ui_Widget, lv_color_hex(0xFF0000), LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_label_set_text(ui_SubCaption, "Connection failed");
         lv_label_set_text(ui_StatusLabel, transferService.getLastMessage().c_str());
         lv_label_set_text(ui_HintLabel, "Check USB cable, SD card, and firmware USB MSC support.");
