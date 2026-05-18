@@ -1,5 +1,5 @@
 #define DEFAULT_JSON_DB R"json({
-  "version": "1.2",
+  "version": "1.3",
   "application": "board",
   "devices": {
     "mic_001": {
@@ -121,7 +121,7 @@
         },
         "pins": {}
       },
-      "picture": "placeholder:device",
+      "picture": "DS18B20.png",
       "Pins": [
         "DQ"
       ]
