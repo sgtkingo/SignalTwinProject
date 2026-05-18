@@ -30,7 +30,7 @@
 
 // Unified project debug logging switch. Exceptions are printed by their catch handlers.
 #ifndef ENABLE_DEBUG
-#define ENABLE_DEBUG 1
+#define ENABLE_DEBUG 0
 #endif
 
 // Debug verbosity:
