@@ -106,7 +106,7 @@ jobs:
         with:
           python-version: "3.x"
 
-      - name: Bump VERSION, sync config, commit and push
+      - name: Bump VERSION, sync config/DB, commit and push
         if: ${{ steps.gate.outputs.release == 'true' }}
         id: bump
         shell: bash
@@ -118,8 +118,12 @@ jobs:
 
           printf "%s\n" "${{ steps.ver.outputs.next }}" > VERSION
           python3 storage/sync_config.py
+          python3 storage/sync_db.py
 
-          git add VERSION storage/data/config.json ui/data/config.json libraries/engine/src/managers/default_json_config.hpp
+          git add VERSION
+          git add storage/data/config.json ui/data/config.json libraries/engine/src/managers/default_json_config.hpp
+          git add storage/data/DB.json ui/data/DB.json libraries/engine/src/devices/default_json_db.hpp
+          git add ui/data/pics
 
           if git diff --cached --quiet; then
             echo "No versioned metadata changes detected." >&2
