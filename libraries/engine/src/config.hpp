@@ -13,12 +13,12 @@
 #define CONFIG_ENGINE_H
 
 /// Uncomment to enable Arduino-based environments
-#ifndef ARDUINO_H
-#define ARDUINO_H 
+#ifndef ARDUINO_H_ENV
+#define ARDUINO_H_ENV
 #endif
 
 /// Uncomment to enable standard console applications (PC/Linux)
-//#define STDIO_H 
+//#define STDIO_H_ENV
 
 // Uncomment to enable LVGL support
 #ifndef USE_LVGL

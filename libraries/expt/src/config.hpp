@@ -19,14 +19,17 @@
 #endif
 
 /// Uncomment to enable Arduino-based environments
-#define ARDUINO_H 
-#ifdef ARDUINO_H 
+#ifndef ARDUINO_H_ENV
+#define ARDUINO_H_ENV
+#endif
+
+#ifdef ARDUINO_H_ENV
 #define UART0_BAUDRATE 115200
 #define UART0_TIMEOUT 100 // only for receive
 #endif
 
 /// Uncomment to enable standard console applications (PC/Linux)
-//#define STDIO_H 
+//#define STDIO_H_ENV
 
 // Uncomment to enable LVGL support
 #define USE_LVGL

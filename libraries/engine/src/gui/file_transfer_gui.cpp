@@ -332,7 +332,7 @@ void FileTransferGui::closeRestartPrompt()
 
 void FileTransferGui::restartDevice()
 {
-#ifdef ESP32
+#if defined(ARDUINO) && defined(ESP32)
     ESP.restart();
 #elif defined(ARDUINO)
     void (*resetFunc)(void) = 0;

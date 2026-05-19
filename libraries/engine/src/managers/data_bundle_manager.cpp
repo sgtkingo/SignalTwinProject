@@ -11,7 +11,7 @@
 #include "data_bundle_manager.hpp"
 #include "expt.hpp"
 
-#ifdef ARDUINO_H
+#if defined(ARDUINO_H_ENV) && defined(ARDUINO)
 #include <Arduino.h>
 #endif
 
@@ -22,7 +22,7 @@ namespace
 {
 unsigned long currentRuntimeMs()
 {
-#ifdef ARDUINO_H
+#if defined(ARDUINO_H_ENV) && defined(ARDUINO)
     return millis();
 #else
     return 0;

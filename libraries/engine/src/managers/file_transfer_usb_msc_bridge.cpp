@@ -8,7 +8,7 @@
 #include <cstring>
 #include <limits>
 
-#if FILE_TRANSFER_USB_MSC_ENABLED && defined(ARDUINO_H) && defined(ARDUINO_USB_MODE) && (ARDUINO_USB_MODE == 0) && __has_include(<USB.h>) && __has_include(<USBMSC.h>)
+#if FILE_TRANSFER_USB_MSC_ENABLED && defined(ARDUINO_H_ENV) && defined(ARDUINO) && defined(ARDUINO_USB_MODE) && (ARDUINO_USB_MODE == 0) && __has_include(<USB.h>) && __has_include(<USBMSC.h>)
 #include <SD.h>
 #include <SPI.h>
 #include <USB.h>

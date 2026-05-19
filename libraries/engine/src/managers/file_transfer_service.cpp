@@ -4,14 +4,14 @@
 #include "storage_manager.hpp"
 #include "expt.hpp"
 
-#if defined(ARDUINO_H)
+#if defined(ARDUINO_H_ENV) && defined(ARDUINO)
 #include <SD.h>
 #include <SPI.h>
 #endif
 
 bool FileTransferService::isSdCardPresent() const
 {
-#if !defined(ARDUINO_H)
+#if !defined(ARDUINO_H_ENV) || !defined(ARDUINO)
     return false;
 #elif STORAGE_OPTION == STORAGE_OPTION_SD
     if (storageManager().isAvailable() || storageManager().isTransferLocked())

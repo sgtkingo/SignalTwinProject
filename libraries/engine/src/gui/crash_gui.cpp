@@ -170,7 +170,7 @@ void CrashGui::handleRestartButtonClick() {
     // logMessage("Restart button pressed - triggering system reset\n");
     
     // Trigger system reset
-    #ifdef ESP32
+    #if defined(ARDUINO) && defined(ESP32)
         ESP.restart();
     #elif defined(ARDUINO)
         // For other Arduino platforms

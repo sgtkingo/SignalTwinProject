@@ -50,9 +50,9 @@ std::string buildMessage(const char *format, ...) {
     return std::string(buffer);
 }
 
-#ifdef ARDUINO_H
+#if defined(ARDUINO_H_ENV) && defined(ARDUINO)
     #include <Arduino.h>  ///< Include Arduino Serial functions
-#elif defined(STDIO_H)
+#elif defined(STDIO_H_ENV)
     #include <stdio.h>    ///< Include standard I/O functions
 #endif
 
@@ -60,7 +60,7 @@ void logMessage(const char *format, ...) {
     va_list args;
     va_start(args, format);
 
-    #ifdef ARDUINO_H
+    #if defined(ARDUINO_H_ENV) && defined(ARDUINO)
         char buffer[256];
         vsnprintf(buffer, sizeof(buffer), format, args);
         if (!loggerUsbCdcAvailable)
@@ -76,7 +76,7 @@ void logMessage(const char *format, ...) {
         }
         Serial.println(buffer);  // Print via Arduino Serial
         Serial.flush();
-    #elif defined(STDIO_H)
+    #elif defined(STDIO_H_ENV)
         vprintf(format, args);  // Print via standard console
     #endif
     va_end(args);
@@ -87,7 +87,7 @@ void setLoggerUsbCdcAvailable(bool available) {
 }
 
 void flushBufferedLogMessages() {
-#ifdef ARDUINO_H
+#if defined(ARDUINO_H_ENV) && defined(ARDUINO)
     if (!loggerUsbCdcAvailable) {
         return;
     }
@@ -103,7 +103,7 @@ void flushBufferedLogMessages() {
         --bufferedLogCount;
     }
     Serial.flush();
-#elif defined(STDIO_H)
+#elif defined(STDIO_H_ENV)
     while (bufferedLogCount > 0) {
         printf("%s\n", bufferedLogLines[bufferedLogStart].data());
         bufferedLogStart = (bufferedLogStart + 1) % LOGGER_BUFFERED_LINE_COUNT;
@@ -185,13 +185,13 @@ void debugLogMessage(const char *source, const char *reason, const char *format,
 }
 
 void initLogger(unsigned int baudrate, unsigned int timeout) {
-    #ifdef ARDUINO_H
+    #if defined(ARDUINO_H_ENV) && defined(ARDUINO)
         if (!loggerUsbCdcAvailable) {
             return;
         }
         Serial.begin(baudrate); // Initialize Serial for Arduino
         Serial.setTimeout(timeout); // Set timeout for Serial receive
-    #elif defined(STDIO_H)
+    #elif defined(STDIO_H_ENV)
         // No initialization needed for standard console
         printf("Logger initialized for standard console...\n");
     #endif
