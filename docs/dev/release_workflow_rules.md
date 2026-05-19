@@ -56,14 +56,16 @@ and orchestrates the release in this order:
 2. Write `NEXT` to [VERSION](/D:/Prace/MTA/SignalTwinProject/VERSION).
 3. Run [storage/sync_config.py](/D:/Prace/MTA/SignalTwinProject/storage/sync_config.py)
    so config artifacts match the bumped version.
-4. Commit and push the version/config update.
-5. Call the reusable build workflow
+4. Run [storage/sync_db.py](/D:/Prace/MTA/SignalTwinProject/storage/sync_dbpy)
+   so DB artifacts match the bumped version.
+5. Commit and push the version/config update.
+6. Call the reusable build workflow
    [.github/workflows/build.yml](/D:/Prace/MTA/SignalTwinProject/.github/workflows/build.yml)
    to compile the bumped revision.
-6. Download the generated `.bin` artifacts and refresh `bin/latest/*`.
-7. Commit and push the refreshed `bin/latest`.
-8. Create and push tag `vX.Y.Z.B`.
-9. Create the GitHub Release using `RELEASE_NOTES.md` and files from `bin/latest/*`.
+7. Download the generated `.bin` artifacts and refresh `bin/latest/*`.
+8. Commit and push the refreshed `bin/latest`.
+9. Create and push tag `vX.Y.Z.B`.
+10. Create the GitHub Release using `RELEASE_NOTES.md` and files from `bin/latest/*`.
 
 This order guarantees that the published firmware is built from the bumped
 version, not from the previous one.
