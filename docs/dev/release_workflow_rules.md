@@ -77,6 +77,8 @@ version, not from the previous one.
 The reusable build workflow is defined in
 [.github/workflows/build.yml](/D:/Prace/MTA/SignalTwinProject/.github/workflows/build.yml).
 
+Support `run_config_sync` and `run_db_sync` arguments. 
+
 Current defaults:
 
 - board: `ESP32S3 Dev Module`
