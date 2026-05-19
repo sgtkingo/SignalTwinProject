@@ -1,0 +1,215 @@
+name: Release Auto
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-auto-main
+  cancel-in-progress: false
+
+jobs:
+  prepare-release:
+    runs-on: ubuntu-latest
+    outputs:
+      release: ${{ steps.gate.outputs.release }}
+      bump_type: ${{ steps.gate.outputs.bump_type }}
+      next_version: ${{ steps.ver.outputs.next }}
+      tag: ${{ steps.ver.outputs.tag }}
+      build_ref: ${{ steps.bump.outputs.build_ref }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gate - decide bump type from commit message
+        id: gate
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          msg="$(git log -1 --pretty=%B)"
+
+          if [[ "$msg" == chore\(release\):* ]]; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "bump_type=none" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          bump="none"
+          if [[ "$msg" == "(major)"* ]]; then bump="major"; fi
+          if [[ "$msg" == "(minor)"* ]]; then
+            [[ "$bump" != "none" ]] && { echo "Multiple bump markers found." >&2; exit 1; }
+            bump="minor"
+          fi
+          if [[ "$msg" == "(patch)"* ]]; then
+            [[ "$bump" != "none" ]] && { echo "Multiple bump markers found." >&2; exit 1; }
+            bump="patch"
+          fi
+          if [[ "$msg" == "(build)"* ]]; then
+            [[ "$bump" != "none" ]] && { echo "Multiple bump markers found." >&2; exit 1; }
+            bump="build"
+          fi
+
+          if [[ "$bump" == "none" ]]; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "bump_type=none" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "release=true" >> "$GITHUB_OUTPUT"
+          echo "bump_type=$bump" >> "$GITHUB_OUTPUT"
+
+      - name: Read VERSION and compute next version
+        if: ${{ steps.gate.outputs.release == 'true' }}
+        id: ver
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ ! -f VERSION ]]; then
+            echo "Missing VERSION file." >&2
+            exit 1
+          fi
+
+          current="$(tr -d ' \r\n\t' < VERSION)"
+          if [[ ! "$current" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid VERSION '$current' (expected x.y.z.b)." >&2
+            exit 1
+          fi
+
+          IFS='.' read -r major minor patch build <<< "$current"
+          bump="${{ steps.gate.outputs.bump_type }}"
+
+          case "$bump" in
+            major) major=$((major + 1)); minor=0; patch=0; build=0 ;;
+            minor) minor=$((minor + 1)); patch=0; build=0 ;;
+            patch) patch=$((patch + 1)); build=0 ;;
+            build) build=$((build + 1)) ;;
+            *) echo "Unknown bump type: $bump" >&2; exit 1 ;;
+          esac
+
+          next="${major}.${minor}.${patch}.${build}"
+          echo "current=$current" >> "$GITHUB_OUTPUT"
+          echo "next=$next" >> "$GITHUB_OUTPUT"
+          echo "tag=v$next" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Python
+        if: ${{ steps.gate.outputs.release == 'true' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Bump VERSION, sync config, commit and push
+        if: ${{ steps.gate.outputs.release == 'true' }}
+        id: bump
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          printf "%s\n" "${{ steps.ver.outputs.next }}" > VERSION
+          python3 storage/sync_config.py
+
+          git add VERSION storage/data/config.json ui/data/config.json libraries/engine/src/managers/default_json_config.hpp
+
+          if git diff --cached --quiet; then
+            echo "No versioned metadata changes detected." >&2
+            exit 1
+          fi
+
+          git commit -m "chore(release): bump version to ${{ steps.ver.outputs.next }}"
+          git push origin HEAD:main
+
+          echo "build_ref=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  build:
+    if: ${{ needs.prepare-release.outputs.release == 'true' }}
+    needs: prepare-release
+    uses: ./.github/workflows/build.yml
+    with:
+      ref: ${{ needs.prepare-release.outputs.build_ref }}
+      artifact_name: firmware-${{ needs.prepare-release.outputs.next_version }}
+
+  publish-release:
+    if: ${{ needs.prepare-release.outputs.release == 'true' }}
+    needs:
+      - prepare-release
+      - build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout bumped revision
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.prepare-release.outputs.build_ref }}
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: firmware-${{ needs.prepare-release.outputs.next_version }}
+          path: release-assets
+
+      - name: Refresh bin/latest
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p bin/latest
+          rm -f bin/latest/*
+          cp -v release-assets/*.bin bin/latest/
+
+      - name: Commit and push bin/latest
+        id: latest
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add bin/latest
+
+          if git diff --cached --quiet; then
+            echo "final_ref=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git commit -m "chore(release): refresh bin/latest for ${{ needs.prepare-release.outputs.next_version }}"
+          git push origin HEAD:main
+          echo "final_ref=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Create and push tag
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tag="${{ needs.prepare-release.outputs.tag }}"
+
+          if git rev-parse "$tag" >/dev/null 2>&1; then
+            echo "Tag $tag already exists." >&2
+            exit 1
+          fi
+
+          git tag "$tag" "${{ steps.latest.outputs.final_ref }}"
+          git push origin "$tag"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare-release.outputs.tag }}
+          name: ${{ needs.prepare-release.outputs.tag }}
+          body_path: RELEASE_NOTES.md
+          files: |
+            bin/latest/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

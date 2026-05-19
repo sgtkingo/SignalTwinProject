@@ -1,0 +1,163 @@
+name: Build Firmware
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Git ref to build.
+        required: false
+        type: string
+        default: ""
+      artifact_name:
+        description: Uploaded artifact name.
+        required: false
+        type: string
+        default: firmware-esp32s3
+      esp32_core_version:
+        description: Arduino ESP32 core version to install.
+        required: false
+        type: string
+        default: "3.1.1"
+      fqbn:
+        description: Fully-qualified board name with menu options.
+        required: false
+        type: string
+        default: esp32:esp32:esp32s3:UploadSpeed=921600,USBMode=hwcdc,CDCOnBoot=default,MSCOnBoot=default,DFUOnBoot=default,UploadMode=default,CPUFreq=240,FlashMode=qio,FlashSize=4M,PartitionScheme=huge_app,DebugLevel=none,PSRAM=opi,LoopCore=1,EventsCore=1,EraseFlash=all,JTAGAdapter=default,ZigbeeMode=default
+      build_path:
+        description: Destination build directory inside the repository.
+        required: false
+        type: string
+        default: ui/build/esp32.esp32.esp32s3
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Optional git ref to build.
+        required: false
+        type: string
+        default: ""
+      artifact_name:
+        description: Uploaded artifact name.
+        required: false
+        type: string
+        default: firmware-esp32s3
+      esp32_core_version:
+        description: Arduino ESP32 core version to install.
+        required: false
+        type: string
+        default: "3.1.1"
+      fqbn:
+        description: Fully-qualified board name with menu options.
+        required: false
+        type: string
+        default: esp32:esp32:esp32s3:UploadSpeed=921600,USBMode=hwcdc,CDCOnBoot=default,MSCOnBoot=default,DFUOnBoot=default,UploadMode=default,CPUFreq=240,FlashMode=qio,FlashSize=4M,PartitionScheme=huge_app,DebugLevel=none,PSRAM=opi,LoopCore=1,EventsCore=1,EraseFlash=all,JTAGAdapter=default,ZigbeeMode=default
+      build_path:
+        description: Destination build directory inside the repository.
+        required: false
+        type: string
+        default: ui/build/esp32.esp32.esp32s3
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref || github.sha }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Setup Arduino CLI
+        uses: arduino/setup-arduino-cli@v2
+
+      - name: Configure Arduino CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          arduino-cli config init --overwrite
+          arduino-cli config set board_manager.additional_urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli config set directories.user "$GITHUB_WORKSPACE"
+
+      - name: Install ESP32 core
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          arduino-cli core update-index
+          arduino-cli core install "esp32:esp32@${{ inputs.esp32_core_version }}"
+
+      - name: Sync config artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 storage/sync_config.py
+
+      - name: Compile firmware
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BUILD_PATH="${{ inputs.build_path }}"
+          rm -rf "$BUILD_PATH"
+          mkdir -p "$BUILD_PATH"
+
+          arduino-cli compile \
+            --fqbn "${{ inputs.fqbn }}" \
+            --build-path "$BUILD_PATH" \
+            ui
+
+      - name: Create merged binary
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BUILD_PATH="${{ inputs.build_path }}"
+          if [[ ! -f "$BUILD_PATH/ui.ino.merged.bin" ]]; then
+            python3 -m pip install --upgrade pip
+            python3 -m pip install esptool
+            python3 -m esptool --chip esp32s3 merge_bin \
+              -o "$BUILD_PATH/ui.ino.merged.bin" \
+              0x0 "$BUILD_PATH/ui.ino.bootloader.bin" \
+              0x8000 "$BUILD_PATH/ui.ino.partitions.bin" \
+              0x10000 "$BUILD_PATH/ui.ino.bin"
+          fi
+
+      - name: Validate required outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BUILD_PATH="${{ inputs.build_path }}"
+          required=(
+            "ui.ino.bin"
+            "ui.ino.bootloader.bin"
+            "ui.ino.partitions.bin"
+            "ui.ino.merged.bin"
+          )
+
+          for file in "${required[@]}"; do
+            if [[ ! -f "$BUILD_PATH/$file" ]]; then
+              echo "Missing build artifact: $BUILD_PATH/$file" >&2
+              exit 1
+            fi
+          done
+
+          ls -lah "$BUILD_PATH"
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: |
+            ${{ inputs.build_path }}/*.bin
+          if-no-files-found: error
+          retention-days: 14
