@@ -13,9 +13,7 @@
 #include "../helpers.hpp"
 #include <expt.hpp>
 
-#ifdef ESP32
-    #include <ESP.h>
-#elif defined(ARDUINO)
+#if defined(ARDUINO)
     #include <Arduino.h>
 #else
     #include <cstdlib>
