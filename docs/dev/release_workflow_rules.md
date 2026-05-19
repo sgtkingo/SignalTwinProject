@@ -54,18 +54,22 @@ and orchestrates the release in this order:
 
 1. Read the current `VERSION` and compute `NEXT`.
 2. Write `NEXT` to [VERSION](/D:/Prace/MTA/SignalTwinProject/VERSION).
-3. Run [storage/sync_config.py](/D:/Prace/MTA/SignalTwinProject/storage/sync_config.py)
-   so config artifacts match the bumped version.
-4. Run [storage/sync_db.py](/D:/Prace/MTA/SignalTwinProject/storage/sync_dbpy)
-   so DB artifacts match the bumped version.
-5. Commit and push the version/config update.
-6. Call the reusable build workflow
+3. Run [storage/sync_version.py](/D:/Prace/MTA/SignalTwinProject/storage/sync_version.py)
+   so the firmware version macro in
+   [libraries/engine/src/config.hpp](/D:/Prace/MTA/SignalTwinProject/libraries/engine/src/config.hpp)
+   matches the bumped version.
+4. Run [storage/sync_config.py](/D:/Prace/MTA/SignalTwinProject/storage/sync_config.py)
+   so config artifacts stay synchronized without embedding firmware version into `config.json`.
+5. Run [storage/sync_db.py](/D:/Prace/MTA/SignalTwinProject/storage/sync_db.py)
+   so DB artifacts stay synchronized.
+6. Commit and push the version/config update.
+7. Call the reusable build workflow
    [.github/workflows/build.yml](/D:/Prace/MTA/SignalTwinProject/.github/workflows/build.yml)
    to compile the bumped revision.
-7. Download the generated `.bin` artifacts and refresh `bin/latest/*`.
-8. Commit and push the refreshed `bin/latest`.
-9. Create and push tag `vX.Y.Z.B`.
-10. Create the GitHub Release using `RELEASE_NOTES.md` and files from `bin/latest/*`.
+8. Download the generated `.bin` artifacts and refresh `bin/latest/*`.
+9. Commit and push the refreshed `bin/latest`.
+10. Create and push tag `vX.Y.Z.B`.
+11. Create the GitHub Release using `RELEASE_NOTES.md` and files from `bin/latest/*`.
 
 This order guarantees that the published firmware is built from the bumped
 version, not from the previous one.
@@ -77,7 +81,7 @@ version, not from the previous one.
 The reusable build workflow is defined in
 [.github/workflows/build.yml](/D:/Prace/MTA/SignalTwinProject/.github/workflows/build.yml).
 
-Support `run_config_sync` and `run_db_sync` arguments. 
+Supports `run_version_sync`, `run_sync`, and `run_db_sync` arguments.
 
 Current defaults:
 

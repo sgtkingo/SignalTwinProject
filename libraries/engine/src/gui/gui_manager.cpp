@@ -5,6 +5,7 @@
 
 #include "gui_manager.hpp"
 
+#include "../config.hpp"
 #include "../helpers.hpp"
 #include "../managers/app_config_manager.hpp"
 #include "../managers/storage_manager.hpp"
@@ -29,6 +30,7 @@ GuiManager::GuiManager(DeviceCatalog &catalog, DeviceBrowserState &browserState,
       currentState(GuiState::NONE),
       initialized(false)
 {
+    appVersion = SIGNALTWIN_FIRMWARE_VERSION;
 }
 
 bool GuiManager::init(std::string configFile)
@@ -58,7 +60,6 @@ bool GuiManager::init(std::string configFile)
         AppConfig appConfig;
         std::string appConfigError;
         if (AppConfigManager::load(appConfig, appConfigError)) {
-            appVersion = appConfig.version;
             navigationPolicy.setDefaultCommunicationMode(appConfig.defaultCommunication);
             navigationPolicy.setThemeMode(appConfig.theme);
             navigationPolicy.setLanguageMode(appConfig.language);
@@ -399,7 +400,6 @@ bool GuiManager::saveAppSettings(DefaultCommunicationMode defaultCommunication,
 {
     try {
         AppConfig config;
-        config.version = appVersion;
         config.defaultCommunication = defaultCommunication;
         config.theme = theme;
         config.language = language;

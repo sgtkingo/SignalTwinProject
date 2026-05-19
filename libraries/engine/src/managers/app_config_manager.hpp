@@ -7,7 +7,6 @@
 
 struct AppConfig
 {
-    std::string version;
     DefaultCommunicationMode defaultCommunication = DefaultCommunicationMode::ASK;
     ThemeMode theme = ThemeMode::LIGHT;
     LanguageMode language = LanguageMode::ENGLISH;

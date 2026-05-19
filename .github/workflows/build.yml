@@ -33,6 +33,11 @@ on:
         required: false
         type: boolean
         default: true
+      run_version_sync:
+        description: Run sync_version.py before compile.
+        required: false
+        type: boolean
+        default: true
       run_db_sync:
         description: Run sync_db.py before compile.
         required: false
@@ -67,6 +72,11 @@ on:
         default: ui/build/esp32.esp32.esp32s3
       run_sync:
         description: Run sync_config.py before compile.
+        required: false
+        type: boolean
+        default: true
+      run_version_sync:
+        description: Run sync_version.py before compile.
         required: false
         type: boolean
         default: true
@@ -114,6 +124,13 @@ jobs:
 
           arduino-cli core update-index
           arduino-cli core install "esp32:esp32@${{ inputs.esp32_core_version }}"
+
+      - name: Sync version artifacts
+        if: ${{ inputs.run_version_sync }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 storage/sync_version.py
 
       - name: Sync config artifacts
         if: ${{ inputs.run_sync }}

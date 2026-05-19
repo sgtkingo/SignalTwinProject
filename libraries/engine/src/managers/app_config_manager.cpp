@@ -1,5 +1,6 @@
 #include "app_config_manager.hpp"
 
+#include "../config.hpp"
 #include "default_json_config.hpp"
 #include "storage_manager.hpp"
 #include "expt.hpp"
@@ -20,42 +21,10 @@ std::string normalize(std::string value)
 
 void applyConfigDocument(JsonDocument &doc, AppConfig &config)
 {
-    config.version = doc["version"] | "";
     config.defaultCommunication = AppConfigManager::communicationFromString(doc["defaultCommunication"] | "ask");
     JsonObjectConst appearance = doc["appearance"].as<JsonObjectConst>();
     config.theme = AppConfigManager::themeFromString(appearance["theme"] | "light");
     config.language = AppConfigManager::languageFromString(appearance["language"] | "en");
-}
-
-std::string defaultConfigVersion()
-{
-    JsonDocument doc;
-    const DeserializationError jsonError = deserializeJson(doc, DEFAULT_JSON_CONFIG);
-    if (jsonError) {
-        return "";
-    }
-
-    return doc["version"] | "";
-}
-
-std::string storedOrDefaultConfigVersion()
-{
-    if (storageManager().exists(STORAGE_APP_CONFIG_PATH)) {
-        File file = storageManager().open(STORAGE_APP_CONFIG_PATH, FILE_READ);
-        if (file) {
-            JsonDocument doc;
-            const DeserializationError jsonError = deserializeJson(doc, file);
-            file.close();
-            if (!jsonError) {
-                const char *version = doc["version"] | "";
-                if (version && version[0] != '\0') {
-                    return version;
-                }
-            }
-        }
-    }
-
-    return defaultConfigVersion();
 }
 }
 
@@ -178,8 +147,8 @@ bool AppConfigManager::load(AppConfig &config, std::string &error)
     debugLogMessage(DEBUG_VERBOSE_IMPORTANT,
                     "AppConfigManager::load",
                     "storage read",
-                    "version=%s defaultCommunication=%s theme=%s language=%s",
-                    config.version.c_str(),
+                    "firmwareVersion=%s defaultCommunication=%s theme=%s language=%s",
+                    SIGNALTWIN_FIRMWARE_VERSION,
                     toString(config.defaultCommunication),
                     toString(config.theme),
                     toString(config.language));
@@ -196,8 +165,6 @@ bool AppConfigManager::save(const AppConfig &config, std::string &error)
         return false;
     }
 
-    const std::string version = config.version.empty() ? storedOrDefaultConfigVersion() : config.version;
-
     if (storageManager().exists(STORAGE_APP_CONFIG_PATH)) {
         storageManager().remove(STORAGE_APP_CONFIG_PATH);
     }
@@ -210,7 +177,6 @@ bool AppConfigManager::save(const AppConfig &config, std::string &error)
     }
 
     JsonDocument doc;
-    doc["version"] = version.c_str();
     doc["defaultCommunication"] = toString(config.defaultCommunication);
     JsonObject appearance = doc["appearance"].to<JsonObject>();
     appearance["theme"] = toString(config.theme);
@@ -228,9 +194,9 @@ bool AppConfigManager::save(const AppConfig &config, std::string &error)
     debugLogMessage(DEBUG_VERBOSE_IMPORTANT,
                     "AppConfigManager::save",
                     "storage write",
-                    "path=%s version=%s defaultCommunication=%s theme=%s language=%s",
+                    "path=%s firmwareVersion=%s defaultCommunication=%s theme=%s language=%s",
                     STORAGE_APP_CONFIG_PATH,
-                    version.c_str(),
+                    SIGNALTWIN_FIRMWARE_VERSION,
                     toString(config.defaultCommunication),
                     toString(config.theme),
                     toString(config.language));

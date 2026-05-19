@@ -106,7 +106,7 @@ jobs:
         with:
           python-version: "3.x"
 
-      - name: Bump VERSION, sync config/DB, commit and push
+      - name: Bump VERSION, sync version/config/DB, commit and push
         if: ${{ steps.gate.outputs.release == 'true' }}
         id: bump
         shell: bash
@@ -117,10 +117,12 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           printf "%s\n" "${{ steps.ver.outputs.next }}" > VERSION
+          python3 storage/sync_version.py
           python3 storage/sync_config.py
           python3 storage/sync_db.py
 
           git add VERSION
+          git add libraries/engine/src/config.hpp
           git add storage/data/config.json ui/data/config.json libraries/engine/src/managers/default_json_config.hpp
           git add storage/data/DB.json ui/data/DB.json libraries/engine/src/devices/default_json_db.hpp
           git add ui/data/pics
@@ -142,6 +144,7 @@ jobs:
     with:
       ref: ${{ needs.prepare-release.outputs.build_ref }}
       artifact_name: firmware-${{ needs.prepare-release.outputs.next_version }}
+      run_version_sync: false
       run_sync: false
       run_db_sync: false
 

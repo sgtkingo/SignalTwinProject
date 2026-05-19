@@ -3,12 +3,11 @@
 
 Run from anywhere inside the repository:
 
-    python data/sync_config.py
+    python storage/sync_config.py
 
-The canonical source of truth is the config.json next to this script. Before
-copying, the script updates its top-level "version" field from the root VERSION
-file. It then updates the UI data copy and the embedded firmware fallback
-header.
+The canonical source of truth is the config.json next to this script. The script
+copies it to the UI data folder and regenerates the embedded firmware fallback
+header. Firmware version is synchronized separately by sync_version.py.
 """
 
 from __future__ import annotations
@@ -28,23 +27,12 @@ def source_config() -> Path:
     return Path(__file__).resolve().parent / "data" / "config.json"
 
 
-def version_file(root: Path) -> Path:
-    return root / "VERSION"
-
-
 def ui_config(root: Path) -> Path:
     return root / "ui" / "data" / "config.json"
 
 
 def default_json_header(root: Path) -> Path:
     return root / "libraries" / "engine" / "src" / "managers" / "default_json_config.hpp"
-
-
-def read_version(root: Path) -> str:
-    version = version_file(root).read_text(encoding="utf-8").strip()
-    if not version:
-        raise ValueError("VERSION is empty.")
-    return version
 
 
 def load_config(path: Path) -> dict:
@@ -70,7 +58,6 @@ def sync_config(dry_run: bool = False) -> int:
     root = repo_root()
     source = source_config()
     config = load_config(source)
-    config["version"] = read_version(root)
 
     targets = [
         ui_config(root),
@@ -78,13 +65,13 @@ def sync_config(dry_run: bool = False) -> int:
     ]
 
     if dry_run:
-        print(f"Would update {source.relative_to(root)} version={config['version']}")
+        print(f"Would validate {source.relative_to(root)}")
         for target in targets:
             print(f"Would update {target.relative_to(root)}")
         return len(targets) + 1
 
     write_config(source, config)
-    print(f"Updated {source.relative_to(root)} version={config['version']}")
+    print(f"Updated {source.relative_to(root)}")
 
     ui_target = ui_config(root)
     ui_target.parent.mkdir(parents=True, exist_ok=True)

@@ -30,7 +30,7 @@ private:
     GuiRuntimePolicy runtimePolicy;                    ///< Side effects when entering/leaving GUI states
     GuiScreenRegistry screenRegistry;                  ///< Screen ownership and rendering registry
 
-    std::string appVersion;                            ///< Application version loaded from /data/config.json
+    std::string appVersion;                            ///< Firmware version embedded in the build
     GuiState currentState;
     bool initialized;
 

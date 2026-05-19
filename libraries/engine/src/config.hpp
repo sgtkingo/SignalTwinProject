@@ -39,6 +39,11 @@
 #define DEBUG_VERBOSE_LEVEL 3
 #endif
 
+// Firmware version mirrored from the root VERSION file by storage/sync_version.py.
+#ifndef SIGNALTWIN_FIRMWARE_VERSION
+#define SIGNALTWIN_FIRMWARE_VERSION "1.2.0.74"
+#endif
+
 // Storage backend selection for all persistent data access.
 #define STORAGE_OPTION_SD 1
 #define STORAGE_OPTION_SPIFFS 2

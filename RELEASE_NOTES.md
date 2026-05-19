@@ -1,6 +1,6 @@
 # RELEASE_NOTES
 
-## v1.2.0.71 - Picture preview and storage update
+## Picture preview and storage update
 
 ### Runtime, VSCP and DB schema
 
