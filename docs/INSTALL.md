@@ -126,6 +126,11 @@ available and are flushed after the session ends.
 1. LovyanGFX: 1.20
 2. LVGL: 8.3.11 (depends on SquareLine studio)
 
+# Boards versions
+
+1. Arduino ESP32 Boards: 2.0.18 
+2. esp32: 3.1.1 
+
 ## Burning
 
 If the built-in Arduino-IDE chip-programmer is working you can go with it.
@@ -154,5 +159,5 @@ This `ui.ino.bin` file can be burnt to the board's app0 partition at offset 0x10
 With this board-template you might encounter some Parallel-RGB vs LVGL-flush synchronization issues if you use computing-heavy or alpha-channel graphic contents like big shadows. According to our research it comes from low-level IO code in Arduino-IDE related to the display-driver, probably GDMA-priority related pixeldata-delays to the ESP32S3's LCD-controller. (ESP-IDF version doesn't have this problem.)
 
 
-2024 SquareLine
+2024 SquareLine, 2026 SignalTwin (MTA)
 
