@@ -28,6 +28,16 @@ on:
         required: false
         type: string
         default: ui/build/esp32.esp32.esp32s3
+      run_sync:
+        description: Run sync_config.py before compile.
+        required: false
+        type: boolean
+        default: true
+      run_db_sync:
+        description: Run sync_db.py before compile.
+        required: false
+        type: boolean
+        default: true
   workflow_dispatch:
     inputs:
       ref:
@@ -55,6 +65,16 @@ on:
         required: false
         type: string
         default: ui/build/esp32.esp32.esp32s3
+      run_sync:
+        description: Run sync_config.py before compile.
+        required: false
+        type: boolean
+        default: true
+      run_db_sync:
+        description: Run sync_db.py before compile.
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -96,10 +116,18 @@ jobs:
           arduino-cli core install "esp32:esp32@${{ inputs.esp32_core_version }}"
 
       - name: Sync config artifacts
+        if: ${{ inputs.run_sync }}
         shell: bash
         run: |
           set -euo pipefail
           python3 storage/sync_config.py
+
+      - name: Sync DB artifacts
+        if: ${{ inputs.run_db_sync }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 storage/sync_db.py
 
       - name: Compile firmware
         shell: bash
