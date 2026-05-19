@@ -15,6 +15,7 @@
   * `set_point` is a write value sent by `CONTROL`.
   * `speed` is a config value sent by `CONFIG`.
 * Updated the emulator and pattern emulator so `H00.temp` gradually follows `set_point`; `speed` controls the update step.
+* Migrate VERSION to `config.hpp` as `SIGNALTWIN_FIRMWARE_VERSION`
 
 ### Developer tooling and diagnostics
 
