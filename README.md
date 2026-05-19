@@ -1,10 +1,10 @@
 # SignalTwin ✨🧬
 
-**Current development version:** `v1.2.0.67`
+**Current development version:** `latest`
 
 SignalTwin Display is a lightweight **HMI/visualization client** for exploring sensor data in real time 🖥️.
 It focuses on **raw vs. processed comparisons**, **interactive inspection**, and **data capture** for later analysis
-— while educational modules live *above* this layer (e.g., in EduBoxHub or external course content).
+— while educational modules live *above* this layer (e.g., in EduBox HUB or external course content). SignalTwin is developing under the MTA (https://www.m-ta.cz) EduBox HUB project.
 
 ## 🧩 Target Hardware
 
@@ -41,7 +41,7 @@ It requires an upstream source that speaks our open protocol:
 
 ### 🔌 Supported Upstream Sources
 - 🖥️ **PC connection (emulator / host tooling)**
-- 🧩 **EduBoxHub** platform
+- 🧩 **EduBox HUB** platform
 - 🔧 **Custom hardware** implementing the same protocol
 
 ### 📡 Protocol: VSCP (Virtual Sensors Communication Protocol)
@@ -121,7 +121,7 @@ Firmupdater automatically checks for newer versions and applies updates **with m
 
 Project builds use `MAJOR.MINOR.PATCH.BUILD`.
 
-- Current development build: `1.2.0.63`.
+- Current development build: `check latest`.
 - `MAJOR` stays at `1` for this product line.
 - `MINOR` was bumped for the refactoring branch because it adds major runtime, DataBundle, device catalog, settings, transfer-mode and protocol-facing functionality.
 - `BUILD` is the number of commits on the current development branch since `main` (`63` at the time of this version bump).

@@ -1,8 +1,6 @@
 # RELEASE_NOTES
 
-## v1.2.0.68 - Picture preview and storage update
-
-Versioning note: this build is DEBUG only.
+## v1.2.0.71 - Picture preview and storage update
 
 ### Runtime, VSCP and DB schema
 
@@ -46,12 +44,6 @@ Versioning note: this build is DEBUG only.
 * Added SD-card-oriented Transfer Mode screen and service scaffolding for USB MSC bridge workflows.
 * Transfer Mode now asks whether to restart the HMI after closing an active transfer session, so SD-card edits can be reloaded immediately.
 * Main Screen now shows the active storage backend (`Storage: SD` or `Storage: SPIFFS`) next to the existing version label.
-
----
-
-## 🥳 SignalTwin — First Release (v1.0.0) — 2026-01-20
-
-This is the first public “deploy-ready” release of **SignalTwin Display**: an ESP32-S3 HMI client for real-time sensor visualization, inspection, and logging over **VSCP**. The display itself is intentionally module-agnostic; educational modules live above it (e.g., EduBoxHub / PC emulator / custom HW).
 
 ---
 
