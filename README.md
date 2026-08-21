@@ -1,10 +1,17 @@
 # SignalTwin ✨🧬
 
+[![Build Firmware](https://github.com/sgtkingo/SignalTwinProject/actions/workflows/build.yml/badge.svg)](https://github.com/sgtkingo/SignalTwinProject/actions/workflows/build.yml)
+[![Chip: ESP32-S3](https://img.shields.io/badge/chip-ESP32--S3-ef4444)](https://www.espressif.com/en/products/socs/esp32-s3)
+[![Platform: ESP32](https://img.shields.io/badge/platform-ESP32-0f766e)](https://docs.espressif.com/projects/arduino-esp32/en/latest/)
+[![Language: C++](https://img.shields.io/badge/language-C%2B%2B-00599C)](https://isocpp.org/)
+[![HMI: 7 inch RGB TFT Touch](https://img.shields.io/badge/HMI-7%22%20RGB%20TFT%20Touch-7c3aed)](docs/INSTALL.md)
+[![GUI: LVGL](https://img.shields.io/badge/GUI-LVGL-00a0b0)](https://lvgl.io/)
+
 **Current development version:** `latest`
 
 SignalTwin Display is a lightweight **HMI/visualization client** for exploring sensor data in real time 🖥️.
 It focuses on **raw vs. processed comparisons**, **interactive inspection**, and **data capture** for later analysis
-— while educational modules live *above* this layer (e.g., in EduBox HUB or external course content). SignalTwin is developing under the MTA (https://www.m-ta.cz) EduBox HUB project.
+— while educational modules live *above* this layer (e.g., in EduBox HUB or external course content). SignalTwin is developing under the [MTA](https://www.m-ta.cz) EduBox HUB project.
 
 ## 🧩 Target Hardware
 
@@ -12,8 +19,7 @@ It focuses on **raw vs. processed comparisons**, **interactive inspection**, and
 
 SignalTwin Display is designed and tested for the **Elecrow ESP32 Display 7" HMI (ESP32-S3 + RGB TFT + Touch, LVGL-ready)**:
 
-- 🔗 Distributor / purchase link:  
-  https://www.elecrow.com/esp32-display-7-inch-hmi-display-rgb-tft-lcd-touch-screen-support-lvgl.html
+- 🔗 [Distributor / purchase link](https://www.elecrow.com/esp32-display-7-inch-hmi-display-rgb-tft-lcd-touch-screen-support-lvgl.html)
 
 ---
 
@@ -78,13 +84,14 @@ The bundled test catalog includes `H00` / **Temperature Regulator**:
 
 ## 📖 Documentation
 
-- 🧩 **Installation & deployment** are in **INSTALL.md** (toolchain, flashing, SD layout, emulator wiring).
-- 🧭 **Developer map** is in `DEV_MAP.md` (architecture, VSCP flow, DB schema, emulator notes).
-- 📝 **Release notes** are in `RELEASE_NOTES.md`.
-- Recommended (optional) docs to add:
-  - 🧱 `docs/ARCHITECTURE.md` — dataflow & message types (VSCP mapping)
-  - 🗃️ `docs/FORMATS.md` — DataBundle + CSV schema
-  - 📝 `docs/WIKI_GUIDE.md` — how to add/edit sensor Wiki entries
+- 🧩 [Installation & deployment](docs/INSTALL.md) — toolchain, flashing, SD layout, emulator wiring.
+- 📡 [Protocol reference CZ](docs/PROTOCOL_CZ.md) / [EN](docs/PROTOCOL_EN.md) — VSCP message model and examples.
+- 🧭 [Developer map CZ](docs/dev/DEV_MAP_CZ.md) / [EN](docs/dev/DEV_MAP_EN.md) — architecture, VSCP flow, DB schema, emulator notes.
+- 🧱 [Architecture notes](docs/wiki/ARCHITECTURE.md) — dataflow & message types.
+- 🗃️ [Data formats](docs/wiki/FORMATS.md) — DataBundle + CSV schema.
+- 📝 [Wiki guide](docs/wiki/WIKI_GUIDE.md) — how to add/edit sensor Wiki entries.
+- 🚢 [Release workflow rules](docs/dev/RELEASE_WORKFLOW_RULES.md) and [release notes](RELEASE_NOTES.md).
+- 📄 [License](LICENCE).
 
 ---
 
@@ -136,15 +143,15 @@ Project builds use `MAJOR.MINOR.PATCH.BUILD`.
 - 📄 `docs/` — diagrams, screenshots, Wiki sources, installation instruction
 - 📦 `bin` — exported binary files
 - 🧾 `data` — data files files (configurations, CSV)
-- 📝 `RELEASE_NOTES` — latest release notes
-- 📄 `LICENSE` — MIT
+- 📝 [`RELEASE_NOTES.md`](RELEASE_NOTES.md) — latest release notes
+- 📄 [`LICENCE`](LICENCE) — MIT
 
 ---
 
 ## 🐞 Troubleshooting 
 
 - ❌ If you can connect but see no data: verify the upstream device speaks **VSCP** and is streaming the expected channels.
-- 💽 If SD export fails: check card formatting and required folder structure (see `INSTALL.md` in `docs/`).
+- 💽 If SD export fails: check card formatting and required folder structure (see [`docs/INSTALL.md`](docs/INSTALL.md)).
 
 ---
 
@@ -161,4 +168,4 @@ Contributions are welcome, especially:
 
 ## 📄 License
 
-MIT — see `LICENSE`.
+MIT — see [`LICENCE`](LICENCE).
