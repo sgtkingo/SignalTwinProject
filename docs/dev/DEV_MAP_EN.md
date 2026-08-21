@@ -30,7 +30,7 @@ The upstream endpoint can be a Python emulator, EduBoxHub, or custom hardware im
 | `libraries/ui/` | SquareLine/LVGL boot UI generated layer. The application GUI is mainly in `engine/src/gui`. |
 | `libraries/expt/` | Logging, splash messages, and exception framework. |
 | `libraries/lvgl/`, `libraries/LovyanGFX/`, `libraries/ArduinoJson/` | Vendored third-party libraries. |
-| `data/DB.json` | Host/dev copy of the device catalog. Also used by the emulator. |
+| `storage/data/DB.json` | Canonical host/dev copy of the device catalog. |
 | `ui/data/DB.json` | Catalog copy for the Arduino/firmware workflow. |
 | `emulator/` | Python VSCP emulator, virtual and real sensor runners. |
 | `docs/` | Installation, workflow notes, images, and wiki drafts. |
@@ -517,7 +517,7 @@ Main files:
 
 The emulator loads device defaults from:
 
-1. `data/DB.json`
+1. `data/DB.json` if a legacy root copy exists
 2. fallback `ui/data/DB.json`
 3. fallback hardcoded catalog
 
@@ -571,8 +571,8 @@ Sent: ?id=cpu_temp&status=1&temp=0.21
 
 ### Add a new device
 
-1. Edit `data/DB.json` and `ui/data/DB.json`.
-2. Edit `libraries/engine/src/devices/default_json_db.hpp` if the device should be part of the embedded fallback DB.
+1. Edit `storage/data/DB.json`.
+2. Run `python storage/sync_db.py` to update `ui/data/DB.json`, `ui/data/pics`, and the embedded fallback header.
 3. Add a device entry with `uid`, `role`, `type`, `values`, `configs`, and `default`.
 4. For write values, set `access: "write"`; otherwise they remain read/UPDATE values.
 5. For hybrid devices, verify that readable values, writable values, and configs make sense for the runtime UI.
@@ -744,8 +744,8 @@ libraries/expt/src/
 emulator/
   Python VSCP emulator and test runners
 
-data/DB.json, ui/data/DB.json
-  device catalog source data
+storage/data/DB.json, ui/data/DB.json
+  canonical device catalog and firmware mirror
 ```
 
 ## Document status

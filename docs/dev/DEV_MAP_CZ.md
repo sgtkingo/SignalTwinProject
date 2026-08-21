@@ -34,7 +34,7 @@ Upstream muze byt Python emulator, EduBoxHub nebo vlastni hardware implementujic
 | `libraries/ui/` | SquareLine/LVGL boot UI generovana vrstva. Aplikacni GUI je hlavne v `engine/src/gui`. |
 | `libraries/expt/` | Logovani, splash hlasky a exception framework. |
 | `libraries/lvgl/`, `libraries/LovyanGFX/`, `libraries/ArduinoJson/` | Vendored third-party knihovny. |
-| `data/DB.json` | Host/dev kopie device katalogu. Pouziva ji i emulator. |
+| `storage/data/DB.json` | Kanonicka host/dev kopie device katalogu. |
 | `ui/data/DB.json` | Kopie katalogu pro Arduino/firmware workflow. |
 | `emulator/` | Python VSCP emulator, virtualni a real sensor runners. |
 | `docs/` | Instalace, workflow poznamky, obrazky a wiki drafty. |
@@ -526,7 +526,7 @@ Hlavni soubory:
 
 Emulator nacita device defaults z:
 
-1. `data/DB.json`
+1. `data/DB.json`, pokud existuje legacy root kopie
 2. fallback `ui/data/DB.json`
 3. fallback hardcoded katalog
 
@@ -582,8 +582,8 @@ Sent: ?id=cpu_temp&status=1&temp=0.21
 
 ### Pridat nove zarizeni
 
-1. Upravit `data/DB.json` a `ui/data/DB.json`.
-2. Upravit `libraries/engine/src/devices/default_json_db.hpp`, pokud ma byt device soucasti embedded fallback DB.
+1. Upravit `storage/data/DB.json`.
+2. Spustit `python storage/sync_db.py`, aby se aktualizovalo `ui/data/DB.json`, `ui/data/pics` a embedded fallback header.
 3. Pridat device entry s `uid`, `role`, `type`, `values`, `configs`, `default`.
 4. U write hodnot nastavit `access: "write"`, jinak zustanou read/UPDATE.
 5. U hybridnich zarizeni overit, ze readable values, writable values a configs davaji smysl pro runtime UI.
@@ -752,8 +752,8 @@ libraries/expt/src/
 emulator/
   Python VSCP emulator and test runners
 
-data/DB.json, ui/data/DB.json
-  device catalog source data
+storage/data/DB.json, ui/data/DB.json
+  kanonicky device catalog a firmware mirror
 ```
 
 ## Stav dokumentu
