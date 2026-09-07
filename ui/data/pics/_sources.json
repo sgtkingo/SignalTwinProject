@@ -1,0 +1,198 @@
+﻿{
+    "generated":  "2026-09-07T15:24:47.0925698Z",
+    "note":  "Images resized to 160x120 PNG for the local device catalog. Rights remain with the listed source owners; verify source terms before redistribution.",
+    "files":  {
+                  "S00_DS18B20.png":  {
+                                          "source":  "https://commons.wikimedia.org/wiki/File:SparkFun_DS18B20_1.jpg",
+                                          "license":  "CC BY 2.0; SparkFun Electronics"
+                                      },
+                  "S01_DHT11.png":  {
+                                        "source":  "https://commons.wikimedia.org/wiki/File:Dht11_term_and_humidity_sensor.jpg",
+                                        "license":  "CC BY-SA 3.0; Crackopl"
+                                    },
+                  "S02_DigitalHall.png":  {
+                                              "source":  "https://raw.githubusercontent.com/keyestudio/KS0487-Keyestudio-37-in-1-Sensor-Kit-Upgraded-v3.0/master/media/f63f4bab5eb0a610eb144f3c8010c7eb.png",
+                                              "license":  "See source page/repository"
+                                          },
+                  "S03_AnalogHall.png":  {
+                                             "source":  "https://raw.githubusercontent.com/keyestudio/KS0487-Keyestudio-37-in-1-Sensor-Kit-Upgraded-v3.0/master/media/f63f4bab5eb0a610eb144f3c8010c7eb.png",
+                                             "license":  "See source page/repository"
+                                         },
+                  "S04_PhotoInterrupter.png":  {
+                                                   "source":  "https://raw.githubusercontent.com/keyestudio/KS0487-Keyestudio-37-in-1-Sensor-Kit-Upgraded-v3.0/master/media/4868bc57e85d9db0246cb320bd80d7ab.png",
+                                                   "license":  "See source page/repository"
+                                               },
+                  "S05_FC51.png":  {
+                                       "source":  "https://raw.githubusercontent.com/keyestudio/KS0487-Keyestudio-37-in-1-Sensor-Kit-Upgraded-v3.0/master/media/0f3461602991dde26f4f92298a0e8bca.png",
+                                       "license":  "See source page/repository"
+                                   },
+                  "S06_HCSR04.png":  {
+                                         "source":  "https://raw.githubusercontent.com/keyestudio/KS0487-Keyestudio-37-in-1-Sensor-Kit-Upgraded-v3.0/master/media/beaa63d52a3346603685f0cb461b2cb5.png",
+                                         "license":  "See source page/repository"
+                                     },
+                  "S07_HCSR501.png":  {
+                                          "source":  "https://raw.githubusercontent.com/keyestudio/KS0487-Keyestudio-37-in-1-Sensor-Kit-Upgraded-v3.0/master/media/1e721453ec013fb69ed11e3140e7c82b.png",
+                                          "license":  "See source page/repository"
+                                      },
+                  "S08_KW113Z.png":  {
+                                         "source":  "https://www.motorobit.com/kw11-3z-micro-switch-reel-3-pin-micro-switch-motorobit-35461-30-B.jpg",
+                                         "license":  "See source page/repository"
+                                     },
+                  "S09_BMP280.png":  {
+                                         "source":  "https://core-electronics.com.au/media/catalog/product/b/m/bmp280-1_large.jpg",
+                                         "license":  "See source page/repository"
+                                     },
+                  "S10_BMP180.png":  {
+                                         "source":  "https://cdn11.bigcommerce.com/s-yo2n39m6g3/images/stencil/1280x1280/products/113/390/HTB1FD9ab8DH8KJjSspnq6zNAVXa7__94452.1511761694.jpg",
+                                         "license":  "See source page/repository"
+                                     },
+                  "S11_TCS34725.png":  {
+                                           "source":  "https://gomagcdn.ro/domains/robofun.ro/files/product/original/cjmcu-34725-tcs34725-color-sensor-rgb-development-board-module-032069.jpg",
+                                           "license":  "See source page/repository"
+                                       },
+                  "S12_IRReceiver.png":  {
+                                             "source":  "https://raw.githubusercontent.com/keyestudio/KS0487-Keyestudio-37-in-1-Sensor-Kit-Upgraded-v3.0/master/media/dabc7c28c2f6694d9fddccae37d107fd.png",
+                                             "license":  "See source page/repository"
+                                         },
+                  "S13_DigitalNTC.png":  {
+                                             "source":  "https://raw.githubusercontent.com/keyestudio/KS0487-Keyestudio-37-in-1-Sensor-Kit-Upgraded-v3.0/master/media/a4c25891a05b793ca06cf9c6e4252557.png",
+                                             "license":  "See source page/repository"
+                                         },
+                  "S14_AnalogNTC.png":  {
+                                            "source":  "https://raw.githubusercontent.com/keyestudio/KS0487-Keyestudio-37-in-1-Sensor-Kit-Upgraded-v3.0/master/media/a4c25891a05b793ca06cf9c6e4252557.png",
+                                            "license":  "See source page/repository"
+                                        },
+                  "S15_Photoresistor.png":  {
+                                                "source":  "https://raw.githubusercontent.com/keyestudio/KS0487-Keyestudio-37-in-1-Sensor-Kit-Upgraded-v3.0/master/media/cc53792e28da06b8ef92107227fca879.png",
+                                                "license":  "See source page/repository"
+                                            },
+                  "S16_Joystick.png":  {
+                                           "source":  "https://raw.githubusercontent.com/keyestudio/KS0487-Keyestudio-37-in-1-Sensor-Kit-Upgraded-v3.0/master/media/c85616ad5d84106376aeae8016ebafc9.png",
+                                           "license":  "See source page/repository"
+                                       },
+                  "S17_LinearHall.png":  {
+                                             "source":  "https://raw.githubusercontent.com/keyestudio/KS0487-Keyestudio-37-in-1-Sensor-Kit-Upgraded-v3.0/master/media/f63f4bab5eb0a610eb144f3c8010c7eb.png",
+                                             "license":  "See source page/repository"
+                                         },
+                  "S18_MQ135.png":  {
+                                        "source":  "https://cdn3.botland.store/106960/mq-135-alcohol-benzine-ammonia-sensor-semiconductor.jpg",
+                                        "license":  "See source page/repository"
+                                    },
+                  "S19_SoilMoisture.png":  {
+                                               "source":  "https://raw.githubusercontent.com/keyestudio/KS0487-Keyestudio-37-in-1-Sensor-Kit-Upgraded-v3.0/master/media/a655e9c391a4cafc728c747a17a250ab.png",
+                                               "license":  "See source page/repository"
+                                           },
+                  "S20_TTP223.png":  {
+                                         "source":  "https://raw.githubusercontent.com/keyestudio/KS0487-Keyestudio-37-in-1-Sensor-Kit-Upgraded-v3.0/master/media/03d95d386bab3c7e0faffad0c65f52e4.jpeg",
+                                         "license":  "See source page/repository"
+                                     },
+                  "S21_GP2Y0A21YK0F.png":  {
+                                               "source":  "https://international.switch-science.com/d2/images/40/500x500/741851a7-8d27-4562-9c59-c154a6c5ac51.jpg",
+                                               "license":  "See source page/repository"
+                                           },
+                  "S22_RotaryEncoder.png":  {
+                                                "source":  "https://raw.githubusercontent.com/keyestudio/KS0487-Keyestudio-37-in-1-Sensor-Kit-Upgraded-v3.0/master/media/7ddc78775509ce88d6f51334d0ba0880.jpeg",
+                                                "license":  "See source page/repository"
+                                            },
+                  "S23_HS0038B.png":  {
+                                          "source":  "https://raw.githubusercontent.com/keyestudio/KS0487-Keyestudio-37-in-1-Sensor-Kit-Upgraded-v3.0/master/media/dabc7c28c2f6694d9fddccae37d107fd.png",
+                                          "license":  "See source page/repository"
+                                      },
+                  "S24_TCRT5000.png":  {
+                                           "source":  "https://raw.githubusercontent.com/keyestudio/KS0487-Keyestudio-37-in-1-Sensor-Kit-Upgraded-v3.0/master/media/054baaa2d1f0788165ff7483a6bf314d.png",
+                                           "license":  "See source page/repository"
+                                       },
+                  "S25_FlameSensor.png":  {
+                                              "source":  "https://raw.githubusercontent.com/keyestudio/KS0487-Keyestudio-37-in-1-Sensor-Kit-Upgraded-v3.0/master/media/4bc07221aab0e4f7fe7c9f79a5a1244b.png",
+                                              "license":  "See source page/repository"
+                                          },
+                  "S26_ReedSwitch.png":  {
+                                             "source":  "https://raw.githubusercontent.com/keyestudio/KS0487-Keyestudio-37-in-1-Sensor-Kit-Upgraded-v3.0/master/media/ba9c3d340037188a66504526a606bb81.png",
+                                             "license":  "See source page/repository"
+                                         },
+                  "S27_MicrophoneSmall.png":  {
+                                                  "source":  "https://raw.githubusercontent.com/keyestudio/KS0487-Keyestudio-37-in-1-Sensor-Kit-Upgraded-v3.0/master/media/afad6ba923d8a141d480bd9818f2c7ca.png",
+                                                  "license":  "See source page/repository"
+                                              },
+                  "S28_MicrophoneLarge.png":  {
+                                                  "source":  "https://raw.githubusercontent.com/keyestudio/KS0487-Keyestudio-37-in-1-Sensor-Kit-Upgraded-v3.0/master/media/afad6ba923d8a141d480bd9818f2c7ca.png",
+                                                  "license":  "See source page/repository"
+                                              },
+                  "S29_MetalTouch.png":  {
+                                             "source":  "https://cdn.static.spotpear.cn/uploads/picture/product/module/sensors/ky-036/ky-036-01.jpg",
+                                             "license":  "See source page/repository"
+                                         },
+                  "S30_Heartbeat.png":  {
+                                            "source":  "https://raw.githubusercontent.com/keyestudio/KS0487-Keyestudio-37-in-1-Sensor-Kit-Upgraded-v3.0/master/media/a19a0e30e543b2a49cf0535721893150.png",
+                                            "license":  "See source page/repository"
+                                        },
+                  "S31_Button.png":  {
+                                         "source":  "https://raw.githubusercontent.com/keyestudio/KS0487-Keyestudio-37-in-1-Sensor-Kit-Upgraded-v3.0/master/media/faee0ea6323f384e899e648fb1ee26d8.png",
+                                         "license":  "See source page/repository"
+                                     },
+                  "S32_TiltSwitch.png":  {
+                                             "source":  "https://raw.githubusercontent.com/keyestudio/KS0487-Keyestudio-37-in-1-Sensor-Kit-Upgraded-v3.0/master/media/547f3808c438b7276deda14027c88569.png",
+                                             "license":  "See source page/repository"
+                                         },
+                  "S33_Vibration.png":  {
+                                            "source":  "https://raw.githubusercontent.com/keyestudio/KS0487-Keyestudio-37-in-1-Sensor-Kit-Upgraded-v3.0/master/media/370cecabeea165b0bd9fe17e39bac3a4.png",
+                                            "license":  "See source page/repository"
+                                        },
+                  "S34_MercurySwitch.png":  {
+                                                "source":  "https://raw.githubusercontent.com/keyestudio/KS0487-Keyestudio-37-in-1-Sensor-Kit-Upgraded-v3.0/master/media/547f3808c438b7276deda14027c88569.png",
+                                                "license":  "See source page/repository"
+                                            },
+                  "S35_TapSensor.png":  {
+                                            "source":  "https://raw.githubusercontent.com/keyestudio/KS0487-Keyestudio-37-in-1-Sensor-Kit-Upgraded-v3.0/master/media/abac15314c3b66b2c880476ff337cca2.png",
+                                            "license":  "See source page/repository"
+                                        },
+                  "A00_SG90.png":  {
+                                       "source":  "https://piaustralia.com.au/cdn/shop/products/image_49cf0ea4-b2a9-4912-a7c5-6f31ae157416.jpg?v=1697698757\u0026width=1500",
+                                       "license":  "See source page/repository"
+                                   },
+                  "A01_Stepper.png":  {
+                                          "source":  "https://robu-prod-media.s3.ap-south-1.amazonaws.com/uploads/2022/03/17304-1.jpg",
+                                          "license":  "See source page/repository"
+                                      },
+                  "A02_DCMotor.png":  {
+                                          "source":  "https://raw.githubusercontent.com/keyestudio/KS0487-Keyestudio-37-in-1-Sensor-Kit-Upgraded-v3.0/master/media/22fa87f0ef71fa25a91b885fd9b8f103.png",
+                                          "license":  "See source page/repository"
+                                      },
+                  "A03_TwoColorLED.png":  {
+                                              "source":  "https://leobot.net/productimages/211_1396.jpg",
+                                              "license":  "See source page/repository"
+                                          },
+                  "A04_TwoColorMini.png":  {
+                                               "source":  "https://makershop.ie/image/cache/catalog/p/00278/000-550x550.png",
+                                               "license":  "See source page/repository"
+                                           },
+                  "A05_RGBLED.png":  {
+                                         "source":  "https://raw.githubusercontent.com/keyestudio/KS0487-Keyestudio-37-in-1-Sensor-Kit-Upgraded-v3.0/master/media/6880177c0cc9567d7a7c0ec75dd43e05.png",
+                                         "license":  "See source page/repository"
+                                     },
+                  "A06_RGBLED.png":  {
+                                         "source":  "https://raw.githubusercontent.com/keyestudio/KS0487-Keyestudio-37-in-1-Sensor-Kit-Upgraded-v3.0/master/media/6880177c0cc9567d7a7c0ec75dd43e05.png",
+                                         "license":  "See source page/repository"
+                                     },
+                  "A07_SevenColorLED.png":  {
+                                                "source":  "https://leobot.net/productimages/212_1398.jpg",
+                                                "license":  "See source page/repository"
+                                            },
+                  "A08_IRTransmitter.png":  {
+                                                "source":  "https://raw.githubusercontent.com/keyestudio/KS0487-Keyestudio-37-in-1-Sensor-Kit-Upgraded-v3.0/master/media/315d12803e38eca207e10392ab993d09.png",
+                                                "license":  "See source page/repository"
+                                            },
+                  "A09_Laser.png":  {
+                                        "source":  "https://www.dhm-online.com/4896051/ky-008-module-capteur-laser-arduino.jpg",
+                                        "license":  "See source page/repository"
+                                    },
+                  "A10_PassiveBuzzer.png":  {
+                                                "source":  "https://raw.githubusercontent.com/keyestudio/KS0487-Keyestudio-37-in-1-Sensor-Kit-Upgraded-v3.0/master/media/4d28d48abed337f2c1ce5555bf1835ea.png",
+                                                "license":  "See source page/repository"
+                                            },
+                  "A11_ActiveBuzzer.png":  {
+                                               "source":  "https://raw.githubusercontent.com/keyestudio/KS0487-Keyestudio-37-in-1-Sensor-Kit-Upgraded-v3.0/master/media/c1bed936993e7356c6d9c1849406188d.png",
+                                               "license":  "See source page/repository"
+                                           }
+              }
+}
