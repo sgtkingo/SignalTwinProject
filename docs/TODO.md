@@ -1,0 +1,1 @@
+/data/pics failed to load - HMI crashed - why? Try only one .png, allow verbose level 3
