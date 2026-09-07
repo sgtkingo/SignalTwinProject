@@ -1,5 +1,76 @@
 # RELEASE_NOTES
 
+## 1.2.0.76 - Shared VSCP client/server update
+
+### Protocol architecture
+
+* Replaced the legacy static `Protocol` API and global UART messenger with the
+  modular `vscp` library version `2.0.0`.
+* Updated the wire protocol to VSCP API `1.4`.
+* Added a transport-independent shared `Codec`, request `Client`, handler-based
+  `Server`, common request/response types, and explicit `Transport` interface.
+* Added transport adapters for Arduino `Stream`, C++ iostreams, and C `FILE*`
+  streams.
+* Removed the `expt` dependency from the VSCP transport layer. Diagnostics now
+  use an optional injected `LogSink`, kept separate from the protocol channel.
+* Moved board-specific UART ownership and configuration into the application.
+  The sketch constructs `HardwareSerial`, `StreamTransport`, and one shared
+  `Client`, which is injected into `DeviceManager`.
+* Renamed application UART settings from the legacy `UART1_*` names to
+  `SIGNALTWIN_VSCP_UART_*` settings in `libraries/engine/src/config.hpp`.
+
+### Firmware and emulator interoperability
+
+* Migrated `DeviceManager`, `BaseDevice`, and runtime GUI synchronization from
+  removed `Protocol::*` calls to the injected `vscp::Client`.
+* Restored compatible UART framing behavior:
+  * RX and TX frames remove bytes outside printable ASCII (`32..126`).
+  * Surrounding whitespace is trimmed.
+  * Arduino writes include a separator newline and are flushed as complete
+    frames.
+* VSCP requests now serialize `type` first, for example:
+
+  ```text
+  ?type=INIT&api=1.4&app=board&db=1.3
+  ```
+
+* Updated both emulator implementations so request detection no longer depends
+  on parameter order. Requests such as
+  `?api=1.4&app=board&db=1.3&type=INIT` remain valid.
+* Emulator framing now recognizes VSCP requests after a firmware log prefix
+  while keeping log messages separate from protocol messages.
+* Updated Czech and English protocol/developer documentation for the new API
+  and module boundaries.
+
+### Verification
+
+* Added a native in-memory `vscp::Client` to `vscp::Server` integration test
+  covering `INIT`, `CONNECT`, `UPDATE`, `CONFIG`, `CONTROL`, `RESET`, and
+  `DISCONNECT`.
+* Added validation for pre-INIT commands, failed requests, response UID
+  mismatch, parameter ordering, and non-printable serial bytes.
+* Added emulator protocol tests for both the basic and pattern servers.
+* Verified 24 pattern-emulator `UPDATE` exchanges across four devices and all
+  six scenarios: `normal`, `high_activity`, `thermal_event`, `environmental`,
+  `vibration`, and `recovery`.
+* Verified that scenario-specific values materially differ from normal mode
+  while responses retain a successful status and matching device ID.
+* Verified the complete ESP32-S3 build with the `Huge APP` partition profile:
+  51% program storage and 50% global memory usage.
+
+### Migration notes
+
+* Code using static `Protocol::*` methods must construct a transport and
+  `vscp::Client`, then pass the client to `DeviceManager`.
+* Board integrations overriding `UART1_PORT`, `UART1_BAUDRATE`, `UART1_RX`, or
+  `UART1_TX` must migrate to the corresponding `SIGNALTWIN_VSCP_UART_*` names.
+* Serial Monitor and the emulator cannot normally open the same Windows COM
+  port simultaneously; close Serial Monitor before starting the emulator.
+* Firmware size exceeds the default ESP32-S3 application partition. Use the
+  bundled custom partition table or a compatible large-app partition profile.
+
+---
+
 ## Picture preview and storage update
 
 ### Runtime, VSCP and DB schema
@@ -15,7 +86,7 @@
   * `set_point` is a write value sent by `CONTROL`.
   * `speed` is a config value sent by `CONFIG`.
 * Updated the emulator and pattern emulator so `H00.temp` gradually follows `set_point`; `speed` controls the update step.
-* Migrate VERSION to `config.hpp` as `SIGNALTWIN_FIRMWARE_VERSION`
+* Migrated VERSION to `config.hpp` as `SIGNALTWIN_FIRMWARE_VERSION`.
 
 ### Developer tooling and diagnostics
 
@@ -108,12 +179,6 @@ Protocol reference:
 * Visualization widgets and rendering policies depend on upstream channel metadata and current UI maturity.
 * Heavy UI effects (e.g., excessive alpha/shadows) may be constrained by embedded rendering budget (frame time).
 * “Supports any sensor” is bounded by what the upstream source can expose over VSCP and how channels are described.
-
----
-
-## Upgrade / migration notes
-
-* First release: no migration steps.
 
 ---
 
