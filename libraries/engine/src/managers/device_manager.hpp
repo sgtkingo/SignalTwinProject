@@ -50,6 +50,7 @@ enum class ManagerStatus
 class DeviceManager {
 private:
     DeviceCatalog &catalog;                        ///< Shared device catalog loaded during boot.
+    vscp::Client &protocolClient;                  ///< Shared VSCP request client supplied by the application.
     std::array<VirtualPin, NUM_PINS> PinMap;     ///< Mapping of pins to devices.
 
     bool initialized = false;                 ///< Initialization state flag
@@ -72,7 +73,7 @@ public:
     /**
      * @brief Construct the runtime manager over a shared device catalog.
      */
-    explicit DeviceManager(DeviceCatalog &catalog);
+    DeviceManager(DeviceCatalog &catalog, vscp::Client &protocolClient);
 
     /**
      * @brief Destructor
@@ -138,6 +139,12 @@ public:
      * @param id Unique identifier string
      */
     bool sync(std::string id);
+
+    /**
+     * @brief Synchronize a device through this manager's VSCP client.
+     * @param device Device to synchronize.
+     */
+    bool sync(BaseDevice *device);
 
     /**
      * @brief Print information about a device by UID.

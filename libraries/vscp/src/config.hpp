@@ -1,50 +1,49 @@
 /**
  * @file config.hpp
- * @brief Configuration file for platform-specific settings.
- * 
- * This file defines macros to select the execution environment (Arduino or standard console).
- * Uncomment the desired macro to enable the respective environment.
- * 
- * @copyright 2025 MTA
- * @author Ing. Jiri Konecny
+ * @brief Compile-time configuration for the VSCP library.
+ *
+ * Defaults intentionally preserve the configuration symbols used by the
+ * upstream VSCP implementation. Applications may override any value with a
+ * compiler build flag before this header is included.
  */
 
-#ifndef CONFIG_H
-#define CONFIG_H
+#pragma once
 
-#define MAX_PROTOCOL_REQUEST_SIZE 1024 ///< Maximum size of a protocol request message
-
-/// Uncomment to enable Arduino-based environments
-#ifndef ARDUINO_H_ENV
-#define ARDUINO_H_ENV
+#ifndef VSCP_API_VERSION
+#define VSCP_API_VERSION "1.4"
 #endif
 
-#ifdef ARDUINO_H_ENV
-#define UART1_PORT 0
-#define UART1_BAUDRATE 115200
-#define UART1_RX -1
-#define UART1_TX -1
-#define UART1_TIMEOUT 100
+#ifndef MAX_PROTOCOL_REQUEST_SIZE
+#define MAX_PROTOCOL_REQUEST_SIZE 1024
 #endif
-/// Set protocol verbosity level (0 = silent, 1 = errors, 2 = all)
-#define PROTOCOL_VERBOSE 1
+
+#ifndef PROTOCOL_INIT_TIMEOUT
 #define PROTOCOL_INIT_TIMEOUT 500
-
-// Unified project debug logging switch. Exceptions are printed by their catch handlers.
-#ifndef ENABLE_DEBUG
-#define ENABLE_DEBUG 1
 #endif
 
-// Debug verbosity:
-// 1 = errors only, 2 = warnings and important operations, 3 = all debug details.
-#ifndef DEBUG_VERBOSE_LEVEL
-#define DEBUG_VERBOSE_LEVEL 2
+#ifndef PROTOCOL_VERBOSE
+// 0 = disabled, 1 = transport errors, 2 = errors and complete RX/TX frames.
+#define PROTOCOL_VERBOSE 1
 #endif
 
-/// Uncomment to enable standard console applications (PC/Linux)
-//#define STDIO_H_ENV
+#if !defined(ARDUINO_H_ENV) && !defined(STDIO_H_ENV)
+#if defined(ARDUINO)
+#define ARDUINO_H_ENV
+#else
+#define STDIO_H_ENV
+#endif
+#endif
 
-///Set whatever the application should be a case sensitive
-#define CASE_SENSITIVE true
+#if defined(ARDUINO_H_ENV) && defined(STDIO_H_ENV)
+#error "Select only one VSCP environment: ARDUINO_H_ENV or STDIO_H_ENV"
+#endif
 
-#endif // CONFIG_H
+#ifdef STDIO_H_ENV
+#ifndef VSCP_ENABLE_IOSTREAM
+#define VSCP_ENABLE_IOSTREAM 1
+#endif
+
+#ifndef VSCP_ENABLE_STDIO
+#define VSCP_ENABLE_STDIO 1
+#endif
+#endif

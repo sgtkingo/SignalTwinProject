@@ -1,13 +1,14 @@
 # VSCP Protocol
 
-VSCP (Virtual Sensors Communication Protocol) is a simple text-based protocol for communication between the SignalTwin HMI/firmware and a target board, real device, or emulator. The current project implementation uses VSCP API `1.3`.
+VSCP (Virtual Sensors Communication Protocol) is a simple text-based protocol for communication between the SignalTwin HMI/firmware and a target board, real device, or emulator. The current project implementation uses VSCP API `1.4`.
 
 The protocol follows a request-response model. The HMI always sends one command, and the counterpart responds with one response message. Runtime polling, configuration, control values, and pin assignment are all built on the same format.
 
 ## Location in Code
 
-- Firmware protocol API: `libraries/vscp/src/protocol.hpp`, `libraries/vscp/src/protocol.cpp`
-- UART transport: `libraries/vscp/src/io/messenger.cpp`
+- Shared wire contract: `libraries/vscp/src/vscp_types.*`, `libraries/vscp/src/vscp_codec.*`
+- Client/server API: `libraries/vscp/src/vscp_client.*`, `libraries/vscp/src/vscp_server.*`
+- Transport abstraction and adapters: `libraries/vscp/src/io/vscp_*_transport.*`
 - Device integration: `libraries/engine/src/devices/base_device.hpp`
 - Runtime orchestration: `libraries/engine/src/managers/device_manager.cpp`
 - Emulator: `emulator/engine/emulator.py`
@@ -15,22 +16,21 @@ The protocol follows a request-response model. The HMI always sends one command,
 
 ## Transport
 
-The primary transport is UART.
+The firmware transport is UART. VSCP itself is transport-independent: the application owns and initializes the physical stream, then injects a `vscp::StreamTransport` into either `vscp::Client` or `vscp::Server`.
 
 Default parameters in the VSCP layer:
 
 | Parameter | Value |
 | --- | --- |
 | Baudrate | `115200` |
-| Port | `UART1_PORT`, currently `0` |
+| Port | `SIGNALTWIN_VSCP_UART_PORT`, currently `0` |
 | RX/TX | `-1`, platform default pin mapping |
-| Standard read timeout | `100 ms` |
 | INIT timeout | `500 ms` |
 | Line ending | Each message is terminated by `\n` |
 
-Before sending, `sendMessageAsString()` sanitizes the message to printable ASCII characters and trims whitespace. The message is sent over UART as a single line. On the receiving side, it is read using `readStringUntil('\n')`.
+`vscp::StreamTransport` frames printable ASCII as newline-delimited messages without blocking the server event loop. Desktop programs can use the iostream or stdio adapters instead.
 
-Logging note: the firmware may also write `DEBUG`, `WARNING`, and `EXCEPTION` logs to the same serial stream. The emulator filters these lines and processes them as firmware logs if they do not contain a VSCP request. If a log and a request are merged into one line, the emulator searches for the first occurrence of `?type=` and treats the part before it as a log.
+Logging is injected through a separate `vscp::LogSink`. The diagnostic sink must not be the same stream as the protocol channel, otherwise log lines can corrupt the wire protocol.
 
 ## Wire Format
 
@@ -45,9 +45,9 @@ Rules:
 - The message starts with the `?` character.
 - Pairs are separated by the `&` character.
 - The key and value are separated by the first `=` character.
-- The parser ignores items without `=`.
+- The parser rejects malformed items without `=`.
 - Keys must not be empty.
-- The parser trims whitespace and non-printable characters from the edges of keys and values.
+- The transport removes bytes outside printable ASCII (`32..126`) and trims surrounding whitespace before parsing or writing a frame.
 - The firmware parser is case-sensitive (`CASE_SENSITIVE true`).
 - All values are transmitted as strings.
 - The current firmware builder does not URL-encode values. Therefore, do not use `&`, `=`, or unescaped whitespace in values.
@@ -72,9 +72,9 @@ The firmware maps the response into:
 
 ```cpp
 struct ResponseStatus {
-    ResponseStatusEnum status; // OK or ERROR
-    std::string error;
-    std::unordered_map<std::string, std::string> params;
+    vscp::Status status; // Ok or Error
+    vscp::String error;
+    vscp::Parameters parameters;
 };
 ```
 
@@ -164,7 +164,7 @@ Configs are persistent or setup parameters and are sent via `CONFIG`.
 Current full request:
 
 ```text
-?type=INIT&app=board&db=1.0&api=1.3
+?type=INIT&app=board&db=1.0&api=1.4
 ```
 
 Required/optional parameters:
@@ -174,7 +174,7 @@ Required/optional parameters:
 | `type=INIT` | yes | Command type |
 | `app` | recommended | Application/catalog name, for example `board` |
 | `db` | recommended | Device DB version, for example `1.0` |
-| `api` | yes for the current flow | VSCP API version, currently `1.3` |
+| `api` | yes for the current flow | VSCP API version, currently `1.4` |
 
 Successful response:
 
@@ -185,7 +185,7 @@ Successful response:
 Error response:
 
 ```text
-?status=0&error=API mismatch - got 1.2, expected 1.3
+?status=0&error=API mismatch - got 1.2, expected 1.4
 ```
 
 Emulator:
@@ -300,7 +300,7 @@ Hybrid device example:
 
 Firmware:
 
-- `BaseDevice::syncValues()` calls `Protocol::update(UID)`.
+- `BaseDevice::syncValues(client)` calls the injected `vscp::Client::update(UID)`.
 - Response parameters are written into `Values`.
 - Only keys that exist in the Device DB are written into `Values`.
 - Values are stored as strings and converted according to `dtype` only when read or rendered.
@@ -329,8 +329,8 @@ Successful response:
 
 Firmware:
 
-- `BaseDevice::syncConfigs()` builds a map from all `Configs`.
-- `Protocol::config()` sends all map items as query parameters.
+- `BaseDevice::syncConfigs(client)` builds a map from all `Configs`.
+- `vscp::Client::config()` sends all map items through the shared codec.
 - After `status=1` acknowledgement, the config state is considered synchronized.
 
 Emulator:
@@ -417,7 +417,7 @@ sequenceDiagram
 
     UI->>DM: ensureProtocolInitialized()
     DM->>P: init(app, db)
-    P->>HW: ?type=INIT&app=board&db=1.0&api=1.3
+    P->>HW: ?type=INIT&app=board&db=1.0&api=1.4
     HW-->>P: ?status=1
     P-->>DM: OK
     DM-->>UI: connection ready
@@ -507,7 +507,7 @@ These exceptions should be printed in a catch handler using `Exception::print()`
 ### Sensor CPU Temp
 
 ```text
-HMI -> HW: ?type=INIT&app=board&db=1.0&api=1.3
+HMI -> HW: ?type=INIT&app=board&db=1.0&api=1.4
 HW -> HMI: ?status=1
 
 HMI -> HW: ?type=CONNECT&id=cpu_temp&pins=1
@@ -523,7 +523,7 @@ HW -> HMI: ?id=cpu_temp&status=1
 ### Actuator PWM LED Driver
 
 ```text
-HMI -> HW: ?type=INIT&app=board&db=1.0&api=1.3
+HMI -> HW: ?type=INIT&app=board&db=1.0&api=1.4
 HW -> HMI: ?status=1
 
 HMI -> HW: ?type=CONNECT&id=A00&pins=3
@@ -539,7 +539,7 @@ HW -> HMI: ?id=A00&status=1
 ### Hybrid Temperature Regulator
 
 ```text
-HMI -> HW: ?type=INIT&app=board&db=1.0&api=1.3
+HMI -> HW: ?type=INIT&app=board&db=1.0&api=1.4
 HW -> HMI: ?status=1
 
 HMI -> HW: ?type=CONNECT&id=H00&pins=3,5,6

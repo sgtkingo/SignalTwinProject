@@ -8,7 +8,7 @@ The wire format is a URL-like query string:
     ?type=UPDATE&id=S01
     ?id=S01&status=1&temp=24&humi=58
 
-Supported API 1.3 requests:
+Supported API 1.4 requests:
 INIT, UPDATE, CONFIG, CONTROL, RESET, CONNECT, DISCONNECT.
 """
 
@@ -31,7 +31,7 @@ except ModuleNotFoundError:
 
 
 PROTOCOL_API_VERSION = "1.4"
-DEFAULT_DB_VERSION = "1.0"
+DEFAULT_DB_VERSION = "1.3"
 DEFAULT_APP_NAME = "board"
 FLOAT_DTYPES = {"float", "double"}
 INT_DTYPES = {"int", "integer", "long"}
@@ -43,7 +43,17 @@ def is_firmware_log_line(line: str) -> bool:
 
 
 def find_vscp_request_start(line: str) -> int:
-    return line.lower().find("?type=")
+    lower_line = line.lower()
+    search_from = 0
+    while True:
+        request_start = lower_line.find("?", search_from)
+        if request_start == -1:
+            return -1
+
+        candidate = lower_line[request_start + 1:]
+        if any(part.strip().startswith("type=") for part in candidate.split("&")):
+            return request_start
+        search_from = request_start + 1
 
 
 def _repo_root() -> Path:
@@ -677,7 +687,7 @@ class VSCPEmulator:
         listen_thread.start()
 
         try:
-            print("Emulator ready. Example: ?type=INIT&app=board&db=1.0&api=1.3")
+            print("Emulator ready. Example: ?type=INIT&app=board&db=1.0&api=1.4")
             while True:
                 time.sleep(1)
         except KeyboardInterrupt:

@@ -16,7 +16,8 @@
 /*********************
  *      INCLUDES
  *********************/
-#include "vscp.hpp"
+#include "../config.hpp"
+#include "vscp_client.hpp"
 #include "../exceptions/devices_exceptions.hpp" ///< Device related exceptions.
 #include "../helpers.hpp"    ///< Helper functions.
 
@@ -240,25 +241,24 @@ protected:
      *
      * This function sends a request to the real device to synchronize configuration values.
      */
-    void syncConfigs()
+    void syncConfigs(vscp::Client &protocolClient)
     {
         isConfigsSync = false; // Set flag to indicate config state is not synchronized with the real device.
         redrawPending = false; // Reset redraw flag.
 
-        //Convert Configs to unordered_map<std::string, std::string>
-        std::unordered_map<std::string, std::string> configMap;
+        vscp::Parameters configMap;
         for (const auto &pair : Configs)
         {
-            configMap[pair.first] = pair.second.Value;
+            configMap[vscp::String(pair.first.c_str())] = vscp::String(pair.second.Value.c_str());
         }
         debugLogMessage("BaseDevice::syncConfigs", "runtime config", "device=%s paramCount=%u", UID.c_str(), static_cast<unsigned int>(configMap.size()));
-        auto response = Protocol::config(UID, configMap);
-        if (response.status == ResponseStatusEnum::ERROR)
+        auto response = protocolClient.config(vscp::String(UID.c_str()), configMap);
+        if (response.status == vscp::Status::Error)
         {
-            throw DeviceSynchronizationFailException("BaseDevice::syncConfigs", response.error);
+            throw DeviceSynchronizationFailException("BaseDevice::syncConfigs", std::string(response.error.c_str()));
         }
 
-        isConfigsSync = response.status == ResponseStatusEnum::OK; // Set flag to indicate config state is synchronized with the real device.
+        isConfigsSync = response.status == vscp::Status::Ok; // Set flag to indicate config state is synchronized with the real device.
         redrawPending = isConfigsSync; // Redraw after config changes are acknowledged.
     }
 
@@ -267,23 +267,28 @@ protected:
      *
      * This function sends a request to the real device to read runtime values.
      */
-    void syncValues()
+    void syncValues(vscp::Client &protocolClient)
     {
         try
         {
             isValuesSync = false; // Set flag to indicate runtime values are not synchronized with the real device.
             redrawPending = false; // Reset redraw flag.
 
-            auto response = Protocol::update(UID);
-            if (response.status == ResponseStatusEnum::ERROR)
+            auto response = protocolClient.update(vscp::String(UID.c_str()));
+            if (response.status == vscp::Status::Error)
             {
-                throw DeviceSynchronizationFailException("BaseDevice::syncValues", response.error);
+                throw DeviceSynchronizationFailException("BaseDevice::syncValues", std::string(response.error.c_str()));
             }
 
-            debugLogMessage("BaseDevice::syncValues", "runtime update", "device=%s paramCount=%u", UID.c_str(), static_cast<unsigned int>(response.params.size()));
-            update(response.params); // Update runtime values from response parameters.
+            std::unordered_map<std::string, std::string> responseParameters;
+            for (const auto &parameter : response.parameters)
+            {
+                responseParameters[std::string(parameter.first.c_str())] = std::string(parameter.second.c_str());
+            }
+            debugLogMessage("BaseDevice::syncValues", "runtime update", "device=%s paramCount=%u", UID.c_str(), static_cast<unsigned int>(responseParameters.size()));
+            update(responseParameters); // Update runtime values from response parameters.
 
-            isValuesSync = response.status == ResponseStatusEnum::OK; // Set flag to indicate runtime values are synchronized with the real device.
+            isValuesSync = response.status == vscp::Status::Ok; // Set flag to indicate runtime values are synchronized with the real device.
             redrawPending = isValuesSync; // Redraw after runtime values are updated.
         }
         catch (...)
@@ -488,28 +493,28 @@ public:
     /**
      * @brief Synchronize runtime control payload with the real device.
      */
-    void syncControls()
+    void syncControls(vscp::Client &protocolClient)
     {
         isControlsSync = false;
         redrawPending = false;
 
-        std::unordered_map<std::string, std::string> valueMap;
+        vscp::Parameters valueMap;
         for (const auto &pair : Values)
         {
             if (pair.second.Access == DeviceParamAccess::WRITE)
             {
-                valueMap[pair.first] = pair.second.Value;
+                valueMap[vscp::String(pair.first.c_str())] = vscp::String(pair.second.Value.c_str());
             }
         }
 
-        auto response = Protocol::control(UID, valueMap);
-        if (response.status == ResponseStatusEnum::ERROR)
+        auto response = protocolClient.control(vscp::String(UID.c_str()), valueMap);
+        if (response.status == vscp::Status::Error)
         {
-            throw DeviceSynchronizationFailException("BaseDevice::syncControls", response.error);
+            throw DeviceSynchronizationFailException("BaseDevice::syncControls", std::string(response.error.c_str()));
         }
 
         debugLogMessage("BaseDevice::syncControls", "runtime control", "device=%s paramCount=%u", UID.c_str(), static_cast<unsigned int>(valueMap.size()));
-        isControlsSync = response.status == ResponseStatusEnum::OK;
+        isControlsSync = response.status == vscp::Status::Ok;
         redrawPending = isControlsSync;
     }
 
@@ -834,7 +839,7 @@ public:
      * @brief Connect the device to its assigned pins.
      * 
      */
-    bool connect() 
+    bool connect(vscp::Client &protocolClient)
     {
         std::string pins = getPins();
         if(pins.empty()) {
@@ -844,14 +849,14 @@ public:
             throw DevicePinAssignmentException("connectDevice", "Missing " + std::to_string(getMissingPinCount()) + " of " + std::to_string(getRequiredPinCount()) + " required pins.");
         }
 
-        auto response = Protocol::connect(UID, pins);
-        if (response.status == ResponseStatusEnum::ERROR)
+        auto response = protocolClient.connect(vscp::String(UID.c_str()), vscp::String(pins.c_str()));
+        if (response.status == vscp::Status::Error)
         {
-            throw DeviceConnectionFailException("BaseDevice::connect", response.error);
+            throw DeviceConnectionFailException("BaseDevice::connect", std::string(response.error.c_str()));
         }
 
         debugLogMessage("BaseDevice::connect", "protocol connect", "device=%s pins=%s", UID.c_str(), pins.c_str());
-        pinConnectionActive = response.status == ResponseStatusEnum::OK;
+        pinConnectionActive = response.status == vscp::Status::Ok;
         return pinConnectionActive;
     }
 
@@ -859,22 +864,22 @@ public:
      * @brief Disconnect the device from its assigned pins.
      * 
      */
-    bool disconnect() 
+    bool disconnect(vscp::Client &protocolClient)
     {
-        auto response = Protocol::disconnect(UID);
-        if (response.status == ResponseStatusEnum::ERROR)
+        auto response = protocolClient.disconnect(vscp::String(UID.c_str()));
+        if (response.status == vscp::Status::Error)
         {
-            throw DeviceConnectionFailException("BaseDevice::disconnect", response.error);
+            throw DeviceConnectionFailException("BaseDevice::disconnect", std::string(response.error.c_str()));
         }
 
-        if (response.status == ResponseStatusEnum::OK) {
+        if (response.status == vscp::Status::Ok) {
             debugLogMessage("BaseDevice::disconnect", "protocol disconnect", "device=%s pins=%s", UID.c_str(), getPins().c_str());
             Pins.clear();
             PinAssignments.clear();
             pinConnectionActive = false;
         }
 
-        return response.status == ResponseStatusEnum::OK;
+        return response.status == vscp::Status::Ok;
     }
 
     /**
@@ -1114,7 +1119,7 @@ public:
      *
      * @throws Exception if synchronization fails.
      */
-    virtual bool synchronize()
+    virtual bool synchronize(vscp::Client &protocolClient)
     {
         const bool syncConfigsChannel = usesConfigChannel();
         const bool syncValuesChannel = usesUpdateChannel();
@@ -1147,7 +1152,7 @@ public:
         {
             try
             {
-                syncConfigs();
+                syncConfigs(protocolClient);
             }
             catch (...)
             {
@@ -1159,7 +1164,7 @@ public:
         {
             try
             {
-                syncControls();
+                syncControls(protocolClient);
             }
             catch (...)
             {
@@ -1171,7 +1176,7 @@ public:
         {
             try
             {
-                syncValues();
+                syncValues(protocolClient);
             }
             catch (...)
             {
@@ -1482,7 +1487,7 @@ void printDevice(BaseDevice *device);
  * @param device Pointer to the device to be synchronized.
  * @throws Exceptions should be internally resolved to prevent program from crash.
  */
-bool syncDevice(BaseDevice *device);
+bool syncDevice(BaseDevice *device, vscp::Client &protocolClient);
 
 /**
  * @brief Initialize the device.
@@ -1500,7 +1505,7 @@ bool initDevice(BaseDevice *device);
  * @param device Pointer to the device to be connected.
  * @throws Exceptions should be internally resolved to prevent program from crash.
  */
-bool connectDevice(BaseDevice *device);
+bool connectDevice(BaseDevice *device, vscp::Client &protocolClient);
 
 /**
  * @brief Disconnect the device from its current pins.
@@ -1508,6 +1513,6 @@ bool connectDevice(BaseDevice *device);
  * @param device Pointer to the device to be disconnected.
  * @throws Exceptions should be internally resolved to prevent program from crash.
  */
-bool disconnectDevice(BaseDevice *device);
+bool disconnectDevice(BaseDevice *device, vscp::Client &protocolClient);
 
 #endif // BASE_DEVICE_HPP

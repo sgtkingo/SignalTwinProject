@@ -26,7 +26,7 @@ The upstream endpoint can be a Python emulator, EduBoxHub, or custom hardware im
 | --- | --- |
 | `ui/` | Arduino sketch, hardware init, LVGL display/touch setup, main `setup()` and `loop()`. |
 | `libraries/engine/` | Custom application engine: GUI, runtime manager, storage, device catalog, DataBundle. |
-| `libraries/vscp/` | VSCP protocol implementation and UART messenger for firmware. |
+| `libraries/vscp/` | Shared VSCP codec, transport adapters, client, and server. |
 | `libraries/ui/` | SquareLine/LVGL boot UI generated layer. The application GUI is mainly in `engine/src/gui`. |
 | `libraries/expt/` | Logging, splash messages, and exception framework. |
 | `libraries/lvgl/`, `libraries/LovyanGFX/`, `libraries/ArduinoJson/` | Vendored third-party libraries. |
@@ -230,7 +230,7 @@ Responsibilities:
   4. sends `CONNECT` for each assigned device,
 - during runtime `resync(device)` in running mode:
   1. calls `device->requestRuntimeUpdate()`,
-  2. calls `syncDevice(device)`.
+  2. calls `deviceManager.sync(device)`.
 
 The Pin UI works with virtual pins. The pin state is defined by:
 
@@ -242,17 +242,19 @@ The firmware implementation of VSCP is in `libraries/vscp`.
 
 Main classes/files:
 
-- `libraries/vscp/src/protocol.hpp`
-- `libraries/vscp/src/protocol.cpp`
-- `libraries/vscp/src/io/messenger.hpp`
-- `libraries/vscp/src/io/messenger.cpp`
+- `libraries/vscp/src/vscp_types.*`
+- `libraries/vscp/src/vscp_codec.*`
+- `libraries/vscp/src/vscp_client.*`
+- `libraries/vscp/src/vscp_server.*`
+- `libraries/vscp/src/io/vscp_transport.*`
+- `libraries/vscp/src/io/vscp_stream_transport.*`
 
-The current API version is in `Protocol::API_VERSION`, currently `1.3`.
+The current API version is in `vscp::API_VERSION`, currently `1.4`.
 
 The wire format is a URL-like query string:
 
 ```text
-?type=INIT&app=board&db=1.0&api=1.3
+?type=INIT&app=board&db=1.0&api=1.4
 ?status=1
 
 ?type=CONNECT&id=cpu_temp&pins=1,4
@@ -272,7 +274,7 @@ Supported request types:
 - `CONNECT`: connects a device to pins.
 - `DISCONNECT`: disconnects a device.
 
-The firmware messenger uses `HardwareSerial UART1_VIRTUAL`. UART parameters are in `libraries/vscp/src/config.hpp`.
+The sketch owns `HardwareSerial vscpSerial`, wraps it in `vscp::StreamTransport`, and injects one `vscp::Client` into `DeviceManager`. Board-specific UART defaults are in `libraries/engine/src/config.hpp`.
 
 ## GUI architecture
 
@@ -559,7 +561,7 @@ python emulator/virt_patterns_runner.py
 Example VSCP console/log output:
 
 ```text
-Received: ?type=INIT&app=board&db=1.0&api=1.3
+Received: ?type=INIT&app=board&db=1.0&api=1.4
 Sent: ?status=1
 Received: ?type=CONNECT&id=cpu_temp&pins=1,4
 Sent: ?id=cpu_temp&status=1
@@ -594,8 +596,8 @@ Sent: ?id=cpu_temp&status=1&temp=0.21
 
 ### Modify the VSCP protocol
 
-1. Edit `libraries/vscp/src/protocol.*`.
-2. Update `Protocol::API_VERSION` if the wire contract changes.
+1. Edit `libraries/vscp/src/vscp_types.*` and `libraries/vscp/src/vscp_codec.*`.
+2. Update `VSCP_API_VERSION` if the wire contract changes.
 3. Edit `emulator/engine/emulator.py` so it mirrors the firmware protocol.
 4. Edit `DeviceManager` or `BaseDevice` if sync semantics change.
 5. Test INIT, CONNECT, UPDATE, CONFIG, CONTROL, and DISCONNECT.
@@ -651,10 +653,10 @@ Sent: ?id=cpu_temp&status=1&temp=0.21
 - Verify that the upstream endpoint responds to:
 
 ```text
-?type=INIT&app=board&db=1.0&api=1.3
+?type=INIT&app=board&db=1.0&api=1.4
 ```
 
-- Firmware path: `CommunicationSelectionGui -> DeviceManager::initializeProtocolConnection -> Protocol::init`.
+- Firmware path: `CommunicationSelectionGui -> DeviceManager::initializeProtocolConnection -> vscp::Client::init`.
 
 ### Pin assignment fails
 
@@ -736,7 +738,7 @@ libraries/engine/src/gui/
   all application screens and LVGL panel helpers
 
 libraries/vscp/src/
-  protocol and UART messenger
+  shared VSCP codec, client/server, and transport adapters
 
 libraries/expt/src/
   logging, exceptions, splash messages

@@ -1,4 +1,4 @@
-from engine.emulator import available_serial_ports
+from engine.emulator import available_serial_ports, load_catalog_defaults
 from engine.emulator_patterns import VSCPEmulator
 import traceback
 
@@ -18,8 +18,12 @@ def main():
     port = input(f"Enter serial port (default: {default_port}): ").strip()
     if not port:
         port = default_port
+    
+    sensors, metadata = load_catalog_defaults()
+    print(f"Using catalog {metadata.get('path', 'fallback defaults')}")
+    print(f"Catalog app={metadata.get('application')} db={metadata.get('version')}")
     try:
-        emulator = VSCPEmulator(port=port, baudrate=115200)
+        emulator = VSCPEmulator(sensors, port=port, baudrate=115200)
         emulator.run()
     except Exception as exc:
         print(f"EXCEPTION: virt_patterns_runner failed reason={exc} source=virt_patterns_runner")

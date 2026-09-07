@@ -21,19 +21,40 @@ Response: ?status=1/0&param1=value1&error=message
 Author: Generated for VSCP Protocol Testing
 """
 
+import time
+import random
+import threading
+import math
+import sys
+import traceback
+from urllib.parse import unquote
+from typing import Dict, Any, Optional
+
 try:
     import serial
 except ModuleNotFoundError:
     serial = None
-import time
-import random
-import threading
-import re
-import math
-import sys
-import traceback
-from urllib.parse import parse_qs, unquote
-from typing import Dict, Any, Optional
+
+try:
+    from .emulator import (
+        DEFAULT_APP_NAME,
+        DEFAULT_DB_VERSION,
+        INT_DTYPES,
+        FLOAT_DTYPES,
+        PROTOCOL_API_VERSION,
+        available_serial_ports,
+        load_catalog_defaults,
+    )
+except ImportError:
+    from emulator import (
+        DEFAULT_APP_NAME,
+        DEFAULT_DB_VERSION,
+        INT_DTYPES,
+        FLOAT_DTYPES,
+        PROTOCOL_API_VERSION,
+        available_serial_ports,
+        load_catalog_defaults,
+    )
 
 for stream in (sys.stdout, sys.stderr):
     if hasattr(stream, "reconfigure"):
@@ -45,17 +66,63 @@ def is_firmware_log_line(line: str) -> bool:
     return "DEBUG" in upper_line or "WARNING" in upper_line or "WARN:" in upper_line or "EXCEPTION" in upper_line
 
 def find_vscp_request_start(line: str) -> int:
-    return line.lower().find("?type=")
+    lower_line = line.lower()
+    search_from = 0
+    while True:
+        request_start = lower_line.find("?", search_from)
+        if request_start == -1:
+            return -1
+
+        candidate = lower_line[request_start + 1:]
+        if any(part.strip().startswith("type=") for part in candidate.split("&")):
+            return request_start
+        search_from = request_start + 1
 
 class VSCPEmulator:
     """Virtual Sensors Communication Protocol Emulator"""
-    
-    def __init__(self, port='COM3', baudrate=115200, timeout=0.1):
+
+    PATTERN_PROFILES: Dict[str, Dict[str, float]] = {
+        "temp": {"base": 25.5, "range": 10, "trend": 0.1, "noise": 0.5},
+        "Temperature": {"base": 22.1, "range": 12, "trend": 0.08, "noise": 0.4},
+        "humi": {"base": 80, "range": 30, "trend": -0.2, "noise": 2},
+        "pressure": {"base": 1013.25, "range": 50, "trend": 0.01, "noise": 1.5},
+        "Pressure": {"base": 1013.25, "range": 50, "trend": 0.01, "noise": 1.5},
+        "intensity": {"base": 85, "range": 70, "trend": 0, "noise": 5},
+        "lux_est": {"base": 11.5, "range": 100, "trend": 0, "noise": 2},
+        "dBFS": {"base": 89.5, "range": 40, "trend": 0, "noise": 3},
+        "peak": {"base": 12.0, "range": 20, "trend": 0, "noise": 1.5},
+        "large": {"base": 12500, "range": 250000, "trend": 100, "noise": 2500},
+        "tiny": {"base": 0.00025, "range": 0.00075, "trend": 0, "noise": 0.00005},
+        "normal": {"base": 500, "range": 500, "trend": 2, "noise": 25},
+        "micro": {"base": 0.00000254, "range": 0.000007, "trend": 0, "noise": 0.0000004},
+    }
+
+    DEVICE_PATTERN_PROFILES: Dict[tuple[str, str], Dict[str, float]] = {
+        ("cpu_temp", "temp"): {"base": 55.3, "range": 25, "trend": 0.2, "noise": 1.2},
+        ("H00", "temp"): {"base": 20, "range": 0, "trend": 0, "noise": 0},
+        ("H00", "set_point"): {"base": 25, "range": 0, "trend": 0, "noise": 0},
+        ("A00", "Brightness"): {"base": 40, "range": 0, "trend": 0, "noise": 0},
+    }
+
+    def __init__(
+        self,
+        sensors: Optional[Dict[str, Dict[str, Any]]] = None,
+        port='COM3',
+        baudrate=115200,
+        timeout=0.1,
+        api_version: str = PROTOCOL_API_VERSION,
+        db_version: Optional[str] = None,
+        app_name: Optional[str] = None,
+        strict_api: bool = True,
+    ):
         """Initialize the VSCP emulator"""
-        self.API_VERSION = "1.4"
-        self.DB_VERSION = "1.2"
-        self.APP_NAME = "VSCP Emulator"
+        catalog_sensors, metadata = load_catalog_defaults()
+
+        self.API_VERSION = api_version
+        self.DB_VERSION = db_version or metadata.get("version", DEFAULT_DB_VERSION)
+        self.APP_NAME = app_name or metadata.get("application", DEFAULT_APP_NAME)
         self.APP_VERSION = "1.0.0"
+        self.strict_api = strict_api
         
         # Protocol state
         self.initialized = False
@@ -75,84 +142,7 @@ class VSCPEmulator:
         self.sensor_states = {}  # Track sensor simulation state
         self.simulation_mode = "normal"  # Current simulation scenario
         
-        # Enhanced sensor data with base values and simulation parameters
-        self.sensor_data = {
-            "S00": {
-                "temp": {"base": 25.5, "range": 10, "trend": 0.1, "noise": 0.5},
-                "alarm": {"base": 60.2, "range": 20, "trend": 0, "noise": 2},
-                "type": "DHT22"
-            },
-            "S01": {
-                "temp": {"base": 25.5, "range": 8, "trend": 0.05, "noise": 0.3},
-                "humi": {"base": 80, "range": 30, "trend": -0.2, "noise": 2},
-                "type": "DHT22"
-            },
-            "S15": {
-                "intensity": {"base": 85, "range": 70, "trend": 0, "noise": 5},
-                "type": "Light"
-            },
-            "S02": {
-                "Pressure": {"base": 1013.25, "range": 50, "trend": 0.01, "noise": 1.5},
-                "Temperature": {"base": 22.1, "range": 12, "trend": 0.08, "noise": 0.4},
-                "type": "BMP280"
-            },
-            "S03": {
-                "X": {"base": 45, "range": 90, "trend": 0, "noise": 3},
-                "Y": {"base": 78, "range": 90, "trend": 0, "noise": 3},
-                "Button": {"base": 0, "range": 1, "trend": 0, "noise": 0},
-                "type": "Joystick"
-            },
-            "S05": {
-                "MagField": {"base": 12.5, "range": 20, "trend": 0, "noise": 0.8},
-                "Detected": {"base": 0, "range": 1, "trend": 0, "noise": 0},
-                "type": "Magnetic"
-            },
-            "imu_001": {
-                "acm_x": {"base": -2.1, "range": 4, "trend": 0, "noise": 0.3},
-                "acm_y": {"base": 0.8, "range": 4, "trend": 0, "noise": 0.3},
-                "acm_z": {"base": 9.8, "range": 2, "trend": 0, "noise": 0.1},
-                "gyr_x": {"base": 0.05, "range": 0.2, "trend": 0, "noise": 0.02},
-                "gyr_y": {"base": -0.02, "range": 0.2, "trend": 0, "noise": 0.02},
-                "gyr_z": {"base": 0.01, "range": 0.2, "trend": 0, "noise": 0.02},
-                "type": "IMU"
-            },
-            "mic_001": {
-                "dBFS": {"base": 89.5, "range": 40, "trend": 0, "noise": 3},
-                "peak": {"base": 12.0, "range": 20, "trend": 0, "noise": 1.5},
-                "type": "SLM"
-            },
-            "cam_001": {
-                "lux_est": {"base": 11.5, "range": 100, "trend": 0, "noise": 2},
-                "type": "CAM"
-            },
-            "cpu_temp": {
-                "temp": {"base": 55.3, "range": 25, "trend": 0.2, "noise": 1.2},
-                "type": "CPU Temp" 
-            },
-            "A00": {
-                "Brightness": {"base": 40, "range": 0, "trend": 0, "noise": 0},
-                "type": "PWM LED Driver",
-                "_configs": {"Enabled": "1"},
-                "_control_values": {"Brightness": 40},
-                "_value_access": {"Brightness": "write"}
-            },
-            "H00": {
-                "set_point": {"base": 25, "range": 0, "trend": 0, "noise": 0},
-                "temp": {"base": 20, "range": 0, "trend": 0, "noise": 0},
-                "type": "Temperature Regulator",
-                "_configs": {"speed": 2},
-                "_control_values": {"set_point": 25},
-                "_value_access": {"set_point": "write", "temp": "read"}
-            },
-            "S98": {
-                "large": {"base": 12500, "range": 250000, "trend": 100, "noise": 2500},
-                "tiny": {"base": 0.00025, "range": 0.00075, "trend": 0, "noise": 0.00005},
-                "normal": {"base": 500, "range": 500, "trend": 2, "noise": 25},
-                "micro": {"base": 0.00000254, "range": 0.000007, "trend": 0, "noise": 0.0000004},
-                "type": "Scale Stress Dummy Sensor",
-                "_value_access": {"large": "read", "tiny": "read", "normal": "read", "micro": "read"}
-            }
-        }
+        self.sensor_data = self._build_pattern_catalog(sensors if sensors is not None else catalog_sensors)
         
         # Initialize sensor states
         for uid in self.sensor_data:
@@ -170,6 +160,93 @@ class VSCPEmulator:
             control_defaults = self.sensor_data[uid].get("_control_values", {})
             if isinstance(control_defaults, dict):
                 self.control_values[uid] = {key: str(value) for key, value in control_defaults.items()}
+
+    @staticmethod
+    def _stringify(value: Any) -> str:
+        if isinstance(value, bool):
+            return "1" if value else "0"
+        return str(value)
+
+    @staticmethod
+    def _is_numeric_value(value: Any) -> bool:
+        if isinstance(value, bool):
+            return False
+        try:
+            float(value)
+            return True
+        except (TypeError, ValueError):
+            return False
+
+    @staticmethod
+    def _is_float_dtype(dtype: Any) -> bool:
+        return str(dtype).lower() in FLOAT_DTYPES
+
+    @staticmethod
+    def _is_int_dtype(dtype: Any) -> bool:
+        return str(dtype).lower() in INT_DTYPES
+
+    @classmethod
+    def _format_float(cls, value: Any) -> str:
+        numeric = cls._to_float(value, 0.0)
+        abs_value = abs(numeric)
+        if abs_value != 0.0 and abs_value < 0.001:
+            text = f"{numeric:.9f}"
+        elif abs_value < 1.0:
+            text = f"{numeric:.6f}"
+        else:
+            text = f"{numeric:.2f}"
+        return text.rstrip("0").rstrip(".") if "." in text else text
+
+    @classmethod
+    def _infer_pattern_config(cls, uid: str, key: str, value: Any, payload: Dict[str, Any]) -> Dict[str, float]:
+        profile = cls.DEVICE_PATTERN_PROFILES.get((uid, key)) or cls.PATTERN_PROFILES.get(key)
+        if profile:
+            config = dict(profile)
+            if cls._is_numeric_value(value) and key not in {"temp", "humi", "pressure", "Pressure", "intensity", "lux_est", "dBFS", "peak"}:
+                config["base"] = float(value)
+            return config
+
+        base = float(value) if cls._is_numeric_value(value) else 0.0
+        restrictions = payload.get("_restrictions", {}).get(key, {})
+        minimum = restrictions.get("min")
+        maximum = restrictions.get("max")
+        if minimum is not None and maximum is not None:
+            min_value = float(minimum)
+            max_value = float(maximum)
+            span = max(0.0, max_value - min_value)
+            range_value = max(span * 0.25, 1.0)
+            if base == 0.0 and min_value <= max_value:
+                base = min_value + span / 2
+        elif maximum is not None:
+            range_value = max(abs(float(maximum)) * 0.25, 1.0)
+        else:
+            range_value = max(abs(base) * 0.2, 1.0)
+
+        return {
+            "base": base,
+            "range": range_value,
+            "trend": 0.0,
+            "noise": max(range_value * 0.05, 0.1),
+        }
+
+    @classmethod
+    def _build_pattern_catalog(cls, sensors: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+        pattern_catalog: Dict[str, Dict[str, Any]] = {}
+        for uid, payload in sensors.items():
+            pattern_payload: Dict[str, Any] = {}
+            for key, value in payload.items():
+                if key.startswith("_"):
+                    pattern_payload[key] = value
+                elif key == "type":
+                    pattern_payload[key] = value
+                elif isinstance(value, dict) and "base" in value:
+                    pattern_payload[key] = value
+                elif cls._is_numeric_value(value):
+                    pattern_payload[key] = cls._infer_pattern_config(uid, key, value, payload)
+                else:
+                    pattern_payload[key] = value
+            pattern_catalog[uid] = pattern_payload
+        return pattern_catalog
         
     def connect_serial(self) -> bool:
         """Connect to serial port"""
@@ -223,9 +300,21 @@ class VSCPEmulator:
         
         parts = []
         for key, value in params.items():
-            parts.append(f"{key}={value}")
+            parts.append(f"{key}={self._stringify(value)}")
         
         return "?" + "&".join(parts)
+
+    def _require_initialized(self) -> Optional[str]:
+        if self.initialized:
+            return None
+        return self.build_message({'status': '0', 'error': 'Protocol not initialized'})
+
+    def _require_device_id(self, uid: str) -> Optional[str]:
+        if not uid:
+            return self.build_message({'id': uid, 'status': '0', 'error': 'UID cannot be empty'})
+        if uid not in self.sensor_data:
+            return self.build_message({'id': uid, 'status': '0', 'error': f'Device {uid} not found'})
+        return None
     
     def handle_init(self, params: Dict[str, str]) -> str:
         """Handle INIT method - handshake and version check"""
@@ -234,16 +323,15 @@ class VSCPEmulator:
         # Extract parameters
         app = params.get('app', 'Unknown')
         dbversion = params.get('db', '')
-        api = params.get('api', '0.0.0')
+        api = params.get('api', '')
         
         # Simulate version compatibility check
         response_params = {}
         
-        if not api or api == self.API_VERSION:
+        if not self.strict_api or not api or api == self.API_VERSION:
             self.initialized = True
             response_params = {
-                'status': '1',
-                'message': f'Initialized with {app}'
+                'status': '1'
             }
             print(f"✓ Initialization successful for {app}")
         else:
@@ -324,7 +412,7 @@ class VSCPEmulator:
         elif param_name in ["humi"]:
             # Humidity inversely related to temperature
             environmental = -math.sin(elapsed * 0.1) * 0.3
-        elif param_name in ["Pressure"]:
+        elif param_name in ["Pressure", "pressure"]:
             # Barometric pressure has weather patterns
             environmental = math.sin(elapsed * 0.01) * 0.5 + math.sin(elapsed * 0.03) * 0.2
         elif param_name in ["intensity", "lux_est"]:
@@ -372,8 +460,14 @@ class VSCPEmulator:
             final_value = 1 if random.random() < active_chance else 0
         elif param_name in ["intensity", "lux_est"] and final_value < 0:
             final_value = abs(final_value) * 0.1  # Light can't be negative
-        elif param_name in ["Pressure"]:
+        elif param_name in ["Pressure", "pressure"]:
             final_value = max(900, min(1100, final_value))  # Reasonable pressure range
+
+        restrictions = self.sensor_data.get(uid, {}).get("_restrictions", {}).get(param_name, {})
+        if "min" in restrictions:
+            final_value = max(float(restrictions["min"]), final_value)
+        if "max" in restrictions:
+            final_value = min(float(restrictions["max"]), final_value)
         
         return final_value
 
@@ -422,37 +516,38 @@ class VSCPEmulator:
         uid = params.get('id', '')
         print(f"📊 UPDATE request for sensor: {uid}")
         
-        if not self.initialized:
-            return self.build_message({'status': '0', 'error': 'Protocol not initialized'})
+        error = self._require_initialized()
+        if error:
+            return error
+
+        error = self._require_device_id(uid)
+        if error:
+            return error
         
         if uid in self.sensor_data:
             # Get sensor configuration
             sensor_config = self.sensor_data[uid]
             sensor_info = {}
             value_access = sensor_config.get("_value_access", {})
+            value_dtypes = sensor_config.get("_value_dtypes", {})
             regulator_updated = self.advance_temperature_regulator(uid)
             
             # Generate realistic values for each parameter
             for key, config in sensor_config.items():
-                if key.startswith('_'):
+                if key.startswith('_') or key == 'type':
                     continue
                 if value_access.get(key, "read") == "write":
                     continue
-                if key == 'type':
-                    sensor_info[key] = config  # Type is static
-                elif isinstance(config, dict) and 'base' in config:
+                if isinstance(config, dict) and 'base' in config:
                     # Generate realistic value using simulation
                     value = self.simulate_realistic_value(uid, key, config)
+                    dtype = value_dtypes.get(key, "")
                     
                     # Format appropriately (int vs float)
-                    if key in ["Button", "Detected", "X", "Y"] or (regulator_updated and key == "temp"):
+                    if self._is_int_dtype(dtype) or key in ["Button", "Detected", "X", "Y"] or (regulator_updated and key == "temp" and not self._is_float_dtype(dtype)):
                         sensor_info[key] = int(round(value))
-                    elif abs(value) != 0.0 and abs(value) < 0.001:
-                        sensor_info[key] = f"{value:.9f}".rstrip("0").rstrip(".")
-                    elif abs(value) < 1.0:
-                        sensor_info[key] = f"{value:.6f}".rstrip("0").rstrip(".")
                     else:
-                        sensor_info[key] = round(value, 2)
+                        sensor_info[key] = self._format_float(value)
                 else:
                     # Fallback for any static values
                     sensor_info[key] = config
@@ -516,19 +611,23 @@ class VSCPEmulator:
         uid = params.get('id', '')
         print(f"⚙️  CONFIG request for sensor: {uid}")
         
-        if not self.initialized:
-            return self.build_message({'status': '0', 'error': 'Protocol not initialized'})
+        error = self._require_initialized()
+        if error:
+            return error
+
+        error = self._require_device_id(uid)
+        if error:
+            return error
         
         # Extract configuration parameters (exclude 'type' and 'id')
         config_params = {k: v for k, v in params.items() if k not in ['type', 'id']}
         
         if uid:
             # Store configuration
-            self.sensor_configs[uid] = config_params
+            self.sensor_configs.setdefault(uid, {}).update(config_params)
             response_params = {
                 'id': uid,
-                'status': '1',
-                'message': f'Configuration applied: {config_params}'
+                'status': '1'
             }
             print(f"✓ Sensor {uid} configured: {config_params}")
         else:
@@ -546,8 +645,13 @@ class VSCPEmulator:
         uid = params.get('id', '')
         print(f"CONTROL request for device: {uid}")
 
-        if not self.initialized:
-            return self.build_message({'status': '0', 'error': 'Protocol not initialized'})
+        error = self._require_initialized()
+        if error:
+            return error
+
+        error = self._require_device_id(uid)
+        if error:
+            return error
 
         control_params = {k: v for k, v in params.items() if k not in ['type', 'id']}
 
@@ -563,6 +667,10 @@ class VSCPEmulator:
                     })
 
             self.control_values.setdefault(uid, {}).update(control_params)
+            for key, value in control_params.items():
+                value_config = self.sensor_data[uid].get(key)
+                if isinstance(value_config, dict) and "base" in value_config and self._is_numeric_value(value):
+                    value_config["base"] = float(value)
             response_params = {
                 'id': uid,
                 'status': '1'
@@ -582,8 +690,9 @@ class VSCPEmulator:
         uid = params.get('id', '')
         print(f"🔄 RESET request for sensor: {uid}")
         
-        if not self.initialized:
-            return self.build_message({'status': '0', 'error': 'Protocol not initialized'})
+        error = self._require_initialized()
+        if error:
+            return error
         
         if uid in self.sensor_data or uid == 'all':
             # Reset sensor(s)
@@ -618,8 +727,13 @@ class VSCPEmulator:
         pins = params.get('pins', '')
         print(f"🔌 CONNECT request: sensor {uid} to pins {pins}")
         
-        if not self.initialized:
-            return self.build_message({'status': '0', 'error': 'Protocol not initialized'})
+        error = self._require_initialized()
+        if error:
+            return error
+
+        error = self._require_device_id(uid)
+        if error:
+            return error
         
         if uid and pins:
             try:
@@ -668,26 +782,17 @@ class VSCPEmulator:
         uid = params.get('id', '')
         print(f"🔌 DISCONNECT request for sensor: {uid}")
         
-        if not self.initialized:
-            return self.build_message({'status': '0', 'error': 'Protocol not initialized'})
+        error = self._require_initialized()
+        if error:
+            return error
+
+        error = self._require_device_id(uid)
+        if error:
+            return error
+
+        self.connected_sensors.pop(uid, None)
+        return self.build_message({'id': uid, 'status': '1'})
         
-        if uid in self.connected_sensors:
-            pin = self.connected_sensors.pop(uid)
-            response_params = {
-                'id': uid,
-                'status': '1',
-                'pin': str(pin)
-            }
-            print(f"✓ Sensor {uid} disconnected from pin {pin}")
-        else:
-            response_params = {
-                'id': uid,
-                'status': '0',
-                'error': f'Sensor {uid} not connected'
-            }
-            print(f"✗ Sensor {uid} not connected")
-        
-        return self.build_message(response_params)
     
     def process_request(self, message: str) -> str:
         """Process incoming protocol request"""
@@ -767,7 +872,7 @@ class VSCPEmulator:
                             if request_index != -1:
                                 line = line[request_index:]
 
-                        if line and line.lower().startswith('?type='):
+                        if line.startswith('?') and self.parse_message(line).get('type'):
                             print(f"📨 Received: {line}")
                             response = self.process_request(line)
                             
@@ -807,7 +912,7 @@ class VSCPEmulator:
         
         try:
             print("\n💡 Enhanced emulator ready! Realistic sensor data patterns active.")
-            print("   Example: ?type=INIT&app=board&db=1.0&api=1.3")
+            print("   Example: ?type=INIT&app=board&db=1.0&api=1.4")
             print("   Press Ctrl+C to stop\n")
             
             # Keep main thread alive and show simulation status
@@ -829,10 +934,8 @@ class VSCPEmulator:
 
 def main():
     """Main entry point"""
-    import serial.tools.list_ports
-    
     # Get available COM ports
-    available_ports = [port.device for port in serial.tools.list_ports.comports()]
+    available_ports = available_serial_ports()
     
     if available_ports:
         default_port = available_ports[0]

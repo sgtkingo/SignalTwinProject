@@ -1144,7 +1144,7 @@ bool SignalsVisualizationGui::applyEditableValue(bool isValueControl, const std:
             return false;
         }
 
-        if (!syncDevice(currentDevice)) {
+        if (!deviceManager.sync(currentDevice)) {
             const std::string syncError = currentDevice->getError();
             debugLogMessage(
                 DEBUG_VERBOSE_ERRORS,
@@ -1461,7 +1461,7 @@ bool SignalsVisualizationGui::syncCurrentDevice()
     }
 
     currentDevice->requestRuntimeUpdate();
-    const bool success = syncDevice(currentDevice);
+    const bool success = deviceManager.sync(currentDevice);
     if (!success) {
         debugLogMessage(DEBUG_VERBOSE_ERRORS, "SignalsVisualizationGui::syncCurrentDevice", "runtime sync failed", "device=%s error=%s", currentDevice->UID.c_str(), currentDevice->getError().c_str());
         showAlert(currentDevice->getError().empty() ? "Sync failed" : currentDevice->getError().c_str());

@@ -1,0 +1,454 @@
+{
+  "version": "1.3",
+  "application": "board",
+  "devices": {
+    "mic_001": {
+      "uid": "mic_001",
+      "role": "sensor",
+      "type": "SLM (dBFS)",
+      "description": "Emulated microphone sensor.",
+      "values": {
+        "dBFS": {
+          "value": 0,
+          "unit": "dBm",
+          "dtype": "float"
+        },
+        "peak": {
+          "value": 0,
+          "unit": "dBm",
+          "dtype": "float"
+        }
+      },
+      "configs": {},
+      "default": {
+        "values": {
+          "dBFS": 0,
+          "peak": 0
+        },
+        "pins": {}
+      },
+      "picture": "placeholder:device",
+      "Pins": [
+        "P1"
+      ]
+    },
+    "cam_001": {
+      "uid": "cam_001",
+      "role": "sensor",
+      "type": "CAM Lux meter",
+      "description": "Emulated camera lux meter sensor.",
+      "values": {
+        "lux_est": {
+          "value": 0,
+          "unit": "lux",
+          "dtype": "float",
+          "restrictions": {
+            "min": 0
+          }
+        }
+      },
+      "configs": {},
+      "default": {
+        "values": {
+          "lux_est": 0
+        },
+        "pins": {}
+      },
+      "picture": "placeholder:device",
+      "Pins": [
+        "P1"
+      ]
+    },
+    "cpu_temp": {
+      "uid": "cpu_temp",
+      "role": "sensor",
+      "type": "CPU Temp",
+      "description": "Emulated CPU temperature sensor.",
+      "values": {
+        "temp": {
+          "value": 0,
+          "unit": "C",
+          "dtype": "float"
+        }
+      },
+      "configs": {},
+      "default": {
+        "values": {
+          "temp": 0
+        },
+        "pins": {}
+      },
+      "picture": "placeholder:device",
+      "Pins": [
+        "P1"
+      ]
+    },
+    "S00": {
+      "uid": "S00",
+      "role": "sensor",
+      "type": "DS18B20",
+      "description": "Digital temperature sensor with alarm status.",
+      "values": {
+        "temp": {
+          "value": 0,
+          "unit": "C",
+          "dtype": "float"
+        },
+        "alarm": {
+          "value": "0",
+          "unit": "",
+          "dtype": "string"
+        }
+      },
+      "configs": {
+        "Res": {
+          "value": 2,
+          "unit": "decimals",
+          "dtype": "int",
+          "restrictions": {
+            "min": 0,
+            "max": 6
+          }
+        }
+      },
+      "default": {
+        "values": {
+          "temp": 0,
+          "alarm": "0"
+        },
+        "configs": {
+          "Res": 2
+        },
+        "pins": {}
+      },
+      "picture": "DS18B20.png",
+      "Pins": [
+        "DQ"
+      ]
+    },
+    "S01": {
+      "uid": "S01",
+      "role": "sensor",
+      "type": "DHT11",
+      "description": "DHT11 temperature and humidity sensor.",
+      "values": {
+        "temp": {
+          "value": 0.0,
+          "unit": "C",
+          "dtype": "float",
+          "restrictions": {
+            "min": -40,
+            "max": 80
+          }
+        },
+        "humi": {
+          "value": 0,
+          "unit": "%",
+          "dtype": "int",
+          "restrictions": {
+            "min": 0,
+            "max": 100
+          }
+        }
+      },
+      "configs": {
+        "Unit": {
+          "value": "",
+          "unit": "",
+          "dtype": "string",
+          "restrictions": {
+            "options": [
+              "C",
+              "F"
+            ]
+          }
+        }
+      },
+      "default": {
+        "values": {
+          "temp": 0.0,
+          "humi": 0
+        },
+        "configs": {
+          "Unit": "C"
+        },
+        "pins": {}
+      },
+      "picture": "placeholder:device",
+      "Pins": [
+        "P1"
+      ]
+    },
+    "S15": {
+      "uid": "S15",
+      "role": "sensor",
+      "type": "PhotoResistor",
+      "description": "Light intensity sensor.",
+      "values": {
+        "intensity": {
+          "value": 0,
+          "unit": "lux",
+          "dtype": "int",
+          "restrictions": {
+            "min": 0
+          }
+        }
+      },
+      "configs": {
+        "Res": {
+          "value": 5,
+          "unit": "digits",
+          "dtype": "int",
+          "restrictions": {
+            "min": 1,
+            "max": 8
+          }
+        }
+      },
+      "default": {
+        "values": {
+          "intensity": 0
+        },
+        "configs": {
+          "Res": 5
+        },
+        "pins": {}
+      },
+      "picture": "placeholder:device",
+      "Pins": [
+        "P1"
+      ]
+    },
+    "S99": {
+      "uid": "S99",
+      "role": "sensor",
+      "type": "Multi Value Dummy Sensor",
+      "description": "Dummy sensor for testing multivalue runtime charts and DataBundle viewer.",
+      "values": {
+        "temp": {
+          "value": 22.5,
+          "unit": "C",
+          "dtype": "float",
+          "access": "read",
+          "restrictions": {
+            "min": -20,
+            "max": 80
+          }
+        },
+        "humi": {
+          "value": 45,
+          "unit": "%",
+          "dtype": "int",
+          "access": "read",
+          "restrictions": {
+            "min": 0,
+            "max": 100
+          }
+        },
+        "pressure": {
+          "value": 1013.25,
+          "unit": "hPa",
+          "dtype": "float",
+          "access": "read",
+          "restrictions": {
+            "min": 900,
+            "max": 1100
+          }
+        }
+      },
+      "configs": {},
+      "default": {
+        "values": {
+          "temp": 22.5,
+          "humi": 45,
+          "pressure": 1013.25
+        },
+        "pins": {}
+      },
+      "picture": "placeholder:device",
+      "Pins": [
+        "P1"
+      ]
+    },
+    "S98": {
+      "uid": "S98",
+      "role": "sensor",
+      "type": "Scale Stress Dummy Sensor",
+      "description": "Dummy sensor for testing chart Y-axis formatting with very small, very large and normal ranges.",
+      "values": {
+        "large": {
+          "value": 12500,
+          "unit": "u",
+          "dtype": "float",
+          "access": "read",
+          "restrictions": {
+            "min": 10000,
+            "max": 2500000
+          }
+        },
+        "tiny": {
+          "value": 0.00025,
+          "unit": "u",
+          "dtype": "float",
+          "access": "read",
+          "restrictions": {
+            "min": 0,
+            "max": 0.001
+          }
+        },
+        "normal": {
+          "value": 500,
+          "unit": "u",
+          "dtype": "float",
+          "access": "read",
+          "restrictions": {
+            "min": 0,
+            "max": 1000
+          }
+        },
+        "micro": {
+          "value": 0.00000254,
+          "unit": "u",
+          "dtype": "float",
+          "access": "read",
+          "restrictions": {
+            "min": 0,
+            "max": 0.00001
+          }
+        }
+      },
+      "configs": {},
+      "default": {
+        "values": {
+          "large": 12500,
+          "tiny": 0.00025,
+          "normal": 500,
+          "micro": 0.00000254
+        },
+        "pins": {}
+      },
+      "picture": "placeholder:device",
+      "Pins": [
+        "P1"
+      ]
+    },
+    "A00": {
+      "uid": "A00",
+      "role": "actuator",
+      "type": "PWM LED Driver",
+      "description": "Simple actuator for testing runtime CONTROL-based brightness.",
+      "values": {
+        "Brightness": {
+          "value": 40,
+          "unit": "%",
+          "dtype": "int",
+          "access": "write",
+          "restrictions": {
+            "min": 0,
+            "max": 100,
+            "step": 5
+          }
+        }
+      },
+      "configs": {
+        "Enabled": {
+          "value": "1",
+          "unit": "",
+          "dtype": "string",
+          "restrictions": {
+            "options": [
+              "0",
+              "1"
+            ]
+          }
+        }
+      },
+      "allowedPins": [
+        3,
+        5,
+        6,
+        9,
+        10,
+        11
+      ],
+      "default": {
+        "values": {
+          "Brightness": 40
+        },
+        "configs": {
+          "Enabled": "1"
+        },
+        "pins": {}
+      },
+      "picture": "placeholder:device",
+      "Pins": [
+        "PWM"
+      ]
+    },
+    "H00": {
+      "uid": "H00",
+      "role": "hybrid",
+      "type": "Temperature Regulator",
+      "description": "Hybrid temperature regulator for testing UPDATE, CONTROL and CONFIG.",
+      "values": {
+        "set_point": {
+          "value": 25,
+          "unit": "C",
+          "dtype": "int",
+          "access": "write",
+          "restrictions": {
+            "min": 5,
+            "max": 80,
+            "step": 1
+          }
+        },
+        "temp": {
+          "value": 20,
+          "unit": "C",
+          "dtype": "int",
+          "access": "read",
+          "restrictions": {
+            "min": -40,
+            "max": 120
+          }
+        }
+      },
+      "configs": {
+        "speed": {
+          "value": 2,
+          "unit": "",
+          "dtype": "int",
+          "restrictions": {
+            "min": 1,
+            "max": 5,
+            "step": 1
+          }
+        }
+      },
+      "allowedPins": [
+        3,
+        5,
+        6,
+        9,
+        10,
+        11
+      ],
+      "default": {
+        "values": {
+          "set_point": 25,
+          "temp": 20
+        },
+        "configs": {
+          "speed": 2
+        },
+        "pins": {}
+      },
+      "picture": "placeholder:device",
+      "Pins": [
+        "CTRL",
+        "SENSE",
+        "PWM"
+      ]
+    }
+  }
+}

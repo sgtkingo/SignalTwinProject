@@ -1,13 +1,14 @@
 # VSCP Protocol
 
-VSCP (Virtual Sensors Communication Protocol) je jednoduchý textový protokol pro komunikaci mezi HMI/firmwarem SignalTwin a cílovou deskou, reálným zařízením nebo emulátorem. Aktuální implementace projektu používá VSCP API `1.3`.
+VSCP (Virtual Sensors Communication Protocol) je jednoduchý textový protokol pro komunikaci mezi HMI/firmwarem SignalTwin a cílovou deskou, reálným zařízením nebo emulátorem. Aktuální implementace projektu používá VSCP API `1.4`.
 
 Protokol je request-response. HMI vždy odešle jeden command, protistrana odpoví jednou response zprávou. Runtime polling, configurace, control hodnoty i pin assignment jsou postavené nad stejným formátem.
 
 ## Umístění V Kódu
 
-- Firmware protocol API: `libraries/vscp/src/protocol.hpp`, `libraries/vscp/src/protocol.cpp`
-- UART transport: `libraries/vscp/src/io/messenger.cpp`
+- Sdílený wire contract: `libraries/vscp/src/vscp_types.*`, `libraries/vscp/src/vscp_codec.*`
+- Client/server API: `libraries/vscp/src/vscp_client.*`, `libraries/vscp/src/vscp_server.*`
+- Abstrakce transportu a adaptéry: `libraries/vscp/src/io/vscp_*_transport.*`
 - Device integration: `libraries/engine/src/devices/base_device.hpp`
 - Runtime orchestrace: `libraries/engine/src/managers/device_manager.cpp`
 - Emulátor: `emulator/engine/emulator.py`
@@ -15,22 +16,21 @@ Protokol je request-response. HMI vždy odešle jeden command, protistrana odpov
 
 ## Transport
 
-Primární transport je UART.
+Firmware používá UART. VSCP je ale nezávislé na transportu: aplikace vlastní a inicializuje fyzický stream a následně předá `vscp::StreamTransport` do `vscp::Client` nebo `vscp::Server`.
 
 Výchozí parametry ve VSCP vrstvě:
 
 | Parametr | Hodnota |
 | --- | --- |
 | Baudrate | `115200` |
-| Port | `UART1_PORT`, aktuálně `0` |
+| Port | `SIGNALTWIN_VSCP_UART_PORT`, aktuálně `0` |
 | RX/TX | `-1`, výchozí pin mapping platformy |
-| Timeout běžného čtení | `100 ms` |
 | Timeout INIT | `500 ms` |
 | Line ending | Každá zpráva je ukončená `\n` |
 
-`sendMessageAsString()` před odesláním zprávu očistí na tisknutelné ASCII znaky a trimuje whitespace. Zpráva se na UART posílá jako samostatný řádek. Na straně příjmu se čte přes `readStringUntil('\n')`.
+`vscp::StreamTransport` rámuje tisknutelné ASCII do zpráv ukončených novým řádkem a neblokuje serverový event loop. Desktop může použít iostream nebo stdio adaptér.
 
-Poznámka k logování: firmware může do stejného serial streamu zapisovat také `DEBUG`, `WARNING` a `EXCEPTION` logy. Emulátor tyto řádky filtruje a zpracuje jako firmware log, pokud neobsahují VSCP request. Pokud se log a request slepí do jednoho řádku, emulátor hledá první výskyt `?type=` a část před ním bere jako log.
+Logování se předává samostatně přes `vscp::LogSink`. Diagnostický sink nesmí používat stejný stream jako protokolový kanál, jinak mohou logy poškodit wire protokol.
 
 ## Wire Format
 
@@ -45,9 +45,9 @@ Pravidla:
 - Zpráva začíná znakem `?`.
 - Páry jsou oddělené znakem `&`.
 - Klíč a hodnota jsou oddělené prvním znakem `=`.
-- Parser ignoruje položky bez `=`.
+- Parser odmítne chybné položky bez `=`.
 - Klíče nesmí být prázdné.
-- Parser trimuje whitespace a netisknutelné znaky na okrajích klíčů a hodnot.
+- Transport před parsováním i zápisem rámce odstraní znaky mimo tisknutelné ASCII (`32..126`) a ořízne okolní whitespace.
 - Firmware parser je case-sensitive (`CASE_SENSITIVE true`).
 - Všechny hodnoty jsou přenášené jako string.
 - Aktuální firmware builder hodnoty neURL-encoduje. Nepoužívat proto `&`, `=` a neescapované whitespace v hodnotách.
@@ -72,9 +72,9 @@ Firmware mapuje odpověď do:
 
 ```cpp
 struct ResponseStatus {
-    ResponseStatusEnum status; // OK nebo ERROR
-    std::string error;
-    std::unordered_map<std::string, std::string> params;
+    vscp::Status status; // Ok nebo Error
+    vscp::String error;
+    vscp::Parameters parameters;
 };
 ```
 
@@ -164,7 +164,7 @@ INIT navazuje protokolové spojení. Firmware ho volá lazy, typicky při vstupu
 Aktuální plný request:
 
 ```text
-?type=INIT&app=board&db=1.0&api=1.3
+?type=INIT&app=board&db=1.0&api=1.4
 ```
 
 Povinné/volitelné parametry:
@@ -174,7 +174,7 @@ Povinné/volitelné parametry:
 | `type=INIT` | ano | Command type |
 | `app` | doporučený | Název aplikace/katalogu, např. `board` |
 | `db` | doporučený | Verze Device DB, např. `1.0` |
-| `api` | ano pro aktuální flow | VSCP API verze, aktuálně `1.3` |
+| `api` | ano pro aktuální flow | VSCP API verze, aktuálně `1.4` |
 
 Úspěšná response:
 
@@ -185,7 +185,7 @@ Povinné/volitelné parametry:
 Chybná response:
 
 ```text
-?status=0&error=API mismatch - got 1.2, expected 1.3
+?status=0&error=API mismatch - got 1.2, expected 1.4
 ```
 
 Emulátor:
@@ -300,7 +300,7 @@ Příklad hybrid device:
 
 Firmware:
 
-- `BaseDevice::syncValues()` volá `Protocol::update(UID)`.
+- `BaseDevice::syncValues(client)` volá předaný `vscp::Client::update(UID)`.
 - Response parametry se zapisují do `Values`.
 - Do `Values` se zapisují jen klíče, které existují v Device DB.
 - Hodnoty se ukládají jako string a podle `dtype` se konvertují až při čtení nebo vykreslení.
@@ -329,8 +329,8 @@ Request:
 
 Firmware:
 
-- `BaseDevice::syncConfigs()` sestaví mapu ze všech `Configs`.
-- `Protocol::config()` odešle všechny položky mapy jako query parametry.
+- `BaseDevice::syncConfigs(client)` sestaví mapu ze všech `Configs`.
+- `vscp::Client::config()` odešle všechny položky přes sdílený codec.
 - Po potvrzení `status=1` je config state považovaný za synchronizovaný.
 
 Emulátor:
@@ -417,7 +417,7 @@ sequenceDiagram
 
     UI->>DM: ensureProtocolInitialized()
     DM->>P: init(app, db)
-    P->>HW: ?type=INIT&app=board&db=1.0&api=1.3
+    P->>HW: ?type=INIT&app=board&db=1.0&api=1.4
     HW-->>P: ?status=1
     P-->>DM: OK
     DM-->>UI: connection ready
@@ -507,7 +507,7 @@ Tyto výjimky se mají tisknout v catch handleru přes `Exception::print()`.
 ### Sensor CPU Temp
 
 ```text
-HMI -> HW: ?type=INIT&app=board&db=1.0&api=1.3
+HMI -> HW: ?type=INIT&app=board&db=1.0&api=1.4
 HW -> HMI: ?status=1
 
 HMI -> HW: ?type=CONNECT&id=cpu_temp&pins=1
@@ -523,7 +523,7 @@ HW -> HMI: ?id=cpu_temp&status=1
 ### Actuator PWM LED Driver
 
 ```text
-HMI -> HW: ?type=INIT&app=board&db=1.0&api=1.3
+HMI -> HW: ?type=INIT&app=board&db=1.0&api=1.4
 HW -> HMI: ?status=1
 
 HMI -> HW: ?type=CONNECT&id=A00&pins=3
@@ -539,7 +539,7 @@ HW -> HMI: ?id=A00&status=1
 ### Hybrid Temperature Regulator
 
 ```text
-HMI -> HW: ?type=INIT&app=board&db=1.0&api=1.3
+HMI -> HW: ?type=INIT&app=board&db=1.0&api=1.4
 HW -> HMI: ?status=1
 
 HMI -> HW: ?type=CONNECT&id=H00&pins=3,5,6

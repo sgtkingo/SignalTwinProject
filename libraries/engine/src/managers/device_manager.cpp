@@ -19,7 +19,8 @@
 #include "helpers.hpp"
 #include "expt.hpp"
 
-DeviceManager::DeviceManager(DeviceCatalog &catalog) : catalog(catalog) {
+DeviceManager::DeviceManager(DeviceCatalog &catalog, vscp::Client &protocolClient)
+    : catalog(catalog), protocolClient(protocolClient) {
 }
 
 DeviceManager::~DeviceManager() {
@@ -91,7 +92,7 @@ void DeviceManager::applyAssignedPinsToDevices() const
 void DeviceManager::disconnectAssignedDevices(const std::vector<BaseDevice *> &devices) const
 {
     for (BaseDevice *device : devices) {
-        disconnectDevice(device);
+        disconnectDevice(device, protocolClient);
     }
 }
 
@@ -167,7 +168,7 @@ bool DeviceManager::init() {
 
 bool DeviceManager::ensureProtocolInitialized()
 {
-    if (Protocol::isInitialized()) {
+    if (protocolClient.isInitialized()) {
         return true;
     }
 
@@ -178,12 +179,13 @@ bool DeviceManager::initializeProtocolConnection()
 {
     debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DeviceManager::initializeProtocolConnection", "protocol init", "initializing protocol on demand app=%s db=%s", catalog.getApplication().c_str(), catalog.getVersion().c_str());
 
-    ResponseStatus response {ResponseStatusEnum::ERROR, "Protocol initialization failed", {}};
+    vscp::ResponseStatus response;
+    response.error = "Protocol initialization failed";
     for (size_t i = 0; i < DeviceManager::MAX_INIT_ATTEMPTS; i++)
     {
         debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DeviceManager::initializeProtocolConnection", "protocol init", "attempt=%u", static_cast<unsigned int>(i + 1));
-        response = Protocol::init(catalog.getApplication(), catalog.getVersion());
-        if (response.status == ResponseStatusEnum::OK)
+        response = protocolClient.init(vscp::String(catalog.getApplication().c_str()), vscp::String(catalog.getVersion().c_str()));
+        if (response.status == vscp::Status::Ok)
         {
             debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DeviceManager::initializeProtocolConnection", "protocol init", "initialized successfully");
             return true;
@@ -207,9 +209,13 @@ void DeviceManager::addDevice(BaseDevice* device) {
 
 bool DeviceManager::sync(std::string id) {
     BaseDevice* device = getDevice(id);
-    if (device) return syncDevice(device);
+    if (device) return sync(device);
 
     return false;
+}
+
+bool DeviceManager::sync(BaseDevice *device) {
+    return syncDevice(device, protocolClient);
 }
 
 void DeviceManager::print(std::string uid) {
@@ -230,7 +236,7 @@ bool DeviceManager::resync(BaseDevice *device)
         }
         device->requestRuntimeUpdate();
     }
-    return syncDevice(device);
+    return sync(device);
 }
 
 bool DeviceManager::connect() 
@@ -284,7 +290,7 @@ bool DeviceManager::connectAssignedDevice(BaseDevice *device)
 
     const std::map<std::string, std::string> pinAssignments = device->getPinAssignments();
     debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DeviceManager::connectAssignedDevice", "protocol connect", "device=%s pins=%s", device->UID.c_str(), device->getPins().c_str());
-    if (!disconnectDevice(device)) {
+    if (!disconnectDevice(device, protocolClient)) {
         debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DeviceManager::connectAssignedDevice", "protocol disconnect skipped", "device=%s error=%s", device->UID.c_str(), device->getError().c_str());
     }
 
@@ -300,7 +306,7 @@ bool DeviceManager::connectAssignedDevice(BaseDevice *device)
         }
     }
 
-    const bool connected = connectDevice(device);
+    const bool connected = connectDevice(device, protocolClient);
     device->setPinConnectionActive(connected);
     debugLogMessage(connected ? DEBUG_VERBOSE_IMPORTANT : DEBUG_VERBOSE_ERRORS, "DeviceManager::connectAssignedDevice", connected ? "protocol connect" : "protocol connect failed", "device=%s connected=%d", device->UID.c_str(), connected);
     return connected;
@@ -393,7 +399,7 @@ bool DeviceManager::disconnectAndUnassignDevice(BaseDevice *device)
     }
 
     debugLogMessage(DEBUG_VERBOSE_IMPORTANT, "DeviceManager::disconnectAndUnassignDevice", "protocol disconnect", "device=%s pins=%s", device->UID.c_str(), device->getPins().c_str());
-    if (!disconnectDevice(device)) {
+    if (!disconnectDevice(device, protocolClient)) {
         debugLogMessage(DEBUG_VERBOSE_ERRORS, "DeviceManager::disconnectAndUnassignDevice", "protocol disconnect failed", "device=%s error=%s", device->UID.c_str(), device->getError().c_str());
         return false;
     }

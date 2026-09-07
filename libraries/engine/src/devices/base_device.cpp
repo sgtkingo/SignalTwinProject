@@ -152,7 +152,7 @@ void printDevice(BaseDevice *device) {
     }
 }
 
-bool syncDevice(BaseDevice *device) {
+bool syncDevice(BaseDevice *device, vscp::Client &protocolClient) {
     if(device == nullptr) {
         debugLogMessage("syncDevice", "device pointer invalid", "device is null");
         return false;
@@ -161,7 +161,7 @@ bool syncDevice(BaseDevice *device) {
 
     try {
         debugLogMessage("syncDevice", "runtime sync", "device=%s", device->UID.c_str());
-        return device->synchronize();
+        return device->synchronize(protocolClient);
     } catch (const Exception &ex) {
         ex.print();
         device->setError(ex.flush(0));
@@ -215,7 +215,7 @@ bool initDevice(BaseDevice *device) {
     }
 }
 
-bool connectDevice(BaseDevice *device) {
+bool connectDevice(BaseDevice *device, vscp::Client &protocolClient) {
     if(device == nullptr) {
         debugLogMessage("connectDevice", "device pointer invalid", "device is null");
         return false;
@@ -229,7 +229,7 @@ bool connectDevice(BaseDevice *device) {
 
     try {
         debugLogMessage("connectDevice", "device connect", "device=%s pins=%s", device->UID.c_str(), device->getPins().c_str());
-        return device->connect();  
+        return device->connect(protocolClient);
     } catch (const Exception &ex) {
         ex.print();
         device->setError(ex.flush(0));
@@ -251,7 +251,7 @@ bool connectDevice(BaseDevice *device) {
     }
 }
 
-bool disconnectDevice(BaseDevice *device) {
+bool disconnectDevice(BaseDevice *device, vscp::Client &protocolClient) {
     if(device == nullptr) {
         debugLogMessage("disconnectDevice", "device pointer invalid", "device is null");
         return false;
@@ -265,7 +265,7 @@ bool disconnectDevice(BaseDevice *device) {
 
     try {
         debugLogMessage("disconnectDevice", "device disconnect", "device=%s pins=%s", device->UID.c_str(), device->getPins().c_str());
-        return device->disconnect();
+        return device->disconnect(protocolClient);
     } catch (const Exception &ex) {
         ex.print();
         device->setError(ex.flush(0));

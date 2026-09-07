@@ -30,7 +30,7 @@ Upstream muze byt Python emulator, EduBoxHub nebo vlastni hardware implementujic
 | --- | --- |
 | `ui/` | Arduino sketch, hardware init, LVGL display/touch setup, hlavni `setup()` a `loop()`. |
 | `libraries/engine/` | Vlastni aplikacni engine: GUI, runtime manager, storage, device katalog, DataBundle. |
-| `libraries/vscp/` | Implementace VSCP protokolu a UART messengeru pro firmware. |
+| `libraries/vscp/` | Sdílený VSCP codec, transportní adaptéry, klient a server. |
 | `libraries/ui/` | SquareLine/LVGL boot UI generovana vrstva. Aplikacni GUI je hlavne v `engine/src/gui`. |
 | `libraries/expt/` | Logovani, splash hlasky a exception framework. |
 | `libraries/lvgl/`, `libraries/LovyanGFX/`, `libraries/ArduinoJson/` | Vendored third-party knihovny. |
@@ -239,7 +239,7 @@ Zodpovednosti:
   4. posle `CONNECT` pro kazde prirazene zarizeni,
 - pri runtime `resync(device)` v running rezimu:
   1. zavola `device->requestRuntimeUpdate()`,
-  2. zavola `syncDevice(device)`.
+  2. zavolá `deviceManager.sync(device)`.
 
 Pin UI pracuje s virtualnimi piny. Stav pinu definuje:
 
@@ -251,17 +251,19 @@ Firmware implementace VSCP je v `libraries/vscp`.
 
 Hlavni tridy/soubory:
 
-- `libraries/vscp/src/protocol.hpp`
-- `libraries/vscp/src/protocol.cpp`
-- `libraries/vscp/src/io/messenger.hpp`
-- `libraries/vscp/src/io/messenger.cpp`
+- `libraries/vscp/src/vscp_types.*`
+- `libraries/vscp/src/vscp_codec.*`
+- `libraries/vscp/src/vscp_client.*`
+- `libraries/vscp/src/vscp_server.*`
+- `libraries/vscp/src/io/vscp_transport.*`
+- `libraries/vscp/src/io/vscp_stream_transport.*`
 
-Aktualni API verze je v `Protocol::API_VERSION`, nyni `1.3`.
+Aktuální API verze je v `vscp::API_VERSION`, nyní `1.4`.
 
 Wire format je URL-like query string:
 
 ```text
-?type=INIT&app=board&db=1.0&api=1.3
+?type=INIT&app=board&db=1.0&api=1.4
 ?status=1
 
 ?type=CONNECT&id=cpu_temp&pins=1,4
@@ -281,8 +283,8 @@ Podporovane typy requestu:
 - `CONNECT`: pripojeni zarizeni na piny.
 - `DISCONNECT`: odpojeni zarizeni.
 
-Messenger ve firmware pouziva `HardwareSerial UART1_VIRTUAL`.
-UART parametry jsou v `libraries/vscp/src/config.hpp`.
+Sketch vlastní `HardwareSerial vscpSerial`, obalí jej do `vscp::StreamTransport` a předá jeden `vscp::Client` do `DeviceManager`.
+Výchozí UART parametry desky jsou v `libraries/engine/src/config.hpp`.
 
 ## GUI architektura
 
@@ -570,7 +572,7 @@ python emulator/virt_patterns_runner.py
 Priklad VSCP z konzole/logu:
 
 ```text
-Received: ?type=INIT&app=board&db=1.0&api=1.3
+Received: ?type=INIT&app=board&db=1.0&api=1.4
 Sent: ?status=1
 Received: ?type=CONNECT&id=cpu_temp&pins=1,4
 Sent: ?id=cpu_temp&status=1
@@ -605,8 +607,8 @@ Sent: ?id=cpu_temp&status=1&temp=0.21
 
 ### Menit VSCP protokol
 
-1. Upravit `libraries/vscp/src/protocol.*`.
-2. Aktualizovat `Protocol::API_VERSION`, pokud se meni wire contract.
+1. Upravit `libraries/vscp/src/vscp_types.*` a `libraries/vscp/src/vscp_codec.*`.
+2. Aktualizovat `VSCP_API_VERSION`, pokud se mění wire contract.
 3. Upravit `emulator/engine/emulator.py`, aby mirroroval firmware protocol.
 4. Upravit `DeviceManager` nebo `BaseDevice`, pokud se meni sync semantics.
 5. Otestovat INIT, CONNECT, UPDATE, CONFIG, CONTROL, DISCONNECT.
@@ -661,10 +663,10 @@ Sent: ?id=cpu_temp&status=1&temp=0.21
 - Overit, ze upstream posila odpoved na:
 
 ```text
-?type=INIT&app=board&db=1.0&api=1.3
+?type=INIT&app=board&db=1.0&api=1.4
 ```
 
-- Firmware cesta: `CommunicationSelectionGui -> DeviceManager::initializeProtocolConnection -> Protocol::init`.
+- Firmware cesta: `CommunicationSelectionGui -> DeviceManager::initializeProtocolConnection -> vscp::Client::init`.
 
 ### Pin assignment selze
 
@@ -744,7 +746,7 @@ libraries/engine/src/gui/
   all application screens and LVGL panel helpers
 
 libraries/vscp/src/
-  protocol and UART messenger
+  sdílený VSCP codec, client/server a transportní adaptéry
 
 libraries/expt/src/
   logging, exceptions, splash messages
